@@ -19,7 +19,7 @@ our %EXPORT_TAGS = ( 'all' => [ qw(type inf new ) ] );
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(type inf new ) );
 our @EXPORT = qw();
 
-our $VERSION = '0.33';
+our $VERSION = '0.34';
 
 our $TRACE = 0;  	# basic trace method execution
 our $DEBUG_BT = 0; 	# backtrack tracer
@@ -84,6 +84,15 @@ sub list {
 		push @b, $class->new($_);
 	}
 	return @b;
+}
+
+sub fixtype {
+	my $self = shift;
+	foreach (@{$self->{list}}) {
+		$_->{a} = $type->new($_->{a}) unless ref($_->{a});
+		$_->{b} = $type->new($_->{b}) unless ref($_->{b});
+	}
+	return $self;
 }
 
 sub compact {
@@ -244,49 +253,113 @@ sub offset {
 	$self->trace(title=>"offset");
 
 	if ($self->{too_complex}) {
-		my $b = $class->new();
-		$b->{too_complex} = 1;
-		$b->{parent} = $self;
-		$b->{method} = 'offset';
-		$b->{param}  = \@_;
-		return $b;
+		my $b1 = $class->new();
+		$b1->{too_complex} = 1;
+		$b1->{parent} = $self;
+		$b1->{method} = 'offset';
+		$b1->{param}  = \@_;
+		return $b1;
 	}
 
-	my (@a);
+	# return $self if $#{ $self->{list} } < 0;
+
+	my @a;
 	my %param = @_;
-	my @a2;
+	my $b1 = $class->new();    	# $self); # clone myself
 
-	# my $array_ref = shift;
-	my $tmp = 'Set::Infinite::Offset';   # $self->{list}->[0]->offsetter or offsetter;
-	# print " [INF:OFFSET $tmp,",$self,",",join(",",@_),"]\n";
-	tie @a, $tmp, $self, %param;
+	unless (ref($param{value}) eq 'ARRAY') {
+		#print " [value:scalar:", $param{value} ,"]\n";
+		$param{value} = [0 + $param{value}, 0 + $param{value}];
+	}
+	$param{mode}   =      'offset' unless $param{mode};
+	$param{unit}   =      'one'    unless $param{unit};
+	$param{parts}  =      ($#{$param{value}}) / 2;
+	$param{strict} =      0        unless $param{strict};
+	$param{fixtype} =     1        unless exists $param{fixtype};
+	# $param{fetchsize} = $param{parts} * (1 + $#{ $self->{list} });
+	$param{sub_unit} =    $Set::Infinite::Arithmetic::subs_offset2{$param{unit}};
+	$param{sub_mode} =    $Set::Infinite::Offset::_MODE{$param{mode}};
+	$param{parent_list} = $self->{list};
 
-	# print " [ofs]\n";
+	# print " [ofs:$param{mode} $param{unit} value:", join (",", @{$param{value} }),"]\n";
 
-	# array output: can be used by "foreach"
-	# v.029 -- intersection($b->offset) gets wantarray !
-	#   return compact_array($class, @a) if wantarray; 
+	my ($i, $j);
+	my ($cmp, $this, $next, $ib, $part, $open_begin, $open_end, $tmp);
+	foreach $i (0 .. $#{ $self->{list} }) {
+		my $interval = $self->{list}[$i];
+		my $ia = $interval->{a};
 
-	my $b = $class->new();    	# $self); # clone myself
+		if ( (ref($ia) eq 'Set::Infinite::Element_Inf') and ( $$ia eq '' ) ) {
+			# skip if interval is null
+		}
+		else {
+			$ib = $interval->{b};
+			$open_begin = $interval->{open_begin};
+			$open_end = $interval->{open_end};
+			# do offset
+			foreach $j (0 .. $param{parts}) {
+			# for ( $j = 0; $j <= $param{parts}; $j++) {
+				# print " ..[ofs:$param{mode}=$param{sub_mode} $param{unit}=$param{sub_unit} value:", $param{value}[$j+$j], ",", $param{value}[$j+$j + 1],"]\n";
 
-	# if ($param{compact}) {
-	#	# print " [COMPACT] ";
-	#	@a2 = compact_array($class, @a);
-	#	$b->{list} = \@a2;
-	#}
-	# else {
+				($this, $next, $cmp) = &{ $param{sub_mode} } 
+					( $param{sub_unit}, $ia, $ib, 
+					  $param{value}[$j+$j], $param{value}[$j+$j + 1] );
 
-	$b->{list} = \@a;    	# change data
+				if ($cmp > 0) { 
+					# skip if a > b
+				}
+				else {
+					# print " [ofs($this,$next)] ";
+					if ($cmp == 0) {
+						$open_end = $open_begin;
+						$this = $next;  #  make sure to use the same object from cache!
+					}
 
-	# }
+					# skip this if don't need to "fixtype"
+					if ($param{fixtype}) {
+						# bless results into 'type' class
+						my $class = ref($ia);
+						# my $class = $Set::Infinite::type;
 
-	# print " [ofs:", join(' - ', @a), " ]\n";
-	# object output: can be further "intersection", "union", etc.
-	# my $b = $class->new();  # $self); # clone myself
-	# $b->{list} = \@a;   	# change data
+						# print " [ofs($this,$next) = $class] ";
+						if (ref($this) ne $class) {
+							$this = $class->new($this);
+							$this->mode($ia->{mode}) if exists $ia->{mode};
 
-	$b->{cant_cleanup} = 1; 	# offset output is "virtual" (tied) -- can't splice, sort
-	return $b;
+							$next = $class->new($next);
+							$next->mode($ia->{mode}) if exists $ia->{mode};
+						}
+					} # "fixtype"
+
+					# create subset
+					$tmp = bless { a => $this , b => $next ,
+        		        open_begin => $open_begin , open_end => $open_end }, 
+						'Set::Infinite::Simple';
+					if (($param{strict} != 0) and not ($param{strict}->intersects($tmp)) ) {
+						# skip
+						# return Set::Infinite::Simple->simple_null;
+					}
+					else {
+						# save it!
+						push @a, $tmp;
+						# return $tmp;
+					}
+				}
+			}  # parent not null
+
+		}  # parts
+
+	}  # self
+
+    @a = sort { $a->{a} <=> $b->{a} } @a;
+
+	$b1->{list} = \@a;    	# change data
+	$b1->{cant_cleanup} = 1; 
+	# print " N = $#a \n";
+
+	# $b1->_self_sort; # if $param{parts} > 0;
+
+	return $b1;
 }
 
 
@@ -297,6 +370,20 @@ sub is_null {
 	return 0;
 	# return ("$self" eq null) ? 1 : 0;
 }
+
+# this an internal method
+# it's intent is checking some other methods misbehave 
+# and return an unordered list
+# sub _self_sort {
+#    my $self = shift; 
+#    my $tmp;
+#    $self->{list} = [ sort {
+#                    $tmp = ref($a); # doesn't work without this
+#                    $a <=> $b
+#                } @{$self->{list}} ];
+#    return $self;
+# }
+
 
 sub backtrack {
 	#
@@ -573,20 +660,20 @@ sub iterate {
 }
 
 sub intersection {
-	my $a = shift;
-	my $class = ref($a);
-	my $b;
+	my $a1 = shift;
+	my $class = ref($a1);
+	my $b1;
 
-	$a->trace(title=>"intersection");
+	$a1->trace(title=>"intersection");
 
 	if (ref ($_[0]) eq $class) {
-		$b = shift;
+		$b1 = shift;
 		# print " [inter:as_is] \n";
 	} 
 	else {
 		# my @param = @_;
 		# print " [inter:isa:",ref($_[0])," (",$class,")] \n";
-		$b = $class->new(@_);  
+		$b1 = $class->new(@_);  
 		# print " [inter:isa:",ref($b)," (",$class,")] \n";
 	}
 
@@ -596,52 +683,108 @@ sub intersection {
 	my $tmp;
 	# print " [intersect ",$a,"--",ref($a)," with ", $b, "--",ref($b)," ", caller, "] \n";
 
-	if ($a->{too_complex}) {
+	if ($a1->{too_complex}) {
 		print " [inter:complex:a] \n" if $DEBUG_BT;
-		$a = $a->backtrack('intersection', $b);
-		# print " [int:WAS:b:", $b, "--",ref($b),"] \n";
+		$a1 = $a1->backtrack('intersection', $b1);
+		# print " [int:WAS:b:", $b1, "--",ref($b1),"] \n";
 	}  # don't put 'else' here
-	if ($b->{too_complex}) {
+	if ($b1->{too_complex}) {
 		print " [inter:complex:b] \n" if $DEBUG_BT;
-		$b = $b->backtrack('intersection', $a);
+		$b1 = $b1->backtrack('intersection', $a1);
 	}
 
-	if (($a->{too_complex}) or ($b->{too_complex})) {
+	if (($a1->{too_complex}) or ($b1->{too_complex})) {
 		print " [inter:backtrack] \n" if $DEBUG_BT;
 		my $intersection = $class->new();
 		$intersection->{too_complex} = 1;
-		$intersection->{parent} = [$a, $b];
+		$intersection->{parent} = [$a1, $b1];
 		$intersection->{method} = 'intersection';
 		return $intersection;
 	}
 
-	# print " [intersect ",$a,"--",ref($a)," with ", $b, "--",ref($b)," ", caller, "] \n";
+	# print " [intersect \n    ",$a,"--",ref($a)," with \n    ", $b, "--",ref($b)," \n    ", caller, "] \n";
 
 	my ($ia, $ib);
-	my ($na, $nb) = (0,0);
+	# my ($na, $nb) = (0,0);
+	# $tmp = ref($a1->{list}) . ref($b1->{list}); # instantiate, just in case
+	my ($ma, $mb) = ($#{$a1->{list}}, $#{$b1->{list}});
 	my $intersection = $class->new();
-	B: foreach $ib ($nb .. $#{$b->{list}}) {
-		foreach $ia ($na .. $#{$a->{list}}) {
-			#	my ($pa, $pb) = ($a->{list}->[$ia], $b->{list}->[$ib]);
-			# print " [intersect ",$ia,"--",$ib," ]\n";
-			# print " [intersect   ",$pa,"--",$pb," ]\n";
-			# print " [intersect     ",%{$a->{list}->[$ia]},"--",%{$b->{list}->[$ib]}," ]\n";
-			#next B if Set::Infinite::Element_Inf::is_null($pa->{a});
-			#next B if Set::Infinite::Element_Inf::is_null($pb->{a});
-			#	if ( $pa->{a} > $pb->{b} ) {
-			#		$na = $ia;
-			#		next B;
-			#	}
-			# print "   [intersect_simple ",$a->{list}->[$ia]," with ", $b->{list}->[$ib], "] \n";
-			# unless ($a->{list}->[$ia]->is_null) {
 
-			$tmp = $a->{list}->[$ia]->intersection($b->{list}->[$ib]);
-			push @{$intersection->{list}}, $tmp unless Set::Infinite::Element_Inf::is_null($tmp->{a}); # ->{a},$tmp->{b}) if $tmp;
+	# for loop optimization
+	if ($ma < $mb) {
+		($ma, $mb) = ($mb, $ma);
+		# ($na, $nb) = ($nb, $na);
+		($a1, $b1) = ($b1, $a1);
+	}
 
-			# $intersection->add($tmp) if defined($tmp); # ->{a},$tmp->{b}) if $tmp;
-			# }
+	my ($tmp1, $tmp2);
+	my ($tmp1a, $tmp2a, $tmp1b, $tmp2b);
+	my ($i_beg, $i_end, $open_beg, $open_end);
+
+	my ($cmp1);
+
+	B: foreach $ib (0 .. $mb) {
+		$tmp2 = $b1->{list}[$ib];
+		$tmp2a = $tmp2->{a};
+		$tmp2b = $tmp2->{b};
+		# my $dummy = ref($pb1);
+	 	A: foreach $ia (0 .. $ma) {
+			$tmp1 = $a1->{list}[$ia];
+			$tmp1b = $tmp1->{b};
+
+			next A if $tmp1b < $tmp2a; 
+
+			$tmp1a = $tmp1->{a};
+			next B if $tmp1a > $tmp2b;
+
+			$cmp1 = $tmp1a <=> $tmp2a;
+
+			if ($cmp1 < 0) {
+				$i_beg 		= $tmp2a;
+				$open_beg 	= $tmp2->{open_begin};
+			}
+			elsif ($cmp1 == 0) {
+				$i_beg 		= $tmp1a;
+				$open_beg 	= ($tmp1->{open_begin} or $tmp2->{open_begin});
+			}
+			else {
+				$i_beg 		= $tmp1a;
+				$open_beg	= $tmp1->{open_begin};
+			}
+
+			$cmp1 = $tmp1b <=> $tmp2b;
+
+			if ($cmp1 > 0) {
+				$i_end 		= $tmp2b;
+				$open_end 	= $tmp2->{open_end};
+			}
+			elsif ($cmp1 == 0) {
+				$i_end 		= $tmp1b;
+				$open_end 	= ($tmp1->{open_end} or $tmp2->{open_end});
+			}
+			else {
+				$i_end 		= $tmp1b;
+				$open_end	= $tmp1->{open_end};
+			}
+
+			# print "  [ simple: fastnew($i_beg, $i_end, $open_beg, $open_end ) ]\n";
+			# return $simple_null if 
+
+			$cmp1 = $i_beg <=> $i_end;
+
+			unless (( $cmp1 > 0 ) or 
+					( ($cmp1 == 0) and ($open_beg or $open_end) )) {
+				push @{$intersection->{list}}, 
+					bless { a => $i_beg, 
+							b => $i_end, 
+							open_begin => $open_beg, 
+							open_end => $open_end }, 'Set::Infinite::Simple';
+			}
 		}
 	}
+
+	# print " [intersect GIVES\n    ",$intersection,"\n\n";
+
 	return $intersection;	
 }
 
@@ -702,49 +845,108 @@ sub complement {
 
 # version 0.22.02 - faster union O(n*n) => O(n)
 # version 0.30 - sends tolerance
+# $a, $b renamed to $a1, $b1 to prevent clashing with 'sort' 
 sub union {
-	my $a = shift;
-	my $class = ref($a);
-	my $b;
+	my $a1 = shift;
+	my $class = ref($a1);
+	my $b1;
 
-	$a->trace(title=>"union");
+	$a1->trace(title=>"union");
 
 	# print " [UNION] \n";
 	# print " [union: new b] \n";
+
+	return $a1->compact if ($#_ < 0);  # old usage
+
 	if (ref ($_[0]) eq $class) {
-		$b = shift;
+		$b1 = shift;
 	} 
 	else {
-		$b = $class->new(@_);  
+		$b1 = $class->new(@_);  
 	}
 
-	if (($a->{too_complex}) or ($b->{too_complex})) {
+	if (($a1->{too_complex}) or ($b1->{too_complex})) {
 		print " [union:backtrack] \n" if $DEBUG_BT;
 		my $union = $class->new();
 		$union->{too_complex} = 1;
-		$union->{parent} = [$a, $b];
+		$union->{parent} = [$a1, $b1];
 		$union->{method} = 'union';
 		return $union;
 	}
 
+	# -- special case: $a1 or $b1 is empty
+ 	# print " A=0 B=$b1 " if $#{$a1->{list}} < 0;
+ 	# print " B=0 A=$a1 " if $#{$b1->{list}} < 0;
+	return $a1 if $#{$b1->{list}} < 0;
+	return $b1 if $#{$a1->{list}} < 0;
+
 	# print " [union: new union] \n";
-	# print "\n [union: $a +\n       $b ] \n";
-	$a = $class->new($a);
-	# print " [union: $a +\n       $b ] \n";
+	# print "\n [union: $a1 +\n       $b1 ] \n";
+	# $a1 = $class->new($a1);
+	# print " [union: $a1 +\n       $b1 ] \n";
+
 	my ($ia, $ib);
 	$ia = 0;
 	$ib = 0;
-	my $b_list = $b->{list};
-	B: foreach $ib ($ib .. $#{$b->{list}}) {
-		foreach $ia ($ia .. $#{$a->{list}}) {
+
+	# checking if size+order matters on speed - it does
+	# my $a_size = $#{$a1->{list}};
+	# my $b_size = $#{$b1->{list}};
+	# print " [ $a_size <=> $b_size ] \n";
+	# if ($b_size > $a_size) {
+	# 	($b1,$a1) = ($a1,$b1);
+	# }
+
+	# print " [ ",$a1->max," <=> ",$b1->max," ] \n";
+ 
+	$a1 = $class->new($a1);
+
+	# my ($test, $orig);
+
+	# checking: some other methods misbehave and return an unordered list 
+	# $b1->_self_sort;
+
+	my $b_list = $b1->{list};
+
+	# -- frequent case - $b1 is after $a1
+        if ($b1->min > $a1->max) 
+	{
+		# if ($#{$b_list} == 0) {
+		#	# -- $b is a simple interval
+		#	print "#";
+		#	push @{$a->{list}}, $b_list->[0];
+		# }
+
+ 		# $test = $class->new($a);
+
+		# print "#";
+		# print " [UNION: $a1 \n         $b1 $#{$b_list}\n       ";
+ 		foreach $ib (0 .. $#{$b_list}) {
+			# print " -> ",$b_list->[$ib],"\n";
+			push @{$a1->{list}}, $b_list->[$ib]; # unless $b_list->[$ib]->is_null;
+		}
+		# print "= $a1 \n"; 
+
+		return $a1;
+
+		# ($a1, $test) = ($test, $a1);
+	}
+	# else { print "." }
+
+	# -- end: special case 
+
+	# print " [UNION: NORMAL ] \n";
+
+ 	B: foreach $ib ($ib .. $#{$b_list}) {
+		foreach $ia ($ia .. $#{$a1->{list}}) {
 			# $self->{list}->[$_ - 1] = $tmp[0];
 			# splice (@{$self->{list}}, $_, 1);
 
-			my @tmp = $a->{list}->[$ia]->union($b_list->[$ib], $a->{tolerance});
+			my @tmp = $a1->{list}->[$ia]->union($b_list->[$ib], $a1->{tolerance});
 			# print " [+union: $tmp[0] ; $tmp[1] ] \n";
 
 			if ($#tmp == 0) {
-					$a->{list}->[$ia] = $tmp[0];
+					$a1->{list}->[$ia] = $tmp[0];
 					next B;
 			}
 
@@ -757,11 +959,12 @@ sub union {
 			# print "    -- $b_list->[$ib]->{a} ]\n";
 
 			# this doesn't always work -- use a temp variable instead:  if ($a->{list}->[$ia]->{a} >= $b->{list}->[$ib]->{a}) 
-			if ($a->{list}->[$ia]->{a} >= $hash{a}) 
+			if ($a1->{list}->[$ia]->{a} >= $hash{a}) 
 			{
 				# print "+ ";
 				# splice(@array,$index,0,$value)
-				splice (@{$a->{list}}, $ia, 0, $b_list->[$ib]);
+				# insert $b[$ib] before $a[$ia] 
+				splice (@{$a1->{list}}, $ia, 0, $b_list->[$ib]);
 				# $a->add($b->{list}->[$ib]);
 				next B;
 			}
@@ -769,7 +972,7 @@ sub union {
 		}
 		# print "- ";
 		# $a->add($b->{list}->[$ib]);
-		push @{$a->{list}}, $b_list->[$ib];
+		push @{$a1->{list}}, $b_list->[$ib];
 	}
 	# print " [union: done from ", join(" ", caller), " ] \n";
 	# print " [union: result = $a ] \n";
@@ -781,7 +984,9 @@ sub union {
 	#	}
 	# print " [union: is ", join(" ", %$a) , " ] \n";
 
-	return $a;	
+	# print "\n TEST: $test\n A:    $a\n ORIG: $a\n B:    $b\n" if $test != $a;
+
+	return $a1;	
 }
 
 sub contains {
@@ -790,19 +995,25 @@ sub contains {
 	return ($a->union(@_) == $a) ? 1 : 0;
 }
 
-sub add {
-	my ($self) = shift;
-	my $class = ref($self);
-	my @param = @_;
+sub new {
+	my $class = shift;
+	my ($self) = bless { list => [] }, $class;
 
-	#print " [I:ADD] ";
+	# $self->trace(title=>"new");
+
+	# print " [INF:new:", ref($self)," - ", join(' - ', caller), " ]\n"; # if $TRACE;
+	$self->{tolerance} = $tolerance if $tolerance;
+	$self->{type} = $type if $type;
+	# print " [INF:new:$class ", $tolerance, " ",$type," ",$self->{tolerance}," ",$self->{type}," ]\n"; 
+	# $self->{list} = [];
+
 LOOP:
-		my $tmp = shift @param;
-		return $self unless defined($tmp);
+	my $tmp = shift @_;
+	return $self unless defined($tmp);
 
-		# is it an array?
-		# print " [INF:ADD:",ref($tmp),"=$tmp ; ",@param,"]\n";
-		if (ref($tmp) eq 'ARRAY') {
+	# is it an array?
+	# print " [INF:ADD:",ref($tmp),"=$tmp ; ",@param,"]\n";
+	if (ref($tmp) eq 'ARRAY') {
 			my @tmp = @{$tmp};
 
 	
@@ -814,35 +1025,40 @@ LOOP:
 				push @{ $self->{list} }, Set::Infinite::Simple->new($_) ;
 			}
 			goto LOOP;
-		}
-		# does it have a "{list}"?
-		elsif ((ref(\$tmp) eq 'REF')) {
+	}
+	# does it have a "{list}"?
+
+	if ((ref(\$tmp) eq 'REF')) {
 			if (($tmp->isa(__PACKAGE__))) {   # and defined ($tmp->{list})) {
 				# print " INF:ADD:",__PACKAGE__,":",$tmp," ";
 				foreach (@{$tmp->{list}}) {
-					push @{ $self->{list} }, Set::Infinite::Simple->new($_) ;
+					# push @{ $self->{list} }, Set::Infinite::Simple->new($_) ;
+					push @{ $self->{list} }, $_; # Set::Infinite::Simple->fastnew($_->{a}, $_->{b}, $_->{open_begin}, $_->{open_end}) ;
 				}
 				goto LOOP;
 			}
 			# does it have a "{a},{b}"?
-			elsif (($tmp->isa("Set::Infinite::Simple")) ) {  # and (not $tmp->is_null)) {
+			if (($tmp->isa("Set::Infinite::Simple")) ) {  # and (not $tmp->is_null)) {
 				# print " INF:ADD:SIMPLE:",__PACKAGE__,":",$tmp," ";
-				push @{ $self->{list} }, Set::Infinite::Simple->new($tmp) ;
+				# push @{ $self->{list} }, Set::Infinite::Simple->new($tmp) ;
+				push @{ $self->{list} }, $tmp; # Set::Infinite::Simple->fastnew($tmp->{a}, $tmp->{b}, $tmp->{open_begin}, $tmp->{open_end}) ;
 				# print " INF:ADD:SIMPLE:",__PACKAGE__,":",@{ $self->{list} }," \n";
 				goto LOOP;
 			}
-		}
-		# else {
-			my $tmp2 = shift @param;
-			#print " [NEW] " ;
+	}
 
-			$tmp = Set::Infinite::Simple->new($tmp,$tmp2, $self->{type} );
-			push @{ $self->{list} }, $tmp;
+	# else {
 
-			goto LOOP;
-		# }
+	my $tmp2 = shift @_;
+	#print " [NEW] " ;
 
-	return $self;
+	$tmp = Set::Infinite::Simple->new($tmp,$tmp2, $self->{type} );
+	push @{ $self->{list} }, $tmp;
+
+	goto LOOP;
+
+	# }
+	# return $self;
 }
 
 sub min { 
@@ -998,20 +1214,6 @@ sub real {
 }
 
 
-sub new {
-	my $class = shift;
-	my ($self) = bless {}, $class;
-	@{ $self->{list} } = ();
-
-	$self->trace(title=>"new");
-
-	# print " [INF:new:", ref($self)," - ", join(' - ', caller), " ]\n"; # if $TRACE;
-	$self->{tolerance} = $tolerance if $tolerance;
-	$self->{type} = $type if $type;
-	# print " [INF:new:$class ", $tolerance, " ",$type," ",$self->{tolerance}," ",$self->{type}," ]\n"; 
-	$self->add(@_);
-	return $self;
-}
 
 sub as_string {
 	my ($self) = shift;
@@ -1206,9 +1408,9 @@ Internal functions:
 
 	$a->cleanup;
 
-	$a->add($b);  # Use $a = $a->union($b) instead.
-
 	$a->backtrack($b);
+
+	$a->fixtype;
 
 =head1 Notes on Dates
 

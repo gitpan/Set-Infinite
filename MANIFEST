@@ -13,6 +13,7 @@ lib/Set/Infinite/Offset.pm
 lib/Set/Infinite/Quantize_Date.pm
 lib/Set/Infinite/Select.pm
 lib/Set/Infinite/Function.pm
+lib/Set/Infinite/Arithmetic.pm
 todo/bigfloat.t
 todo/bigint.t
 todo/simple_bigfloat.t

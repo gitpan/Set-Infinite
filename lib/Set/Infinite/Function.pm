@@ -7,6 +7,9 @@ use strict;
 use warnings;
 
 require Exporter;
+use Tie::Array;
+
+our @ISA = qw( Tie::StdArray Exporter );
 our $VERSION = "0.01";
 our @EXPORT = qw();
 our @EXPORT_OK = qw();
@@ -36,6 +39,8 @@ Default function is f(x) = x;
 Derived functions should register themselves automatically with Set::Infinite
 
 =head2 CHANGES
+
+    use Tie::Array
 
 =head2 AUTHOR
 
@@ -93,15 +98,5 @@ sub TIEARRAY {
 	$self->init;
 	return $self;
 }
-
-sub STORESIZE {	return @_; }
-
-sub CLEAR { my ($self) = shift; return @_; }
-
-sub EXTEND { return @_; }
-
-sub STORE { return @_; }
-
-sub DESTROY { }
 
 1;

@@ -7,6 +7,7 @@ use strict;
 use warnings;
 require Exporter;
 use Set::Infinite::Function;
+use Set::Infinite::Arithmetic;
 use Set::Infinite::Element_Inf qw(inf minus_inf);
 use Carp;
 use Time::Local;
@@ -31,6 +32,8 @@ Set::Infinite::Offset - Offsets a set :)
 
 =head2 CHANGES
 
+	- use ./Arithmetic.pm
+
 0.04
 	strict
 	multiple value-pairs
@@ -48,61 +51,33 @@ Flavio Soibelmann Glock - fglock@pucrs.br
 
 =cut
 
-# our $day_size =    $Set::Infinite::Quantize_Date::day_size; 
-our $day_size =    timegm(0,0,0,2,3,2001) - timegm(0,0,0,1,3,2001);
-our $hour_size =   $day_size / 24;
-our $minute_size = $hour_size / 60;
-our $second_size = $minute_size / 60;
-
-our %subs = (
-	years => 	sub {
-		my ($self, $index) = @_;
-		return $self if $self == &inf;
-		my $class = ref($self);
-		# print " [ofs:year:$self -- $index]\n";
-		my @date = gmtime( $self ); 
-		$date[5] +=	1900 + $index;
-		my $tmp = timegm(@date);
-		return $tmp unless $class;
-		$tmp = $class->new($tmp);
-		$tmp->mode($self->{mode}) if exists $self->{mode};
-		return $tmp;
+# return value = ($this, $next, $cmp)
+our %_MODE = (
+	circle => sub {
+			my ($sub, $a, $b, $ia, $ib) = @_;
+			if ($ia >= 0) {
+				&{ $sub } ($a, $ia, $ib ) 
+			}
+			else {
+				&{ $sub } ($b, $ia, $ib ) 
+			}
 	},
-	months => 	sub {
-		my ($self, $index) = @_;
-		# print " [ofs:month:$self -- $index]\n";
-		return $self if $self == &inf;
-		my $class = ref($self);
-		my @date = gmtime( $self );
-		my $mon = 	$date[4] + $index; 
-		my $year =	$date[5] + 1900;
-		# print " [OFS: month: from $year$mon ]\n";
-		if (($mon > 11) or ($mon < 0)) {
-			my $addyear = $mon >= 0 ? int($mon / 12) : int($mon/12) - 1;
-			$mon = $mon - 12 * $addyear;
-			$year += $addyear;
-		}
-		# print " [OFS: month: to $year $mon ]\n";
-
-		# elsif ($mon < 0) {
-		#	$mon += 12;
-		#	$year -= 1;
-		# }
-		$date[4] = $mon;
-		$date[5] = $year;
-		my $tmp = timegm(@date);
-		return $tmp unless $class;
-		$tmp = $class->new($tmp);
-		$tmp->mode($self->{mode}) if exists $self->{mode};
-		return $tmp;
+	begin => sub {
+			my ($sub, $a, $b, $ia, $ib) = @_;
+			&{ $sub } ($a, $ia, $ib ) ;
 	},
-	days => 	sub { $_[0] + $_[1] * $day_size },
-	weeks =>	sub { $_[0] + $_[1] * 7 * $day_size },
-	hours =>	sub { $_[0] + $_[1] * $hour_size },
-	minutes =>	sub { $_[0] + $_[1] * $minute_size },
-	seconds =>	sub { $_[0] + $_[1] * $second_size },
-	one =>  	sub { $_[0] + $_[1] },
+	end => sub {
+			my ($sub, $a, $b, $ia, $ib) = @_;
+			&{ $sub } ($b, $ia, $ib ) ;
+	},
+	offset => sub {
+			my ($sub, $a, $b, $ia, $ib) = @_;
+			my ($this) =       &{ $sub } ($a, $ia, $ib ) ; 
+			my ($tmp, $next) = &{ $sub } ($b, $ia, $ib ) ; 
+			($this, $next, $this <=> $next); 
+	}
 );
+
 
 sub init {
 	my $self = shift;
@@ -118,89 +93,82 @@ sub init {
 	$self->{parts}  = (1 + $#{$self->{value}}) / 2;
 
 	$self->{strict} = 0 unless $self->{strict};
+	$self->{fixtype} = 1 unless exists $self->{fixtype};
+
+	$self->{fetchsize} = $self->{parts} * (1 + $#{ $self->{parent}->{list} });
+	$self->{cache} = ();
+	$self->{sub} = $Set::Infinite::Arithmetic::subs_offset2{$self->{unit}};
+	$self->{sub_mode} = $_MODE{$self->{mode}};
+	$self->{parent_list} = $self->{parent}->{list};
+	# print " UNIT: $self->{unit} SUB: $self->{sub}\n";
 
 	return $self;
 }
 
 sub FETCHSIZE {
 	my ($self) = shift;
-	my $tmp = $self->{parts} * (1 + $#{ $self->{parent}->{list} });
 	# print " [Offset::FETCHSIZE] ", $tmp, "\n";
-	return $tmp;
+	return $self->{fetchsize};
 }
 
 sub FETCH {
-	my ($self, $x) = @_;
-	my ($tmp, $this, $next);
-
-	my $part = 2 * ($x % $self->{parts});
+	my $self = shift;
+	my $x = shift;
+	# my $cache = $self->{cache}{$x};
+	# return $cache if defined $cache;
 
 	# tmp pointer because perl gets confused with $self->{parent}->{list}->[$x]->{a}
-	my $interval = $self->{parent}->{list}->[$x / $self->{parts}];
+	my $interval = $self->{parent_list}[$x / $self->{parts}];
+	my $ia = $interval->{a};
 
-	my $open_begin = $interval->{open_begin};
-	my $open_end = $interval->{open_end};
-
-	if ( Set::Infinite::Element_Inf::is_null($interval->{a}) ) {
-		return Set::Infinite::Simple->simple_null ;
+	# test if parent interval is null
+	if ( (ref($ia) eq 'Set::Infinite::Element_Inf') and ( $$ia eq '' ) ) {
+		return Set::Infinite::Simple->simple_null;
 	}
 
-	# print " [parent:", $interval,"]\n";
-	## print " [ofs:parent:", $interval->{a},"]\n";
-	# print " [mode:",$self->{mode},"]\n";
-	# print " [value:", join (",", @{$self->{value} }),"]\n";
+	my ($cmp, $this, $next, $ib, $part, $open_begin, $open_end, $tmp);
+	 $ib = $interval->{b};
+	 $part = 2 * ($x % $self->{parts});
+	 $open_begin = $interval->{open_begin};
+	 $open_end = $interval->{open_end};
 
-	# my $value0 = &{ $subs{$self->{unit}} } ($self->{value}->[$part + 0]);
-	# my $value1 = &{ $subs{$self->{unit}} } ($self->{value}->[$part + 1]);
+	($this, $next, $cmp) = &{ $self->{sub_mode} } 
+			( $self->{sub}, $ia, $ib, $self->{value}->[$part], $self->{value}->[$part + 1] );
 
-	if ($self->{mode} eq 'circle') {
-		if ($self->{value}->[$part + 0] >= 0) {
-			$this =  &{ $subs{$self->{unit}} } ($interval->{a}, $self->{value}->[$part + 0]) ;
-			$next =  &{ $subs{$self->{unit}} } ($interval->{a}, $self->{value}->[$part + 1]) ;
-		}
-		else {
-			$this =  &{ $subs{$self->{unit}} } ($interval->{b}, $self->{value}->[$part + 0]) ;
-			$next =  &{ $subs{$self->{unit}} } ($interval->{b}, $self->{value}->[$part + 1]) ;
-		}
-	}
-	elsif ($self->{mode} eq 'begin') {
-			$this =  &{ $subs{$self->{unit}} } ($interval->{a}, $self->{value}->[$part + 0]) ;
-			$next =  &{ $subs{$self->{unit}} } ($interval->{a}, $self->{value}->[$part + 1]) ;
-	}
-	elsif ($self->{mode} eq 'end') {
-			$this =  &{ $subs{$self->{unit}} } ($interval->{b}, $self->{value}->[$part + 0]) ;
-			$next =  &{ $subs{$self->{unit}} } ($interval->{b}, $self->{value}->[$part + 1]) ;
-	}
-	else {     
-			# $self->{mode} eq 'offset') 
-			$this =  &{ $subs{$self->{unit}} } ($interval->{a}, $self->{value}->[$part + 0]) ;
-			$next =  &{ $subs{$self->{unit}} } ($interval->{b}, $self->{value}->[$part + 1]) ;
-	}
-
-	if ($this > $next) { 
-		# print " [ofs:out($this,$next)] ";
+	if ($cmp > 0) { 
 		return Set::Infinite::Simple->simple_null;
 	}
 
 	# print " [ofs($this,$next)] ";
-
-	if ($this == $next) {
+	if ($cmp == 0) {
 		$open_end = $open_begin;
-		$this = $next;  #  make shure use the same object from cache!
+		$this = $next;  #  make sure to use the same object from cache!
 	}
 
-	$tmp = Set::Infinite::Simple->
-		fastnew($this,$next)->
-		open_end($open_end)->
-		open_begin($open_begin);
+	if ($self->{fixtype}) {
+		# bless results into 'type' class
+		my $class = ref($ia);
+		# my $class = $Set::Infinite::type;
 
-	return $tmp unless ($self->{strict});
+		# print " [ofs($this,$next) = $class] ";
+		if (ref($this) ne $class) {
+			$this = $class->new($this);
+			$this->mode($ia->{mode}) if exists $ia->{mode};
 
-	if ($self->{strict}->intersects($tmp)) {
-		return $tmp;
+			$next = $class->new($next);
+			$next->mode($ia->{mode}) if exists $ia->{mode};
+		}
 	}
-	return Set::Infinite::Simple->simple_null;	
+
+	$tmp = bless { a => $this , b => $next ,
+                open_begin => $open_begin , open_end => $open_end }, 
+		'Set::Infinite::Simple';
+	if (($self->{strict} != 0) and not ($self->{strict}->intersects($tmp)) ) {
+		return Set::Infinite::Simple->simple_null;
+	}
+	return $tmp;
 }
 
 
 1;
+

@@ -397,7 +397,7 @@ sub new {
 
 	# print " [SIM:ADD:$tmp,$tmp2, is-null=",$tmp2->is_null,"]\n";
 
-	if ($type and not ref($tmp)) {
+	 if ($type and (ref($tmp) ne $type) ) { 
 		$tmp = new $type $tmp;
 	}
 
@@ -405,7 +405,7 @@ sub new {
 		($self->{a}, $self->{b}) = ($tmp, $tmp);
 	}
 	else {
-		if ($type and not ref($tmp2)) {
+		 if ($type and (ref($tmp2) ne $type) ) {
 			$tmp2 = new $type $tmp2;
 		}
 
@@ -420,9 +420,23 @@ sub new {
 	return $self;	
 }
 
+
+# our %new_count = ();
+# our $count;
+
 sub fastnew {
-	my ($self) = bless { a => $_[1] , b => $_[2] , open_begin => $_[3] , open_end => $_[4] }, $_[0];
-	return $self;
+
+        # my @caller = caller(1);
+	# $new_count{$caller[1] . $caller[2]} ++;
+	# $count++;
+	# if ($count > 20) {
+	#         print " [",$caller[1],":",$caller[2]," ", $new_count{$caller[1] . $caller[2]}, " ]\n";
+	# }
+
+	bless { a => $_[1] , b => $_[2] , open_begin => $_[3] , open_end => $_[4] }, $_[0];
+
+	# my ($self) = bless { a => $_[1] , b => $_[2] , open_begin => $_[3] , open_end => $_[4] }, $_[0];
+	# return $self;
 }
 
 sub as_string {

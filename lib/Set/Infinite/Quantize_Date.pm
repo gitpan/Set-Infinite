@@ -8,12 +8,15 @@ use strict;
 use warnings;
 
 require Exporter;
+use Tie::Array;
 
+our @ISA = qw( Tie::StdArray Exporter );
 our @EXPORT = qw();
 our @EXPORT_OK = qw();
 
 use Time::Local;
 use Set::Infinite qw(type);
+use Set::Infinite::Arithmetic;
 use Set::Infinite::Element_Inf qw(inf);
 
 =head2 NAME
@@ -25,6 +28,10 @@ Set::Infinite::Quantize_Date - arrays of date intervals to make calendars
 	See Set::Infinite
 
 =head2 CHANGES
+
+	- use ./Arithmetic.pm
+
+	- use Tie::Array
 
 	- added 'weekyears' to return the year from day 1 of first week to day 7 of last week.
 	- uses 'wkst', with default 1 = monday.
@@ -40,124 +47,7 @@ Set::Infinite::Quantize_Date - arrays of date intervals to make calendars
 
 =cut
 
-
-our $day_size = timegm(0,0,0,2,3,2001) - timegm(0,0,0,1,3,2001);
-our $hour_size = $day_size / 24;
-our $minute_size = $hour_size / 60;
-our $second_size = $minute_size / 60;
-
-our @week_start = ( 0, -1, -2, -3, 3, 2, 1, 0, -1, -2, -3, 3, 2, 1, 0 );
-
-our %subs = (
-	weekyears =>	sub {
-		my ($self, $index) = @_;
-		my $epoch = timegm( 0,0,0, 
-			1,0,$self->{date_begin}[5] + $self->{quant} * $index);
-		my @time = gmtime($epoch);
-		# print " [QT_D:weekyears:$self->{date_begin}[5] + $self->{quant} * $index]\n";
-		# year modulo week
-		# print " [QT:weekyears: ",$self->{date_begin}[5] + $self->{quant} * $index," epoch=$epoch ]\n";
-		# print " [QT:weekyears: time = ",join(";", @time )," ]\n";
-		$epoch += ( $week_start[$time[6] + 7 - $self->{wkst}] ) * $day_size;
-		# print " [QT:weekyears: week=",join(";", gmtime($epoch) )," wkst=$self->{wkst} tbl[",$time[6] + 7 - $self->{wkst},"]=",$week_start[$time[6] + 7 - $self->{wkst}]," ]\n\n";
-		return $epoch;
-	},
-	years => 	sub {
-		my ($self, $index) = @_;
-		# print " [QT_D:YEARS:$self->{date_begin}[5] + $self->{quant} * $index]\n";
-		return timegm( 0,0,0, 
-			1,0,$self->{date_begin}[5] + $self->{quant} * $index); },
-	months => 	sub {
-		my ($self, $index) = @_;
-		my $mon = 	$self->{date_begin}[4] + $self->{quant} * $index; 
-		my $year =	$self->{date_begin}[5];
-		if ($mon > 11) {
-			my $addyear = int($mon / 12);
-			$mon = $mon - 12 * $addyear;
-			$year += $addyear;
-		}
-		return timegm( 0,0,0, 
-			1, $mon, $year); },
-	days => 	sub {
-		my ($self, $index) = @_;
-		return $self->{first} + $self->{quant} * $index * $day_size; },
-	weeks =>	sub {
-		my ($self, $index) = @_;
-		# print " [QD:fn:weeks: $self->{first} + 7 * $self->{quant} * $index * $day_size ]\n";
-		return $self->{first} + 7 * $self->{quant} * $index * $day_size; },
-	hours =>	sub {
-		my ($self, $index) = @_;
-		return $self->{first} + $self->{quant} * $index * $hour_size; },
-	minutes =>	sub {
-		my ($self, $index) = @_;
-		return $self->{first} + $self->{quant} * $index * $minute_size; },
-	seconds =>	sub {
-		my ($self, $index) = @_;
-		return $self->{first} + $self->{quant} * $index * $second_size; },
-	one =>   	sub { 
-		my ($self, $index) = @_;
-		# print " $self->{first} + $self->{quant} * $index \n";
-		return $self->{first} + $self->{quant} * $index; },
-);
-
-our %init = (
-	one =>  	sub {
-		my $self = shift;
-		# $rest = $self->{date_begin}[0] % $self->{quant};
-		# modulo operation - can't use `%'
-		my $tmp1 = int($self->{parent}->min / $self->{quant});
-		$self->{first} = $tmp1 * $self->{quant};
-		$self->{mult} = 1; },
-	seconds =>	sub {
-		my $self = shift;
-		# $rest = $self->{date_begin}[0] % $self->{quant};
-		# modulo operation - can't use `%'
-		my $tmp1 = int($self->{date_begin}[0] / $self->{quant});
- 		my $rest = $self->{date_begin}[0] - $tmp1 * $self->{quant};
-		$self->{first} = timegm(
-			$self->{date_begin}[0] - $rest,	$self->{date_begin}[1],	$self->{date_begin}[2], 
-			$self->{date_begin}[3],	$self->{date_begin}[4],$self->{date_begin}[5]);
-		$self->{mult} = $second_size; },
-	minutes =>	sub {
-		my $self = shift;
-		# $rest = $self->{date_begin}[1] % $self->{quant};
-		# modulo operation - can't use `%'
-		my $tmp1 = int($self->{date_begin}[1] / $self->{quant});
- 		my $rest = $self->{date_begin}[1] - $tmp1 * $self->{quant};
-		$self->{first} = timegm(
-			0,$self->{date_begin}[1] - $rest, $self->{date_begin}[2], 
-			$self->{date_begin}[3], $self->{date_begin}[4],$self->{date_begin}[5]);
-		$self->{mult} = $minute_size; },
-	hours =>	sub {
-		my $self = shift;
-		$self->{first} = timegm( 0,0,$self->{date_begin}[2], 
-			$self->{date_begin}[3],$self->{date_begin}[4],$self->{date_begin}[5]);
-		$self->{mult} = $hour_size; },
-	days => 	sub {
-		my $self = shift;
-		$self->{first} = timegm( 0,0,0, 
-			$self->{date_begin}[3],$self->{date_begin}[4],$self->{date_begin}[5]);
-		$self->{mult} = $day_size; },
-	weeks =>	sub {
-		my $self = shift;
-		$self->{first} = timegm( 0,0,0, 
-			$self->{date_begin}[3],$self->{date_begin}[4],$self->{date_begin}[5]);
-		$self->{first} -= $self->{date_begin}[6] * $day_size;
-		$self->{mult} = 7 * $day_size; },
-	months =>	sub {
-		my $self = shift;
-		$self->{mult} = 31 * $day_size; },
-	years =>	sub {
-		my $self = shift;
-		# print " [QT_D:YEARS_INIT]\n";
-		$self->{mult} = 365 * $day_size; },
-	weekyears =>	sub {
-		my $self = shift;
-		# print " [QT_D:WEEKYEARS_INIT]\n";
-		$self->{wkst} = 1 if $self->{wkst} eq '';
-		# print " [QT:$self->{wkst}] \n";
-		$self->{mult} = 365 * $day_size; },
-);
+our %Memoize;
 
 sub new {
 	my ($class, $parent, %rules);
@@ -165,7 +55,7 @@ sub new {
 		# old syntax (non-hash):  new(1) "one day"  
 		($class, $parent, $rules{quant}) = @_;
 	}
-	elsif ( ($#_ == 3) and (exists ($subs{$_[2]}) ) ) {  
+	elsif ( ($#_ == 3) and (exists ($Set::Infinite::Arithmetic::subs_offset1{$_[2]}) ) ) {  
 		# old syntax (non-hash):  new('days', 1) "one day"  
 		($class, $parent, $rules{unit}, $rules{quant}) = @_;
 	}
@@ -225,7 +115,7 @@ sub new {
 
 	# print " [QD:1:unit:$self->{unit}] ";
 
-	&{ $init{$self->{unit}} } ($self);
+	&{ $Set::Infinite::Arithmetic::subs_offset1_init{$self->{unit}} } ($self);
 
 	$self->{time2_end} = $self->{parent}->max;
 	# print " [time2_end isa ", ref($self->{time2_end}), "] ";
@@ -237,44 +127,64 @@ sub new {
 
 	# print " [QD:$self->{size}] \n";
 	# print " [QD:new:end] \n";
+
+	$self->{fixtype} = 1 unless exists $self->{fixtype};
+
+	$self->{memo} = '';
+	if (exists $self->{offset}) {
+		$self->{memo} = $self->{unit} . $self->{quant} . $self->{fixtype};
+		$self->{memo} .= $self->{wkst} if exists $self->{wkst};
+		# print " [QD:offset=",$self->{offset}," ",$self->{first}," ", $self->{memo}," ",	" ]\n";
+ 	}
+
 	return $self;
 }
 
 
-
+# this is a wrapper to _FETCH that memoizes results and makes 'strict' checks.
+# %Memoize{$self->{memo}}{...}  stores memoized results  
+# $self->{cache}->{...} stores 'strict' results
 sub FETCH {
 	my ($self) = shift;
-	my $index = shift;
+	my $index = shift or 0;
 
-	if ($index and (exists $self->{cache}->{$index})) {
-		# print "*";
-		return $self->{cache}->{$index};
+	return $self->{cache}->{$index} if exists $self->{cache}->{$index};
+
+	my $tmp = $Memoize{$self->{memo}}{$index + $self->{offset}};
+	unless (defined $tmp) {
+  		$tmp = _FETCH ($self,$index);
+		$Memoize{$self->{memo}}{$index + $self->{offset}} = $tmp;
 	}
 
+	if ($self->{strict} and not $self->{strict}->intersects($tmp)) {
+		$tmp = Set::Infinite::Simple->simple_null;
+	}
+	$self->{cache}->{$index} = $tmp;
+	return $tmp;
+}
+
+sub _FETCH {
+	my ($self, $index) = @_;
+	my $tmp;
 	my ($this, $next);
 
+	# print "*";
 	# print " [QD:fetch:$index] ";
-	$this = &{ $subs{$self->{unit}} } ($self, $index);
 
-	# test cache
-	#if (($index + 1) == $self->{last_index}) {
-	#	$next = $self->{last};
-	#}
-	#else {
-		$next = &{ $subs{$self->{unit}} } ($self, $index + 1);
-	#}
+	$this = &{ $Set::Infinite::Arithmetic::subs_offset1{$self->{unit}} } ($self, $index);
+	$next = &{ $Set::Infinite::Arithmetic::subs_offset1{$self->{unit}} } ($self, $index + 1);
 
-	# add to cache
-	#$self->{last} = $next;
-	#$self->{last_index} = $index + 1;
+	# if ($this > $self->{time2_end}) {
+	#	$self->{size} = $index if $self->{size} > $index;
+	#	$self->{cache}->{$index} = Set::Infinite::Simple->simple_null;
+	#	return $self->{cache}->{$index};
+	# }
 
-	if ($this > $self->{time2_end}) {
-		$self->{size} = $index if $self->{size} > $index;
-		$self->{cache}->{$index} = Set::Infinite::Simple->simple_null;
-		return $self->{cache}->{$index};
-	}
 	# print " [QD:fetch:new($this,$next)] ";
-	my $tmp = Set::Infinite::Simple->new($this,$next, $self->{type} )->open_end(1);
+
+	return Set::Infinite::Simple->fastnew($this, $next, 0, 1 ) unless $self->{fixtype};
+
+	$tmp = Set::Infinite::Simple->new($this,$next, $self->{type} )->open_end(1);
 	# my $tmp = Set::Infinite::Simple->fastnew($this,$next)->open_end(1);
 
 	# if ((ref($tmp->{a})) and ($tmp->{a}->can('mode'))) {   
@@ -284,21 +194,19 @@ sub FETCH {
 	}
 	# print " [QD:fetch:$tmp] ";
 
-	# $tmp = Set::Infinite::Simple->new($tmp);  # 0.25 ???
+	return $tmp;
 
-	# slower but necessary:
-	# print " <qd: ";
-
-	# if ($self->{parent}->intersects($tmp)) {
-	if (not $self->{strict} or ($self->{strict}->intersects($tmp))) {
-		# print " [QD:INTER:",$self->{parent}->intersects($tmp),"=", $self->{parent}->intersection($tmp),"]\n";
-		# print " :ok /qd> ";
-		$self->{cache}->{$index} = $tmp;
-		return $tmp;
-	}
-	# print " :null /qd> ";
-	$self->{cache}->{$index} = Set::Infinite::Simple->simple_null;
-	return $self->{cache}->{$index};
+	# global "memoize"
+	#if ($self->{memo}) {
+	#	$Memoize{$self->{memo}}{$index + $self->{offset}} = $tmp;
+	#}
+	#
+	#if (not $self->{strict} or ($self->{strict}->intersects($tmp))) {
+	#	$self->{cache}->{$index} = $tmp;
+	#	return $tmp;
+	#}
+	#$self->{cache}->{$index} = Set::Infinite::Simple->simple_null;
+	#return $self->{cache}->{$index};
 }
 
 # TIE
@@ -313,26 +221,5 @@ sub FETCHSIZE {
 	my ($self) = shift;
 	return $self->{size}; 
 }
-
-sub STORESIZE {
-	return @_;
-}
-
-sub CLEAR {
-	my ($self) = shift;
-	return @_;
-}
-
-sub EXTEND {
-	return @_;
-}
-
-sub STORE {
-	return @_;
-}
-
-sub DESTROY {
-}
-
 
 1;

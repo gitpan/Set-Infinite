@@ -95,11 +95,14 @@ our %null = (
 	$null	=> 1
 );
 
+# our %class = ( __PACKAGE__ => 1 );
+
 sub is_null {
 	my $self = pop;
+	return 1 unless defined($self);
 	my $class = ref($self);
-	return 0 if $class and ($class ne __PACKAGE__);
-	return 1 unless (defined($self));
+	return 0 if $class ne __PACKAGE__;
+	# return 0 if $class and ($class ne __PACKAGE__);
 	return $null{$self};
 }
 
