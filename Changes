@@ -1,5 +1,13 @@
 Revision history for Perl extension Set::Infinite.
 
+0.61   2004-11-03
+- some optimization of intersected_spans()
+- bugfix: complement of the universal set is the empty set
+
+0.60   2004-10-28
+- _cleanup() / _no_cleanup() are obsolete
+- easier syntax to iterate()
+
 0.59    2004-07-01
 - added experimental argument "backtrack_callback" to
   iterate()

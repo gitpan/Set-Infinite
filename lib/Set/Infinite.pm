@@ -37,13 +37,13 @@ $neg_inf = $minus_inf  = -$inf;
 # obsolete methods - included for backward compatibility
 sub inf ()            { $inf }
 sub minus_inf ()      { $minus_inf }
-*no_cleanup = \&Set::Infinite::Basic::_no_cleanup;
+sub no_cleanup { $_[0] }
 *type       = \&Set::Infinite::Basic::type;
 sub compact { @_ }
 
 
 BEGIN {
-    $VERSION = 0.59;
+    $VERSION = "0.61";
     $TRACE = 0;         # enable basic trace method execution
     $DEBUG_BT = 0;      # enable backtrack tracer
     $PRETTY_PRINT = 0;  # 0 = print 'Too Complex'; 1 = describe functions
@@ -186,7 +186,6 @@ sub quantize {
     }
 
     $b->{list} = \@a;        # change data
-    $b->{cant_cleanup} = 1;     
     $self->trace_close( arg => $b ) if $TRACE;
     return $b;
 }
@@ -283,7 +282,6 @@ sub select {
             $last = $_;
         }
         $res->{list} = \@a;
-        $res->{cant_cleanup} = 1;
     }
     else
     {
@@ -292,7 +290,6 @@ sub select {
 
     return $res if $count == $inf;
     my $count_set = $self->empty_set();
-    $count_set->{cant_cleanup} = 1;
     if ( ! $self->is_too_complex )
     {
         my @a;
@@ -860,6 +857,7 @@ sub offset {
             ($this, $next) = $sub_mode->( $sub_unit, $ia, $ib, @{$value[$j]} );
             next if ($this > $next);    # skip if a > b
             if ($this == $next) {
+                # TODO: fix this
                 $open_end = $open_begin;
             }
             push @a, { a => $this , b => $next ,
@@ -868,7 +866,6 @@ sub offset {
     }  # self
     @a = sort { $a->{a} <=> $b->{a} } @a;
     $b1->{list} = \@a;        # change data
-    $b1->{cant_cleanup} = 1; 
     $self->trace_close( arg => $b1 ) if $TRACE;
     $b1 = $b1->fixtype if $self->{fixtype};
     return $b1;
@@ -953,8 +950,10 @@ BEGIN {
         iterate => sub {
             my ($self, $arg) = @_;
 
-            return $arg = $self->{backtrack_callback}->( $arg )
-                if defined $self->{backtrack_callback};
+            if ( defined $self->{backtrack_callback} )
+            {
+                return $arg = $self->new( $self->{backtrack_callback}->( $arg ) );
+            }
 
             my $before = $self->{parent}->intersection( $neg_inf, $arg->min )->max;
             $before = $arg->min unless $before;
@@ -1026,7 +1025,7 @@ sub _backtrack {
         }
     }
     else {
-        # has 1 parent and parameters (offset, select, quantize)
+        # has 1 parent and parameters (offset, select, quantize, iterate)
 
         $result = $self->{parent}->_backtrack( $method, $arg ); 
         $method = $self->{method};
@@ -1045,7 +1044,7 @@ sub intersects {
 
     $a1->trace(title=>"intersects");
     if ($a1->{too_complex}) {
-        $a1 = $a1->_backtrack('intersection', $b1);
+        $a1 = $a1->_backtrack('intersection', $b1 ); 
     }  # don't put 'else' here
     if ($b1->{too_complex}) {
         $b1 = $b1->_backtrack('intersection', $a1);
@@ -1103,7 +1102,7 @@ sub intersection {
     if ($b1->{too_complex}) {
         $b1 = $b1->_backtrack('intersection', $a1) unless $a1->{too_complex};
     }
-    if (($a1->{too_complex}) or ($b1->{too_complex})) {
+    if ( $a1->{too_complex} || $b1->{too_complex} ) {
         $a1->trace_close( ) if $TRACE;
         return $a1->_function2( 'intersection', $b1 );
     }
@@ -1113,17 +1112,19 @@ sub intersection {
 
 sub intersected_spans {
     my $a1 = shift;
-    my $b1 = (ref ($_[0]) eq ref($a1) ) ? shift : $a1->new(@_);
+    my $b1 = ref ($_[0]) eq ref($a1) ? $_[0] : $a1->new(@_);
 
-    # try to simplify $b1
-    $b1 = $b1->intersection( $a1 )
-        if $b1->{too_complex} && ! $a1->{too_complex};
+    if ($a1->{too_complex}) {
+        $a1 = $a1->_backtrack('intersection', $b1 ) unless $b1->{too_complex};  
+    }  # don't put 'else' here
+    if ($b1->{too_complex}) {
+        $b1 = $b1->_backtrack('intersection', $a1) unless $a1->{too_complex};
+    }
 
-    # -- this should be an optimization, but it seems to be slower.
-    # return $a1->iterate(
-    #   # sub { return $_[0] if $b1->intersects( $_[0] ) }
-    #   sub { return $_[0] if $_[0]->intersects( $b1 ) }
-    # ) if ! $a1->{too_complex};
+    if ( ! $b1->{too_complex} && ! $a1->{too_complex} )
+    {
+        return $a1->SUPER::intersected_spans ( $b1 );
+    }
 
     return $b1->iterate(
         sub {
@@ -1249,6 +1250,7 @@ sub max_a {
 
 sub count {
     my $self = $_[0];
+    # NOTE: subclasses may return "undef" if necessary
     return $inf if $self->{too_complex};
     return $self->SUPER::count;
 }
@@ -1274,25 +1276,7 @@ sub spaceship {
 }
 
 
-sub _cleanup {
-    my ($self) = shift;
-    return $self if $self->{too_complex};
-    return $self if $self->{cant_cleanup};     # quantize output is "virtual", can't be cleaned
-    $_ = 1;
-    while ( $_ <= $#{$self->{list}} ) {
-        my @tmp = Set::Infinite::Basic::_simple_union($self->{list}->[$_],
-            $self->{list}->[$_ - 1], 
-            $self->{tolerance});
-        if ($#tmp == 0) {
-            $self->{list}->[$_ - 1] = $tmp[0];
-            splice (@{$self->{list}}, $_, 1);
-        } 
-        else {
-            $_ ++;
-        }
-    }
-    return $self;
-}
+sub _cleanup { @_ }    # this subroutine is obsolete
 
 
 sub tolerance {
@@ -1308,7 +1292,7 @@ sub tolerance {
         }
         return $self->SUPER::tolerance( $tmp );
     }
-    # global
+    # class method
     __PACKAGE__->SUPER::tolerance( $tmp ) if defined($tmp);
     return __PACKAGE__->SUPER::tolerance;   
 }
@@ -1329,7 +1313,6 @@ sub as_string {
     my $self = shift;
     return ( $PRETTY_PRINT ? $self->_pretty_print : $too_complex ) 
         if $self->{too_complex};
-    $self->_cleanup;
     return $self->SUPER::as_string;
 }
 
@@ -1742,11 +1725,11 @@ C<select> has a behaviour similar to an array C<slice>.
 
     offset ( parameters )
 
-        Offsets the subsets. Parameters: 
+Offsets the subsets. Parameters: 
 
-            value   - default=[0,0]
-            mode    - default='offset'. Possible values are: 'offset', 'begin', 'end'.
-            unit    - type of value. Can be 'days', 'weeks', 'hours', 'minutes', 'seconds'.
+    value   - default=[0,0]
+    mode    - default='offset'. Possible values are: 'offset', 'begin', 'end'.
+    unit    - type of value. Can be 'days', 'weeks', 'hours', 'minutes', 'seconds'.
 
 =head2 iterate
 
@@ -1760,11 +1743,25 @@ The callback argument C<$_[0]> is a span. If there are additional arguments they
 The callback can return a span, a hashref (see C<Set::Infinite::Basic>), a scalar, an object, or C<undef>.
 
 [EXPERIMENTAL]
-C<iterate> accepts a C<backtrack_callback> argument. This can be used
-when the data needs to be processed in some special way while backtracking.
+C<iterate> accepts an optional C<backtrack_callback> argument. 
+The purpose of the C<backtrack_callback> is to I<reverse> the
+iterate() function, overcoming the limitations of the internal
+backtracking algorithm.
 The syntax is:
 
     iterate ( sub { } , backtrack_callback => sub { }, @args )
+
+The C<backtrack_callback> can return a span, a hashref, a scalar, 
+an object, or C<undef>. 
+
+For example, the following snippet adds a constant to each
+element of an unbounded set:
+
+    $set1 = $set->iterate( 
+                 sub { $_[0]->min + 54, $_[0]->max + 54 }, 
+              backtrack_callback =>  
+                 sub { $_[0]->min - 54, $_[0]->max - 54 }, 
+              );
 
 =head2 first / last
 
@@ -1787,14 +1784,6 @@ default is none (a normal perl SCALAR).
 
 
 =head1 INTERNAL FUNCTIONS
-
-=head2 _cleanup
-
-    $set->_cleanup;
-
-Internal function to fix the internal set representation.
-This is used after operations that might return invalid
-values.
 
 =head2 _backtrack
 

@@ -95,6 +95,7 @@ sub _simple_intersects {
 sub _simple_complement {
     my $self = $_[0];
     if ($self->{b} == $inf) {
+        return if $self->{a} == $neg_inf;
         return { a => $neg_inf, 
                  b => $self->{a}, 
                  open_begin => 1, 
@@ -301,11 +302,7 @@ sub numeric {
     return $self;
 }
 
-sub _no_cleanup {
-    my ($self) = shift;
-    $self->{cant_cleanup} = 1;
-    return $self;
-}
+sub _no_cleanup { $_[0] }   # obsolete
 
 sub first {
     my $self = $_[0];
@@ -317,7 +314,7 @@ sub first {
     }
     my $first = $self->new( $self->{list}[0] );
     return $first unless wantarray;
-    my $res = $self->new->_no_cleanup;
+    my $res = $self->new;   
     push @{$res->{list}}, @{$self->{list}}[1 .. $#{$self->{list}}];
     return @{$self->{first}} = ($first) if $res->is_null;
     return @{$self->{first}} = ($first, $res);
@@ -333,7 +330,7 @@ sub last {
     }
     my $last = $self->new( $self->{list}[-1] );
     return $last unless wantarray;  
-    my $res = $self->new->_no_cleanup;
+    my $res = $self->new; 
     push @{$res->{list}}, @{$self->{list}}[0 .. $#{$self->{list}}-1];
     return @{$self->{last}} = ($last) if $res->is_null;
     return @{$self->{last}} = ($last, $res);
@@ -397,37 +394,6 @@ sub is_disjoint {
     return $intersects;
 }
 
-sub intersects {
-    my $a1 = shift;
-    my ($b1, $ia, $m, $n);
-    if (ref ($_[0]) eq ref($a) ) { 
-        $b1 = shift;
-    } 
-    else {
-        $b1 = $a1->new(@_);  
-    }
-    my $ib;
-    my ($na, $nb) = (0,0);
-
-    $m = $#{$b1->{list}};
-    $n = $#{$a1->{list}};
-    if ($n > 4) {
-        foreach $ib ($m, $m-1, 0 .. $m - 2) {
-            foreach $ia ($n, $n-1, 0 .. $n - 2) {
-                return 1 if _simple_intersects($a1->{list}[$ia], $b1->{list}[$ib]);
-            }
-        }
-        return 0;
-    }
-
-    foreach $ib ($nb .. $#{$b1->{list}}) {
-        foreach $ia ($na .. $n) {
-            return 1 if _simple_intersects($a1->{list}[$ia], $b1->{list}[$ib]);
-        }
-    }
-    0;    
-}
-
 sub iterate {
     # TODO: options 'no-sort', 'no-merge', 'keep-null' ...
     my $a1 = shift;
@@ -441,32 +407,49 @@ sub iterate {
     return $iterate;    
 }
 
+
 sub intersection {
     my $a1 = shift;
-    my $b1;
-    if (ref ($_[0]) eq ref($a1) ) {
-        $b1 = shift;
-    } 
-    else {
-        $b1 = $a1->new(@_);  
-    }
-    my ($ia, $ib);
-    my ($ma, $mb) = ($#{$a1->{list}}, $#{$b1->{list}});
-    my $intersection = $a1->empty_set();
-    # for-loop optimization (makes little difference)
-    if ($ma < $mb) { 
-        ($ma, $mb) = ($mb, $ma);
-        ($a1, $b1) = ($b1, $a1);
-    }
-    my ($tmp1, $tmp2, $tmp1a, $tmp2a, $tmp1b, $tmp2b, $i_beg, $i_end, $open_beg, $open_end, $cmp1);
-    my $a0 = 0;
+    my $b1 = ref ($_[0]) eq ref($a1) ? $_[0] : $a1->new(@_);
+    return _intersection ( 'intersection', $a1, $b1 );
+}
+
+sub intersects {
+    my $a1 = shift;
+    my $b1 = ref ($_[0]) eq ref($a1) ? $_[0] : $a1->new(@_);
+    return _intersection ( 'intersects', $a1, $b1 );
+}
+
+sub intersected_spans {
+    my $a1 = shift;
+    my $b1 = ref ($_[0]) eq ref($a1) ? $_[0] : $a1->new(@_);
+    return _intersection ( 'intersected_spans', $a1, $b1 );
+}
+
+
+sub _intersection {
+    my ( $op, $a1, $b1 ) = @_;
+
+    my $ia;   
+    my ( $a0, $na ) = ( 0, $#{$a1->{list}} );
+    my ( $tmp1, $tmp1a, $tmp2a, $tmp1b, $tmp2b, $i_beg, $i_end, $open_beg, $open_end );
+    my ( $cmp1, $cmp2 );
     my @a;
 
-    B: foreach $ib (0 .. $mb) {
-        $tmp2 = $b1->{list}[$ib];
+    # for-loop optimization (makes little difference)
+    # This was kept for backward compatibility with Date::Set tests
+    my $self = $a1;
+    if ($na < $#{ $b1->{list} })
+    {
+        $na = $#{ $b1->{list} };
+        ($a1, $b1) = ($b1, $a1);
+    }
+    # ---
+
+    B: foreach my $tmp2 ( @{ $b1->{list} } ) {
         $tmp2a = $tmp2->{a};
         $tmp2b = $tmp2->{b};
-        A: foreach $ia ($a0 .. $ma) {
+        A: foreach $ia ($a0 .. $na) {
             $tmp1 = $a1->{list}[$ia];
             $tmp1b = $tmp1->{b};
 
@@ -478,40 +461,62 @@ sub intersection {
             if ($tmp1a > $tmp2b) {
                 next B;
             }
-            if ($tmp1a < $tmp2a) {
+
+            $cmp1 = $tmp1a <=> $tmp2a;
+            if ( $cmp1 < 0 ) {
                 $tmp1a        = $tmp2a;
                 $open_beg     = $tmp2->{open_begin};
             }
-            elsif ($tmp1a == $tmp2a) {
-                $open_beg     = ($tmp1->{open_begin} or $tmp2->{open_begin});
-            }
-            else {
+            elsif ( $cmp1 ) {
                 $open_beg     = $tmp1->{open_begin};
             }
+            else {
+                $open_beg     = $tmp1->{open_begin} || $tmp2->{open_begin};
+            }
 
-            if ($tmp1b > $tmp2b) {
+            $cmp2 = $tmp1b <=> $tmp2b;
+            if ( $cmp2 > 0 ) {
                 $tmp1b        = $tmp2b;
                 $open_end     = $tmp2->{open_end};
             }
-            elsif ($tmp1b == $tmp2b) {
-                $open_end     = ($tmp1->{open_end} or $tmp2->{open_end});
+            elsif ( $cmp2 ) {
+                $open_end     = $tmp1->{open_end};
             }
             else {
-                $open_end    = $tmp1->{open_end};
+                $open_end     = $tmp1->{open_end} || $tmp2->{open_end};
             }
-            if ( ( $tmp1a <= $tmp1b ) and
-                 ( ($tmp1a != $tmp1b) or 
-                   (!$open_beg and !$open_end) or
-                   ($tmp1a == $inf) or
+
+            if ( ( $tmp1a <= $tmp1b ) &&
+                 ( ($tmp1a != $tmp1b) || 
+                   (!$open_beg and !$open_end) ||
+                   ($tmp1a == $inf)   ||               # XXX
                    ($tmp1a == $neg_inf)
                  )
-               ) {
-                push @a, 
-                    { a => $tmp1a, b => $tmp1b, 
-                      open_begin => $open_beg, open_end => $open_end } ;
+               ) 
+            {
+                if ( $op eq 'intersection' )
+                {
+                    push @a, {
+                        a => $tmp1a, b => $tmp1b, 
+                        open_begin => $open_beg, open_end => $open_end } ;
+                }
+                if ( $op eq 'intersects' )
+                {
+                    return 1;
+                }
+                if ( $op eq 'intersected_spans' )
+                {
+                    push @a, $tmp1;
+                    $a0++;
+                    next A;
+                }
             }
         }
     }
+
+    return 0 if $op eq 'intersects';
+   
+    my $intersection = $self->new();
     $intersection->{list} = \@a;
     return $intersection;    
 }
@@ -559,7 +564,7 @@ sub until {
 
     unless (defined $b1_min[0]) {
         return $a1->until($inf);
-    }
+    } 
     unless (defined $a1_max[0]) {
         return $a1->new(-$inf)->until($b1);
     }
@@ -592,7 +597,9 @@ sub until {
         $ia++;
         $last = $end;
     }
-    if ($ia <= $#{$a1->{list}}) {
+    if ($ia <= $#{$a1->{list}}  &&
+        $a1->{list}[$ia]{a} >= $last ) 
+    {
         push @{$u->{list}}, {
             a => $a1->{list}[$ia]{a} ,
             b => $inf ,
@@ -652,11 +659,22 @@ sub union {
         return $a1;
     }
 
+    my @tmp;
     B: foreach $ib ($ib .. $#{$b_list}) {
         foreach $ia ($ia .. $#{$a1->{list}}) {
-            my @tmp = _simple_union($a1->{list}[$ia], $b_list->[$ib], $a1->{tolerance});
+            @tmp = _simple_union($a1->{list}[$ia], $b_list->[$ib], $a1->{tolerance});
             if ($#tmp == 0) {
                     $a1->{list}[$ia] = $tmp[0];
+
+                    while (1) {
+                        last if $ia >= $#{$a1->{list}};    
+                        last unless _simple_intersects ( $a1->{list}[$ia], $a1->{list}[$ia + 1] );
+                        @tmp = _simple_union($a1->{list}[$ia], $a1->{list}[$ia + 1], $a1->{tolerance});
+                        last unless @tmp == 1;
+                        $a1->{list}[$ia] = $tmp[0];
+                        splice( @{$a1->{list}}, $ia + 1, 1 );
+                    }
+                    
                     next B;
             }
             if ($a1->{list}[$ia]{a} >= $b_list->[$ib]{a}) {
@@ -870,6 +888,22 @@ sub tolerance {
         $self = $self->copy;
         $self->{tolerance} = $tmp;
         delete $self->{max};  # tolerance may change "max"
+
+        $_ = 1;
+        my @tmp;
+        while ( $_ <= $#{$self->{list}} ) {
+            @tmp = Set::Infinite::Basic::_simple_union($self->{list}->[$_],
+                $self->{list}->[$_ - 1],
+                $self->{tolerance});
+            if ($#tmp == 0) {
+                $self->{list}->[$_ - 1] = $tmp[0];
+                splice (@{$self->{list}}, $_, 1);
+            }
+            else {
+                $_ ++;
+            }
+        }
+
         return $self;
     }
     # global

@@ -15,7 +15,7 @@ my $test = 0;
 my $set1;
 my $set2;
 
-print "1..82\n";
+print "1..85\n";
 
 sub test {
 	my ($header, $sub, $expected) = @_;
@@ -262,6 +262,15 @@ test ("span of $b is : ", '$b->span', "[1.1..5.1]");
 
 $a = Set::Infinite->new( -1,0);
 test ("new  ", '$a', "[-1..0]"); 
+
+# complement of empty/universal
+
+ $a = Set::Infinite->new();
+ test ("set : ",       '$a', ""); 
+ $a = $a->complement;
+ test ("(-inf,inf) : ",        '$a', "($neg_inf..$inf)"); 
+ $a = $a->complement;
+ test ("() : ",        '$a', ""); 
 
 
 stats;

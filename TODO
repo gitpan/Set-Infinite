@@ -1,6 +1,9 @@
 Set::Infinite TODO 
 
+- include "backtrack_callback" in the parameter list for _function() 
+
 - document the "separators" method - use example from t/infinite.t
+  Find out how to make it more user friendly.
 
 - quantize() should use "iterate"
   (unless this breaks _quantize_span)
@@ -8,6 +11,7 @@ Set::Infinite TODO
 
 - spaceship should return "undef" if the sets can't be compared.
 - "contains" should test the result of "==" for undef.
+- count() should return "undef" if the set can't be counted.
 
 - test new methods
 
@@ -43,12 +47,12 @@ Old TODO:
     - parser (another module)
 
     - _quantize_span should only be used inside backtrack()
+      Implementing quantize() using iterator() should make 
+      _quantize_span() unnecessary.
 
     - provide a constructor that allow for un-ordered and overlapping spans
 
     - verify and fix unbalanced trace_open/trace_close 
-
-    - move _cleanup to S::I::Basic
 
     - move (offset, quantize), or most of Arithmetic.pm, to Date::Set 
     - refactor "widgets" out of the main code. Maybe create
@@ -77,7 +81,6 @@ BACKTRACK
 	test backtrack on:
 		iterate -- returning more than 1 element
 		compact
-		no_cleanup
                 tolerance
                 complement
 
@@ -109,7 +112,6 @@ DOCUMENTATION
 		??? offset option 'mode=>circle'
 		new method 'list'
 		iterate
-		??? no_cleanup
 
         document as "internal":
                 min_a
