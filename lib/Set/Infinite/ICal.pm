@@ -5,9 +5,11 @@
 
 =head1 NAME
 
-Set::Infinite::ICal - an ICal 'date' scalar
+Set::Infinite::ICal - 'ICal date' scalar - Deprecated - use Date::Set instead
 
 =head1 SYNOPSIS
+
+This module is obsolete - use Date::Set instead
 
 	use Set::Infinite::ICal;
 

@@ -5,9 +5,11 @@
 
 =head1 NAME
 
-Set::Infinite::Date - a 'date' scalar
+Set::Infinite::Date - 'date' scalar - Deprecated - use Date::Set instead
 
 =head1 SYNOPSIS
+
+This module is obsolete - use Date::Set instead
 
 	use Set::Infinite::Date;
 

@@ -1,4 +1,6 @@
-TODO - version 0.30
+Set::Infinite TODO 
+
+    - verify POD format and contents; mix POD and program
 
 BACKTRACK
 

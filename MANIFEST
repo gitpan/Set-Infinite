@@ -3,6 +3,8 @@ MANIFEST
 README
 Todo.txt
 Makefile.PL
+make_htmldoc.pl
+make_readme.pl
 lib/Set/Infinite.pm
 lib/Set/Infinite/Date.pm
 lib/Set/Infinite/Simple.pm

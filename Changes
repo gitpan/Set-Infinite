@@ -1,5 +1,13 @@
 Revision history for Perl extension Set::Infinite.
 
+0.36
+    added 'copy' in order to allow 'subroutine-style' programming
+      instead of only 'functional' programming
+    added 'is_too_complex'
+    obsoleted modules: Set::Infinite::Date, Set::Infinite::ICal, Set::Infinite::ICalSet
+      use Date::Set instead.
+    added make_htmldoc.pl and make_readme.pl
+
 0.34
     added 'weekdays' option to 'offset'
 

@@ -5,9 +5,11 @@
 
 =head1 NAME
 
-Set::Infinite::ICalSet - an ICal 'date' set - EXPERIMENTAL
+Set::Infinite::ICalSet - 'ICal date' set - Deprecated - use Date::Set instead
 
 =head1 SYNOPSIS
+
+This module is obsolete - use Date::Set instead
 
 	use Set::Infinite::ICalSet;
 
