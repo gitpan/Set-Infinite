@@ -71,4 +71,4 @@ test ("(-infinite,infinite)", 	'Set::Infinite::Simple->new("-inf","inf")->comple
 test ("complement(10..20) (5,15) : ", 	'Set::Infinite::Simple->new(new Math::BigFloat(10),new Math::BigFloat(20))->complement(5,15)', "(15...20.]");
 
 stats;
-1;
+1;

@@ -5,19 +5,21 @@
 
 =head1 NAME
 
-	Set::Infinite::Simple - an interval of 2 scalars
+	Set::Infinite::_Simple - an interval of 2 scalars
 
 =head1 SYNOPSIS
 
 	This is a building block for Set::Infinite.
 	Please use Set::Infinite instead.
 
-	use Set::Infinite::Simple;
+	use Set::Infinite::_Simple;
 
-	$a = Set::Infinite::Simple->new(1,2);
-	print $a->union(5,6);
+	$a = Set::Infinite::_simple_new(1,2);
+	print Set::Infinite::_simple_union($a, [5,6]);
 
 =head1 USAGE
+
+    # obsolete docs! see Synopsis.
 
 	$a = Set::Infinite::Simple->new();
 	$a = Set::Infinite::Simple->new(1);
@@ -42,19 +44,7 @@
 	$i = $a->complement($b);
 	$i = $a->complement;
 
-	@b = sort @a;
 	print $a;
-
-	tie $a, 'Set::Infinite::Simple', 1,2;
-		SCALAR behaves like a string "min .. max"
-	tie @a, 'Set::Infinite::Simple', 1,2;
-		$a[0], $a[1] are min and max
-		POP, PUSH, SHIFT, UNSHIFT, SPLICE, DELETE, and EXISTS are not defined
-
-	$a->open_end(1)		open-end: elements are < end
-	$a->open_begin(1) 	open-start: elements are > begin
-	$a->open_end(0)		close-end: elements are <= end
-	$a->open_begin(0) 	close-start: elements are >= begin
 
 Global:
 	separators(@i)	chooses the separators. 
@@ -80,11 +70,6 @@ moved to Set::Infinite.pm in version 0.30:
 	integer		
 	type
 
-removed in version 0.30:
-
-	tie
-	add
-
 =head1 TODO
 
 	formatted string input like '[0..1]'
@@ -97,27 +82,13 @@ removed in version 0.30:
 
 require Exporter;
 
-package Set::Infinite::Simple;
+package Set::Infinite;
 
-@ISA = qw(Exporter);
-@EXPORT = qw();
-@EXPORT_OK = qw(
-	infinite minus_infinite separators null inf
-	simple_null
-	fastnew
-);
 
 use strict;
 use Carp;
 
 use Set::Infinite::Element_Inf qw(infinite minus_infinite null inf elem_undef);
-
-our $infinite  = Set::Infinite::Element_Inf::infinite;
-our $null      = Set::Infinite::Element_Inf::null;
-
-use overload
-	'<=>' => \&spaceship,
-	qw("" as_string);
 
 our @separators = (
 	'[', ']',	# a closed interval 
@@ -126,12 +97,12 @@ our @separators = (
 	','			# list separator
 );
 
-our $simple_null =           __PACKAGE__->fastnew(null, null, 1, 1);
-our $simple_everything =     __PACKAGE__->fastnew(minus_infinite, infinite, 1, 1);
-our $simple_infinite =       __PACKAGE__->fastnew(infinite, infinite, 1, 1);
-our $simple_minus_infinite = __PACKAGE__->fastnew(minus_infinite, minus_infinite, 1, 1);
+our $simple_null =           _simple_fastnew(null, null, 1, 1);
+our $simple_everything =     _simple_fastnew(minus_infinite, infinite, 1, 1);
+our $simple_infinite =       _simple_fastnew(infinite, infinite, 1, 1);
+our $simple_minus_infinite = _simple_fastnew(minus_infinite, minus_infinite, 1, 1);
 
-sub simple_null {
+sub _simple_null {
 	return $simple_null;
 }
 
@@ -141,21 +112,7 @@ sub separators {
 	return @separators;
 }
 
-sub open_end {
-	my $self = shift;
-	my $tmp = shift;
-	$self->{open_end} = $tmp ? 1 : 0;
-	return $self;	
-}
-
-sub open_begin {
-	my $self = shift;
-	my $tmp = shift;
-	$self->{open_begin} = $tmp ? 1 : 0;
-	return $self;	
-}
-
-sub intersects {
+sub _simple_intersects {
 	my ($tmp1, $tmp2) = (shift, shift);
 	my ($i_beg, $i_end, $open_beg, $open_end);
 
@@ -204,64 +161,27 @@ sub intersects {
 	
 }
 
-sub intersection {
-	my ($tmp1, $tmp2) = (shift, shift);
-	my ($i_beg, $i_end, $open_beg, $open_end);
 
-	if ($tmp1->{a} < $tmp2->{a}) {
-		$i_beg 		= $tmp2->{a};
-		$open_beg 	= $tmp2->{open_begin};
-	}
-	elsif ($tmp1->{a} == $tmp2->{a}) {
-		$i_beg 		= $tmp1->{a};
-		$open_beg 	= ($tmp1->{open_begin} or $tmp2->{open_begin});
-	}
-	else {
-		$i_beg 		= $tmp1->{a};
-		$open_beg	= $tmp1->{open_begin};
-	}
 
-	if ($tmp1->{b} > $tmp2->{b}) {
-		$i_end 		= $tmp2->{b};
-		$open_end 	= $tmp2->{open_end};
-	}
-	elsif ($tmp1->{b} == $tmp2->{b}) {
-		$i_end 		= $tmp1->{b};
-		$open_end 	= ($tmp1->{open_end} or $tmp2->{open_end});
-	}
-	else {
-		$i_end 		= $tmp1->{b};
-		$open_end	= $tmp1->{open_end};
-	}
 
-	# print "  [ simple: fastnew($i_beg, $i_end, $open_beg, $open_end ) ]\n";
-	return $simple_null if 
-		( $i_beg > $i_end ) or 
-		( ($i_beg == $i_end) and ($open_beg or $open_end) ) ;
-	return __PACKAGE__->fastnew($i_beg, $i_end, $open_beg, $open_end );
-}
-
-sub complement {
+sub _simple_complement {
 	my $self = shift;
 
 	# do we have a parameter?
 
 	if (@_) {
-		my $a = shift;
-		$a = $a->complement;
-		return $self->intersection($a);
+            carp "_simple_complement no longer accepts parameters";
 	}
 
 	# print " [CPL-S:",$self,"] ";
 
-	# we don't have a parameter - just complement the set
 	return $simple_everything if Set::Infinite::Element_Inf::is_null($self->{a});
 
-	my $tmp1 = __PACKAGE__->fastnew(minus_infinite, $self->{a}, 1, ! $self->{open_begin} );
+	my $tmp1 = _simple_fastnew(minus_infinite, $self->{a}, 1, ! $self->{open_begin} );
 
 	# print " [CPL-S:#1:",$tmp1,"] ";
 
-	my $tmp2 = __PACKAGE__->fastnew($self->{b}, infinite, ! $self->{open_end}, 1);
+	my $tmp2 = _simple_fastnew($self->{b}, infinite, ! $self->{open_end}, 1);
 
 	# print " [CPL-S:#2:",__PACKAGE__,":",$tmp2,"=(",$self->{b},", ",infinite,")] ";
 
@@ -277,7 +197,7 @@ sub complement {
 	return ($tmp1 , $tmp2);
 }
 
-sub union {
+sub _simple_union {
 	my ($tmp2, $tmp1, $tolerance) = @_; 
 
 	#print " [SIM:UNION:@param] \n";
@@ -326,7 +246,8 @@ sub union {
 
 	#print " [SIM:UNION:",ref($tmp1->{a}),"=",$tmp1->{a}," <=> ",ref($tmp1->{b}),"=",$tmp1->{b},"] \n";
 
-	my $tmp = __PACKAGE__->fastnew($tmp1->{a}, $tmp1->{b}, $tmp1->{open_begin}, $tmp1->{open_end} );
+	my $tmp = _simple_fastnew($tmp1->{a}, $tmp1->{b}, $tmp1->{open_begin}, $tmp1->{open_end} );
+    #my %$tmp = (%$tmp1);
 
 	if ($tmp->{a} > $tmp2->{a}) {
 			$tmp->{a} = $tmp2->{a};
@@ -346,66 +267,46 @@ sub union {
 	return $tmp;
 }
 
-sub spaceship {
+sub _simple_spaceship {
 	my ($tmp1, $tmp2, $inverted) = @_;
-
+    my $cmp = $tmp1->{a} <=> $tmp2->{a};
 	if ($inverted) {
-		return $tmp2->{b} <=> $tmp1->{b} if $tmp1->{a} == $tmp2->{a};
-		return $tmp2->{a} <=> $tmp1->{a};
+		return $cmp ? - $cmp : $tmp2->{b} <=> $tmp1->{b}; 
 	}
-
-	return $tmp1->{b} <=> $tmp2->{b} if $tmp1->{a} == $tmp2->{a};
-	return $tmp1->{a} <=> $tmp2->{a};
+	return $cmp ? $cmp : $tmp1->{b} <=> $tmp2->{b};
 }
 
-sub cleanup {
-	my ($self) = shift;
-	# print " [simple:cleanup:",ref($self->{a}),"] ";
-	$self->open_begin(1) 	if ($self->{a} == minus_infinite);
-	$self->open_end(1) 		if ($self->{b} == infinite);
-	# print " [cleanup:end] ";
-	return $self;
-}
-
-
-sub new {
-	my $class = shift;
-	my ($self) = bless {}, $class; 
-	my ($tmp, $tmp2, $type) = @_;
-
-	# is it an array?
-	if (ref($tmp) eq 'ARRAY') {
-		# get 2 elements from it
-		$tmp  = shift @{$tmp};
-		$tmp2 = pop   @{$tmp};
-	}
+sub _simple_new {
+	# my $class = shift;
+	my $self;
+	# my ($self) = {};    # bless {}, $class; 
+	my $tmp = shift;
+	# my ($tmp, $tmp2, $type) = @_;
 
 	# print " [SIMPLE:ADD=", $tmp, ";",$tmp2," (", ref(\$tmp), ";",ref(\$tmp2),")] ";
-
-	# is it now defined?
  	unless (defined($tmp)) {
-		$self->{a} = null;
-		$self->{b} = null;
+		$self->{a} = $self->{b} = null;
 		return $self;
 	}
 
-	if (ref($tmp) eq $class) {
+	if (ref($tmp) eq 'HASH') {
 		# print " [SIMPLE:ISA=", $class,":", $tmp,"] ";
-		%{$self} = %{$tmp};
-		return $self;	
+		return $tmp;
+		# %{$self} = %{$tmp};
+		# return $self;	
 	}
 
-	# print " [SIM:ADD:$tmp,$tmp2, is-null=",$tmp2->is_null,"]\n";
-
-	 if ($type and (ref($tmp) ne $type) ) { 
+	# print " [SIM:ADD:$tmp,$tmp2]\n";   # is-null=",$tmp2->is_null,"]\n";
+	my ($tmp2, $type) = @_;
+	if ($type and (ref($tmp) ne $type) ) { 
 		$tmp = new $type $tmp;
 	}
 
 	if (Set::Infinite::Element_Inf::is_null($tmp2)) {
-		($self->{a}, $self->{b}) = ($tmp, $tmp);
+		$self->{a} = $self->{b} = $tmp;
 	}
 	else {
-		 if ($type and (ref($tmp2) ne $type) ) {
+		if ($type and (ref($tmp2) ne $type) ) {
 			$tmp2 = new $type $tmp2;
 		}
 
@@ -421,32 +322,21 @@ sub new {
 }
 
 
-# our %new_count = ();
-# our $count;
-
-sub fastnew {
-
-        # my @caller = caller(1);
-	# $new_count{$caller[1] . $caller[2]} ++;
-	# $count++;
-	# if ($count > 20) {
-	#         print " [",$caller[1],":",$caller[2]," ", $new_count{$caller[1] . $caller[2]}, " ]\n";
-	# }
-
-	bless { a => $_[1] , b => $_[2] , open_begin => $_[3] , open_end => $_[4] }, $_[0];
-
-	# my ($self) = bless { a => $_[1] , b => $_[2] , open_begin => $_[3] , open_end => $_[4] }, $_[0];
-	# return $self;
+sub _simple_fastnew {
+	{ a => $_[0] , b => $_[1] , open_begin => $_[2] , open_end => $_[3] };
 }
 
-sub as_string {
-	my ($self) = shift;
+sub _simple_as_string {
+	my $self = shift;
 	my $s;
 	# print " [simple:string] ";
-	$self->cleanup;
+
+    $self->{open_begin} = 1 if ($self->{a} == minus_infinite );
+    $self->{open_end}   = 1 if ($self->{b} == infinite );
+
 	# return null if $self->is_null;
 	my $tmp1 = "$self->{a}";
-	my $tmp2 = "$self->{b}";
+	my $tmp2 = exists($self->{b}) ? "$self->{b}" : $tmp1;
 	return $tmp1 if $tmp1 eq $tmp2;
 	$s = $self->{open_begin} ? $separators[2] : $separators[0];
 	$s .= $tmp1 . $separators[4] . $tmp2;

@@ -160,9 +160,8 @@ sub FETCH {
 		}
 	}
 
-	$tmp = bless { a => $this , b => $next ,
-                open_begin => $open_begin , open_end => $open_end }, 
-		'Set::Infinite::Simple';
+	$tmp = { a => $this , b => $next ,
+                open_begin => $open_begin , open_end => $open_end };
 	if (($self->{strict} != 0) and not ($self->{strict}->intersects($tmp)) ) {
 		return Set::Infinite::Simple->simple_null;
 	}

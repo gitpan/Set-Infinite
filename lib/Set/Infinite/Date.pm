@@ -244,27 +244,8 @@ sub add {
 
 sub spaceship {
 	my ($tmp1, $tmp2, $inverted) = @_;
-	# print " [DATE:CMP:",caller(1),"]\n";
-	# print " $tmp1 ";
 
 	return 1 unless defined($tmp2);
-
-	# if ($DEBUG) {
-		# if ($tmp2->isa(__PACKAGE__)) {
-		#	print " [DATE:CMP:$inverted:",$tmp1->{a};
-		#	print " [ ",$tmp2,": ", ref($tmp2), ": ", ref(\$tmp2), "]\n";
-		#	print "    <=>",$tmp2->{a},"]\n";
-		#}
-		# { else {
-		#	print " [DATE:CMP:$inverted:",$tmp1;
-		#	print " [ ",$tmp2,": ", ref($tmp2), ": ", ref(\$tmp2), "]\n";
-		#	print "    <=>",$tmp2,"]\n";
-		# }
-	# }
-
-	# $tmp2 = Set::Infinite::Date->new($tmp2) unless ref($tmp2) and $tmp2->isa(__PACKAGE__);
-
-	# print " ",ref($tmp2);
 
 	if ( ref($tmp2) eq __PACKAGE__ ) {
 		if ($inverted) {
@@ -279,12 +260,15 @@ sub spaceship {
 	return ( $tmp1->{a} <=> $tmp2 );
 }
 
-# sub cmp {
-#	return spaceship @_;
-# }
-
 sub new {
-	my ($self) = bless {}, shift;
+	my $class = shift;
+	my $self;
+	if (ref($class)) {
+		$self = bless { mode => $class->{mode} }, ref($class);
+	}
+	else {
+		$self = bless {}, $class;
+	}
 	my $tmp = shift;
 
 	if ((not defined $tmp) or ($tmp eq '')) {
@@ -302,17 +286,17 @@ sub new {
 	if ($tmp =~ /\d[\/\.\-]\d/) {
 		# $self->{string} = $tmp;
 		$self->{a} = date2time($tmp);
-		$self->{mode} = 2;
+		$self->{mode} = 2 unless $self->{mode};
 	}
 	elsif ($tmp =~ /\d\:\d/) {
 		# $self->{string} = $tmp;
 		$self->{a} = hour2time($tmp);
-		$self->{mode} = 1;
+		$self->{mode} = 1 unless $self->{mode};
 	}
 	else {
 		# $self->{string} = $tmp;
 		$self->{a} = $tmp;
-		$self->{mode} = 0;
+		$self->{mode} = 0 unless $self->{mode};
 	}
 	$date_cache{$tmp} = $self;
 	return $self;
@@ -352,9 +336,5 @@ sub as_string {
 	}
 	return $self->{string};
 }
-
-# sub epoch {
-#	return 0 + $_[0]->{a};
-# }
 
 1;

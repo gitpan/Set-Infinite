@@ -157,7 +157,7 @@ sub FETCH {
 	}
 
 	if ($self->{strict} and not $self->{strict}->intersects($tmp)) {
-		$tmp = Set::Infinite::Simple->simple_null;
+		$tmp = Set::Infinite::_simple_null;
 	}
 	$self->{cache}->{$index} = $tmp;
 	return $tmp;
@@ -168,45 +168,20 @@ sub _FETCH {
 	my $tmp;
 	my ($this, $next);
 
-	# print "*";
-	# print " [QD:fetch:$index] ";
-
 	$this = &{ $Set::Infinite::Arithmetic::subs_offset1{$self->{unit}} } ($self, $index);
 	$next = &{ $Set::Infinite::Arithmetic::subs_offset1{$self->{unit}} } ($self, $index + 1);
 
-	# if ($this > $self->{time2_end}) {
-	#	$self->{size} = $index if $self->{size} > $index;
-	#	$self->{cache}->{$index} = Set::Infinite::Simple->simple_null;
-	#	return $self->{cache}->{$index};
-	# }
+	return Set::Infinite::_simple_fastnew($this, $next, 0, 1 ) unless $self->{fixtype};
 
-	# print " [QD:fetch:new($this,$next)] ";
-
-	return Set::Infinite::Simple->fastnew($this, $next, 0, 1 ) unless $self->{fixtype};
-
-	$tmp = Set::Infinite::Simple->new($this,$next, $self->{type} )->open_end(1);
-	# my $tmp = Set::Infinite::Simple->fastnew($this,$next)->open_end(1);
-
-	# if ((ref($tmp->{a})) and ($tmp->{a}->can('mode'))) {   
+	$tmp = Set::Infinite::_simple_new($this,$next, $self->{type} );
+    $tmp->{open_end} = 1;
+  
 	if (exists $self->{mode}) {
 		$tmp->{a}->mode($self->{mode});
 		$tmp->{b}->mode($self->{mode});
 	}
-	# print " [QD:fetch:$tmp] ";
 
 	return $tmp;
-
-	# global "memoize"
-	#if ($self->{memo}) {
-	#	$Memoize{$self->{memo}}{$index + $self->{offset}} = $tmp;
-	#}
-	#
-	#if (not $self->{strict} or ($self->{strict}->intersects($tmp))) {
-	#	$self->{cache}->{$index} = $tmp;
-	#	return $tmp;
-	#}
-	#$self->{cache}->{$index} = Set::Infinite::Simple->simple_null;
-	#return $self->{cache}->{$index};
 }
 
 # TIE

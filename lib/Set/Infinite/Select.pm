@@ -117,36 +117,20 @@ sub FETCH {
 		$this += $by;
 	}
 
-	# positive-only indexes:
-	# $this =	$self->{by}->[ $index % (1 + $#{$self->{by}}) ] +
-	#	$self->{interval} * $self->{freq} * int ( $index / (1 + $#{$self->{by}}) ) ; 
-
-	# print " [GET-INDEX:$index = $this] \n";
-
 	if (($this > $parent_size) or ($this < 0)) { 
 		# print " [select:out $this] \n";
-		$self->{cache}->{$index} = Set::Infinite::Simple->simple_null;
+		$self->{cache}->{$index} = Set::Infinite::_simple_null;
 		return $self->{cache}->{$index};
 	}
 
 	$tmp = $parent_list->[$this];
 	if ($self->{strict} and not ($self->{strict}->intersects($tmp))) {
-		$tmp = Set::Infinite::Simple->simple_null;
+		$tmp = Set::Infinite::_simple_null;
 	}
 
 	$self->{cache}->{$index} = $tmp;
 	# print " [select: $self->{cache}->{$index}] \n";
 	return $tmp;
-
-	# $return = $parent_list->[$this];
-	# print " [select: $return] \n";
-	# return $return;
-
-	# if (ref($return)) {
-	#	return $return;
-	# }
-	# print " [select:not a ref: $return] \n";
-	# return $return;
 }
 
 

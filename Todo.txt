@@ -2,6 +2,8 @@ Set::Infinite TODO
 
     - verify POD format and contents; mix POD and program
 
+    - move $self->{mode} to "Date" only.
+
 BACKTRACK
 
 	make backtrack_result method

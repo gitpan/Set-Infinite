@@ -13,7 +13,7 @@ use Time::Local;
 
 our @EXPORT = qw();
 our @EXPORT_OK = qw( %subs_offset2 %subs_offset1 %subs_offset1_init );
-# our @ISA = qw(Set::Infinite::Function); 
+
 
 =head2 NAME
 
@@ -33,7 +33,7 @@ Flavio Soibelmann Glock - fglock@pucrs.br
 
 =cut
 
-# our $day_size =    $Set::Infinite::Quantize_Date::day_size; 
+ 
 our $day_size =    timegm(0,0,0,2,3,2001) - timegm(0,0,0,1,3,2001);
 our $hour_size =   $day_size / 24;
 our $minute_size = $hour_size / 60;
@@ -180,10 +180,6 @@ our %subs_offset2 = (
 	},
 );
 
-# our $day_size = timegm(0,0,0,2,3,2001) - timegm(0,0,0,1,3,2001);
-# our $hour_size = $day_size / 24;
-# our $minute_size = $hour_size / 60;
-# our $second_size = $minute_size / 60;
 
 our @week_start = ( 0, -1, -2, -3, 3, 2, 1, 0, -1, -2, -3, 3, 2, 1, 0 );
 
@@ -218,7 +214,6 @@ our %subs_offset1 = (
 		my @time = gmtime($epoch);
 		# print " [QT_D:weekyears:$self->{date_begin}[5] + $self->{quant} * $index]\n";
 		# year modulo week
-		# print " [QT:weekyears: ",$self->{date_begin}[5] + $self->{quant} * $index," epoch=$epoch ]\n";
 		# print " [QT:weekyears: time = ",join(";", @time )," ]\n";
 		$epoch += ( $week_start[$time[6] + 7 - $self->{wkst}] ) * $day_size;
 		# print " [QT:weekyears: week=",join(";", gmtime($epoch) )," wkst=$self->{wkst} tbl[",$time[6] + 7 - $self->{wkst},"]=",$week_start[$time[6] + 7 - $self->{wkst}]," ]\n\n";

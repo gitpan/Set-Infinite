@@ -7,9 +7,8 @@ make_htmldoc.pl
 make_readme.pl
 lib/Set/Infinite.pm
 lib/Set/Infinite/Date.pm
-lib/Set/Infinite/Simple.pm
-lib/Set/Infinite/ICal.pm
-lib/Set/Infinite/ICalSet.pm
+lib/Set/Infinite/_Simple.pm
+
 lib/Set/Infinite/Element_Inf.pm
 lib/Set/Infinite/Offset.pm
 lib/Set/Infinite/Quantize_Date.pm
@@ -22,7 +21,7 @@ todo/simple_bigfloat.t
 todo/element_inf.t
 t/date.t
 t/infinite.t
-t/ical.t
+
 t/backtrack.t
 t/quantize_date.t
 t/quantize.t

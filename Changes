@@ -1,5 +1,23 @@
 Revision history for Perl extension Set::Infinite.
 
+0.36_11
+    backtrack method call is cleaner
+
+0.36_10
+    _simple_intersection removed.
+    _simple_complement with parameter removed.
+
+0.36_09
+    offset strict option removed. Was never used.
+
+0.36_08
+    Set::Infinite::ICalset and S::I::ICal removed. use Date::Set instead.
+
+0.36_07
+    Simple class renamed to _Simple; creates methods inside Set::Infinite
+    $self->new() creates an empty set, and copies private variables
+        from $self. This makes new() inheritance easier.
+
 0.36
     added 'copy' in order to allow 'subroutine-style' programming
       instead of only 'functional' programming

@@ -19,19 +19,20 @@ our %EXPORT_TAGS = ( 'all' => [ qw(type inf new ) ] );
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(type inf new ) );
 our @EXPORT = qw();
 
-our $VERSION = '0.36';
+our $VERSION = '0.36_11';
 
 our $TRACE = 0;      # basic trace method execution
 our $DEBUG_BT = 0;     # backtrack tracer
 
 # Preloaded methods go here.
 
-use Set::Infinite::Simple qw(
-    infinite minus_infinite separators null inf
-); 
+use Set::Infinite::_Simple;
 
+# global defaults 
+#    for object private vars
 our $type = '';
 our $tolerance = 0;
+
 
 sub inf();
 sub infinite();
@@ -105,10 +106,10 @@ sub type {
 
 sub list {
     my $self = shift;
-    my $class = ref($self);
+    # my $class = ref($self);
     my @b = ();
     foreach (@{$self->{list}}) {
-        push @b, $class->new($_);
+        push @b, $self->new($_);
     }
     return @b;
 }
@@ -124,9 +125,9 @@ sub fixtype {
 
 sub compact {
     my $self = shift;
-    my $class = ref($self);
+    # my $class = ref($self);
 
-    my $b = $class->new();
+    my $b = $self->new();
     if ($self->{too_complex}) {
         $self->trace(title=>"compact:backtrack"); 
         # print " [compact:backtrack] \n" if $DEBUG_BT;
@@ -155,65 +156,34 @@ sub trace { # title=>'aaa'
     return $self;
 }
 
-sub quantizer { return @_ }   # 'selector, offsetter, quantizer' are obsolete after 0.25
-
 use Set::Infinite::Quantize_Date;
-use Set::Infinite::Function;     # ???
-use Set::Infinite::Select;       # ???
-use Set::Infinite::Offset;       # ???
+use Set::Infinite::Function;     # used under Select/Offset
+use Set::Infinite::Select;       # tied
+use Set::Infinite::Offset;       # tied
 
 # quantize: splits in same-size subsets
 
 sub quantize {
     my $self = shift;
-    my $class = ref($self);
-
     # $self->trace(title=>"quantize"); 
-
     if (($self->{too_complex}) or ($self->min == -&inf) or ($self->max == &inf)) {
         $self->trace(title=>"quantize:backtrack"); 
         # print " [quantize:backtrack] \n" if $DEBUG_BT;
-        my $b = $class->new();
+        my $b = $self->new();
         $b->{too_complex} = 1;
         $b->{parent} = $self->copy;
         $b->{method} = 'quantize';
         $b->{param}  = \@_;
         return $b;
     }
-
     $self->trace(title=>"quantize"); 
     my (@a);
     my %param = @_;
     my @a2;
-
-    # my $quantizer = $self->quantizer or quantizer;
-    my $quantizer = 'Set::Infinite::Quantize_Date';
-    # print " [QUANT:$quantizer] \n";
-
-    # print " [INF:QUANT ",@_,",$self]\n";
-    tie @a, $quantizer, $self, %param;
-
-    # array output: can be used by "foreach"
-    # v.029 -- intersection($b->offset) gets wantarray !
-    #   if (wantarray) { return compact_array($class, @a); }
-    # print " [QUANT:no_ARRAY] ";
-
-    my $b = $class->new();        # $self); # clone myself
-
-    # if ($param{compact}) {
-    #    # print " [COMPACT] ";
-    #    @a2 = compact_array($class, @a);
-    #    $b->{list} = \@a2;
-    #}
-    # else {
-
+    tie @a, 'Set::Infinite::Quantize_Date', $self, %param;
+    my $b = $self->new();        # $self); # clone myself
     $b->{list} = \@a;        # change data
-
-    # }
-    
-    # object output: can be further "intersection", "union", etc.
     $b->{cant_cleanup} = 1;     # quantize output is "virtual" (tied) -- can't splice, sort
-
     # print " [QUANT:returns:",ref($b),"] \n";
     return $b;
 }
@@ -223,51 +193,22 @@ sub quantize {
 
 sub select {
     my $self = shift;
-    my $class = ref($self);
-
     $self->trace(title=>"select");
-
     if ($self->{too_complex}) {
-        my $b = $class->new();
+        my $b = $self->new();
         $b->{too_complex} = 1;
         $b->{parent} = $self->copy;
         $b->{method} = 'select';
         $b->{param}  = \@_;
         return $b;
     }
-
     my (@a);
     my %param = @_;
     my @a2;
-
-    # my $array_ref = shift;
-    my $tmp = 'Set::Infinite::Select';  # $self->{list}->[0]->selector or selector;
     # print " [INF:SELECT $tmp,",@_,",$self FROM:", $self->{list}->[0],"]\n";
-    tie @a, $tmp, $self, %param;
-
-    # array output: can be used by "foreach"
-    # if (wantarray) { print " [wantarray] " }
-    # return @a if wantarray; 
-    # v.029 -- intersection($b->offset) gets wantarray !
-    #   return compact_array($class, @a) if wantarray; 
-    
-    my $b = $class->new();        # $self); # clone myself
-
-    # if ($param{compact}) {
-    #    # print " [COMPACT] ";
-    #    @a2 = compact_array($class, @a);
-    #    $b->{list} = \@a2;
-    #}
-    # else {
-
+    tie @a, 'Set::Infinite::Select', $self, %param;
+    my $b = $self->new();        # $self); # clone myself
     $b->{list} = \@a;        # change data
-
-    # }
-
-    # object output: can be further "intersection", "union", etc.
-    # my $b = $class->new(); # $self); # clone myself
-    # $b->{list} = \@a;     # change data
-
     $b->{cant_cleanup} = 1;     # select output is "virtual" (tied) -- can't splice, sort
     return $b;
 }
@@ -275,12 +216,12 @@ sub select {
 # offset: offsets subsets
 sub offset {
     my $self = shift;
-    my $class = ref($self);
+    #  my $class = ref($self);
 
     $self->trace(title=>"offset");
 
     if ($self->{too_complex}) {
-        my $b1 = $class->new();
+        my $b1 = $self->new();
         $b1->{too_complex} = 1;
         $b1->{parent} = $self->copy;
         $b1->{method} = 'offset';
@@ -292,7 +233,7 @@ sub offset {
 
     my @a;
     my %param = @_;
-    my $b1 = $class->new();        # $self); # clone myself
+    my $b1 = $self->new();        # $self); # clone myself
 
     unless (ref($param{value}) eq 'ARRAY') {
         #print " [value:scalar:", $param{value} ,"]\n";
@@ -300,91 +241,63 @@ sub offset {
     }
     $param{mode}   =      'offset' unless $param{mode};
     $param{unit}   =      'one'    unless $param{unit};
-    $param{parts}  =      ($#{$param{value}}) / 2;
-    $param{strict} =      0        unless $param{strict};
+    my $parts  =      ($#{$param{value}}) / 2;
+    # $param{strict} =      0        unless $param{strict};
     $param{fixtype} =     1        unless exists $param{fixtype};
     # $param{fetchsize} = $param{parts} * (1 + $#{ $self->{list} });
-    $param{sub_unit} =    $Set::Infinite::Arithmetic::subs_offset2{$param{unit}};
-    $param{sub_mode} =    $Set::Infinite::Offset::_MODE{$param{mode}};
-    $param{parent_list} = $self->{list};
+    my $sub_unit =    $Set::Infinite::Arithmetic::subs_offset2{$param{unit}};
+    my $sub_mode =    $Set::Infinite::Offset::_MODE{$param{mode}};
+    # $param{parent_list} = $self->{list};
 
     # print " [ofs:$param{mode} $param{unit} value:", join (",", @{$param{value} }),"]\n";
 
     my ($i, $j);
     my ($cmp, $this, $next, $ib, $part, $open_begin, $open_end, $tmp);
+
+    my @value;
+    foreach $j (0 .. $parts) {
+        push @value, [ $param{value}[$j+$j], $param{value}[$j+$j + 1] ];
+    }
+
     foreach $i (0 .. $#{ $self->{list} }) {
         my $interval = $self->{list}[$i];
         my $ia = $interval->{a};
 
-        if ( (ref($ia) eq 'Set::Infinite::Element_Inf') and ( $$ia eq '' ) ) {
-            # skip if interval is null
-        }
-        else {
-            $ib = $interval->{b};
-            $open_begin = $interval->{open_begin};
-            $open_end = $interval->{open_end};
-            # do offset
-            foreach $j (0 .. $param{parts}) {
-            # for ( $j = 0; $j <= $param{parts}; $j++) {
+        next if Set::Infinite::Element_Inf->is_null($ia);  # skip if interval is null
+        $ib = $interval->{b};
+        $open_begin = $interval->{open_begin};
+        $open_end = $interval->{open_end};
+        # do offset
+        foreach $j (0 .. $parts) {
                 # print " ..[ofs:$param{mode}=$param{sub_mode} $param{unit}=$param{sub_unit} value:", $param{value}[$j+$j], ",", $param{value}[$j+$j + 1],"]\n";
-
-                ($this, $next, $cmp) = &{ $param{sub_mode} } 
-                    ( $param{sub_unit}, $ia, $ib, 
-                      $param{value}[$j+$j], $param{value}[$j+$j + 1] );
-
-                if ($cmp > 0) { 
-                    # skip if a > b
+                ($this, $next, $cmp) = &{ $sub_mode } 
+                    ( $sub_unit, $ia, $ib, @{$value[$j]} );
+                next if ($cmp > 0);    # skip if a > b
+                # print " [ofs($this,$next)] ";
+                unless ($cmp) {
+                    $open_end = $open_begin;
+                    $this = $next;  #  make sure to use the same object from cache!
                 }
-                else {
-                    # print " [ofs($this,$next)] ";
-                    if ($cmp == 0) {
-                        $open_end = $open_begin;
-                        $this = $next;  #  make sure to use the same object from cache!
+                # skip this if don't need to "fixtype"
+                if ($param{fixtype}) {
+                    # bless results into 'type' class
+                    # print " [ofs($this,$next) = $class] ";
+                    if (ref($this) ne ref($ia) ) {
+                            $this = $ia->new($this);
+                            $next = $ia->new($next);
                     }
-
-                    # skip this if don't need to "fixtype"
-                    if ($param{fixtype}) {
-                        # bless results into 'type' class
-                        my $class = ref($ia);
-                        # my $class = $Set::Infinite::type;
-
-                        # print " [ofs($this,$next) = $class] ";
-                        if (ref($this) ne $class) {
-                            $this = $class->new($this);
-                            $this->mode($ia->{mode}) if exists $ia->{mode};
-
-                            $next = $class->new($next);
-                            $next->mode($ia->{mode}) if exists $ia->{mode};
-                        }
-                    } # "fixtype"
-
-                    # create subset
-                    $tmp = bless { a => $this , b => $next ,
-                        open_begin => $open_begin , open_end => $open_end }, 
-                        'Set::Infinite::Simple';
-                    if (($param{strict} != 0) and not ($param{strict}->intersects($tmp)) ) {
-                        # skip
-                        # return Set::Infinite::Simple->simple_null;
-                    }
-                    else {
-                        # save it!
-                        push @a, $tmp;
-                        # return $tmp;
-                    }
-                }
-            }  # parent not null
-
+                } 
+                push @a, { a => $this , b => $next ,
+                        open_begin => $open_begin , open_end => $open_end };
         }  # parts
-
     }  # self
 
     @a = sort { $a->{a} <=> $b->{a} } @a;
 
     $b1->{list} = \@a;        # change data
     $b1->{cant_cleanup} = 1; 
-    # print " N = $#a \n";
 
-    # $b1->_self_sort; # if $param{parts} > 0;
+    # print " N = $#a \n";
 
     return $b1;
 }
@@ -393,9 +306,7 @@ sub offset {
 sub is_null {
     my $self = shift;
     return 1 unless $#{$self->{list}} >= 0;
-    return 1 if Set::Infinite::Element_Inf::is_null($self->{list}->[0]->{a});
-    return 0;
-    # return ("$self" eq null) ? 1 : 0;
+    Set::Infinite::Element_Inf::is_null($self->{list}->[0]->{a});
 }
 
 =head2 is_too_complex
@@ -408,23 +319,8 @@ set bounded by -inf or inf.
 
 sub is_too_complex {
     my $self = shift;
-    return 1 if $self->{too_complex};
-    return 0;
+    $self->{too_complex} ? 1 : 0;
 }
-
-
-# this an internal method
-# it's intent is checking some other methods misbehave 
-# and return an unordered list
-# sub _self_sort {
-#    my $self = shift; 
-#    my $tmp;
-#    $self->{list} = [ sort {
-#                    $tmp = ref($a); # doesn't work without this
-#                    $a <=> $b
-#                } @{$self->{list}} ];
-#    return $self;
-# }
 
 
 sub backtrack {
@@ -432,76 +328,67 @@ sub backtrack {
     #  NOTICE: set/reset $DEBUG_BT to enable debugging
     #
 
-    $backtrack_depth++;
+    my ($self, $method, $arg) = @_;
+    return $self->$method ($arg)  unless $self->{too_complex};
 
+    $backtrack_depth++;
     if ($backtrack_depth > $max_backtrack_depth) {
         carp (__PACKAGE__ . ": Backtrack too deep (more than " . $max_backtrack_depth . " levels)");
     }
-
     # print " [BT:depth=",$backtrack_depth,"] \n";
     print " [BT$backtrack_depth-0:",join(";",@_),"] \n" if $DEBUG_BT;
-
-    my ($self, $method, $arg) = @_;
-
     my $result;
-
     print " [bt$backtrack_depth-0-1:self=",join(";",%{$self}),"] \n" if $DEBUG_BT;
     # print " [bt$backtrack_depth-1:caller:",join(";",caller),"] \n" if $DEBUG_BT;
     # print " [bt$backtrack_depth-2:parent:",ref($self->{parent})," -- ",join(";",%{$self->{parent}}),"] \n" if $self->{parent} and not (ref($self->{parent}) eq 'ARRAY');
+    # print " [bt$backtrack_depth-3:complex:a,b] \n";
 
-    if ($self->{too_complex}) {
-        # print " [bt$backtrack_depth-3:complex:a,b] \n";
-
-        if (ref($self->{parent}) eq 'ARRAY') {
-            # has 2 parents (intersection, union, ...)
-            # data structure: {method} - method name, {parent} - array, parent list
-
+    # backtrack on parent sets
+    if (ref($self->{parent}) eq 'ARRAY') {
+        # has 2 parents (intersection, union, ...)
+        # data structure: {method} - method name, {parent} - array, parent list
             # print " [bt$backtrack_depth-3.5:complex: 2-PARENTS ] \n";
-
-            my $result1 = $self->{parent}[0];
-            $result1 = $result1->backtrack($method, $arg) if $result1->{too_complex};
+        my $result1 = $self->{parent}[0];
+        $result1 = $result1->backtrack($method, $arg) if $result1->{too_complex};
             # print " [bt$backtrack_depth-3-6:res1:$result] \n";
-            my $result2 = $self->{parent}[1];
-            $result2 = $result2->backtrack($method, $arg) if $result2->{too_complex};
+        my $result2 = $self->{parent}[1];
+        $result2 = $result2->backtrack($method, $arg) if $result2->{too_complex};
             # print " [bt$backtrack_depth-3-7:res2:$result] \n";
 
-            # apply {method}
-            # my $expr = 'return $result1->' . $self->{method} . '($result2)';
-            # print " [bt$backtrack_depth-3-8:expr: $result1 -- ",$self->{method}," -- $result2 ]\n";
+        if ( $result1->{too_complex} or $result2->{too_complex} ) {
+                # backtrack failed...
+                $backtrack_depth--;
+                return $self;
+        }
 
-            # $result = $self->intersection($arg);
-            # $result = eval $expr;
-            # print " [bt$backtrack_depth-3-9:RESULT ",ref($result), "=",join(";",%{$result}),"] \n";
-            # print " [bt$backtrack_depth-3-10:end:res:$expr = $result] \n";
-
-            my $the_method = eval '\&' . $self->{method};
+        # apply {method}
             # print "\n\n<eval-2 method:$self->{method} - $the_method \n\n";
-            $result = &{$the_method} ($result1, $result2);
+            # $result = &{ \& { $self->{method} } } ($result1, $result2);
+        my $method = $self->{method};
+        $result = $result1->$method ($result2);
             # print "\n\n/eval-2> \n\n";
 
-            $backtrack_depth--;
-            return $result;
-        }
-        # else
+        $backtrack_depth--;
+        return $result;
+    }  # parent is ARRAY
 
-            # has 1 parent and parameters (offset, select, quantize)
-            # data structure: {method} - method name, {param} - array, param list
 
-            print " [bt$backtrack_depth-3-05: 1-PARENT ] \n" if $DEBUG_BT;
-            my $result1 = $self->{parent};
-            my @param = @{$self->{param}};
-            my $my_method = $self->{method};
+    # has 1 parent and parameters (offset, select, quantize)
+    # data structure: {method} - method name, {param} - array, param list
 
-            my $backtrack_arg2;
+    # TODO: backtrack on complement()
 
-            # print " [bt$backtrack_depth-3-06:res1:before_backtrack:$result1] \n";
+        print " [bt$backtrack_depth-3-05: 1-PARENT ] \n" if $DEBUG_BT;
+        my $result1 = $self->{parent};
+        my @param = @{$self->{param}};
+        my $my_method = $self->{method};
 
-            # $backtrack_arg must be modified second to method and param
-            print " [bt$backtrack_depth-3-08:BEFORE:$arg;" . $my_method . ";",join(";",@param),"] \n" if $DEBUG_BT;
+        my $backtrack_arg2;
+
+        # print " [bt$backtrack_depth-3-06:res1:before_backtrack:$result1] \n";
+        # $backtrack_arg must be modified second to method and param
+        print " [bt$backtrack_depth-3-08:BEFORE:$arg;" . $my_method . ";",join(";",@param),"] \n" if $DEBUG_BT;
  
-            # default
-            # $backtrack_arg2 = $arg;
-
             # quantize - apply quantization without modifying
             if ($my_method eq 'quantize') {
 
@@ -514,8 +401,6 @@ sub backtrack {
                 else {
                     $backtrack_arg2 = $arg->quantize(@param, strict=>0); # span/union
                 }
-
-                # $backtrack_arg2 = $arg;
 
                 # -----------------------
 
@@ -536,7 +421,6 @@ sub backtrack {
 
                 $backtrack_arg2 = $arg->offset( unit => $tmp{unit}, mode => $tmp{mode}, value => [- $tmp{value}[0], - $tmp{value}[-1]] );
 
-                # $backtrack_arg2 = $arg;
             }
             # select - check "by" behaviour
             else {    # if ($my_method eq 'select') {
@@ -551,80 +435,48 @@ sub backtrack {
 
             }
 
-            print " [bt$backtrack_depth-3-10:AFTER:$backtrack_arg2;" . $my_method . ";",join(";",@param),"] \n" if $DEBUG_BT;
-            # print " [bt$backtrack_depth-3-11:  WAS:$arg] \n";
+    print " [bt$backtrack_depth-3-10:AFTER:$backtrack_arg2;" . $my_method . ";",join(";",@param),"] \n" if $DEBUG_BT;
+    # print " [bt$backtrack_depth-3-11:  WAS:$arg] \n";
 
-            $result1 = $result1->backtrack($method, $backtrack_arg2); # if $result1->{too_complex};
-            # print " [bt$backtrack_depth-3-12:res1:after_backtrack:$result1] \n";
-            # apply {method}
-            my $expr = 'return $result1->' . $self->{method} . '(@param)';
-            print " [bt$backtrack_depth-3-14:expr: $result1 -- ",$self->{method}," ]\n" if $DEBUG_BT;
-            print " [bt$backtrack_depth-3-15:expr: $expr ; param: ", join(";",@param),"]\n" if $DEBUG_BT;
-            # $result = $self->intersection($arg);
+    $result1 = $result1->backtrack($method, $backtrack_arg2); # if $result1->{too_complex};
+    # print " [bt$backtrack_depth-3-12:res1:after_backtrack:$result1] \n";
+    # apply {method}
 
-            my $the_method = eval '\&' . ref($result1) . '::' . $self->{method};
-            # print "\n\n<eval-1 method:$self->{method} - $the_method \n\n";
-            $result = &{$the_method} ($result1, @param);
-            # print "\n\n/eval-1> \n\n";
-
-            # $result = eval $expr;
-
-            print " [bt$backtrack_depth-3-19:RESULT ",ref($result), "=",join(";",%{$result}),"=$result] \n" if $DEBUG_BT;
-            # print " [bt$backtrack_depth-3-22:  WAS:$arg] \n";
-            # print " [bt$backtrack_depth-3-25:end:res:$expr = $result] \n";
-            $backtrack_depth--;
-            return $result;
-
-    }
-
-    # change the root parameter
-
-    # my $expr = '$result = $self->' . $method . '($arg)';
-    # $expr .= '; print "$arg"; ';
-    # print " [bt$backtrack_depth-5:expr: $self -- $method -- $arg ]\n";
-    # eval "$expr";
-
-    # my $expr = 'return $self->' . $method . '($arg)';
-    # print " [bt$backtrack_depth-6:expr: $self -- $method -- $arg ]\n";
-    # $result = $self->intersection($arg);
-    # $result = eval $expr;
-    # print " [bt$backtrack_depth-6.5:RESULT ",ref($result), "=",join(";",%{$result}),"] \n";
-    # print " [bt$backtrack_depth-7:end:res:$expr = $result] \n";
-
-    my $the_method = eval '\&' . $method;
-    # print "\n\n<eval-0 method:$method - $the_method \n\n";
-    $result = &{$the_method} ($self, $arg);
-    # print "\n\n/eval-0> \n\n";
-
+    my $expr = 'return $result1->' . $self->{method} . '(@param)' if $DEBUG_BT;
+    print " [bt$backtrack_depth-3-14:expr: $result1 -- ",$self->{method}," ]\n" if $DEBUG_BT;
+    print " [bt$backtrack_depth-3-15:expr: $expr ; param: ", join(";",@param),"]\n" if $DEBUG_BT;
+    # print "\n\n<eval-1 method:$self->{method} - $the_method \n\n";
+    # $result = &{\& {$self->{method} } } ($result1, @param);
+    $method = $self->{method};
+    $result = $result1->$method (@param);
+    # print "\n\n/eval-1> \n\n";
+    print " [bt$backtrack_depth-3-19:RESULT ",ref($result), "=",join(";",%{$result}),"=$result] \n" if $DEBUG_BT;
+    # print " [bt$backtrack_depth-3-22:  WAS:$arg] \n";
+    # print " [bt$backtrack_depth-3-25:end:res:$expr = $result] \n";
     $backtrack_depth--;
     return $result;
 }
 
 sub intersects {
     my $a = shift;
-    my $class = ref($a);
     my $b;
-    #my @param = @_;
-    #my $b = $class->new(@param); 
-
     # print " [I:", ref ($_[0]), "] ";
-    if (ref ($_[0]) eq 'Set::Infinite::Simple') {
+    if (ref ($_[0]) eq 'HASH') {
         # optimized for "quantize"
         $a->trace(title=>"intersects:simple");
         # print "*";
         # print " n:", $#{$a->{list}}, "=$a ";
         $b = shift;
         foreach my $ia (0 .. $#{$a->{list}}) {
-            return 1 if $a->{list}->[$ia]->intersects($b);
+            return 1 if _simple_intersects($a->{list}->[$ia], $b);
         }
         return 0;    
     } 
-    elsif (ref ($_[0]) eq $class) {
+    elsif (ref ($_[0]) ) { 
         $b = shift;
     } 
     else {
-        # my @param = @_;
-        $b = $class->new(@_);  
+        $b = $a->new(@_);  
     }
 
     $a->trace(title=>"intersects");
@@ -642,13 +494,15 @@ sub intersects {
 
     if (($a->{too_complex}) or ($b->{too_complex})) {
         print " [inter:backtrack] \n" if $DEBUG_BT;
-        my $intersection = $class->new();
+        my $intersection = $a->new();
         $intersection->{too_complex} = 1;
         $intersection->{parent} = [$a->copy, $b->copy];
         $intersection->{method} = 'intersects';
         return $intersection;
     }
 
+    # no difference in time
+    # ($a, $b) = ($b, $a) if $#{$a->{list}} > $#{$b->{list}};
 
     my ($ia, $ib);
     my ($na, $nb) = (0,0);
@@ -662,10 +516,10 @@ sub intersects {
         #        next B;
         #    }
             # next B if ($a->{list}->[$ia]->{a} > $b->{list}->[$ib]->{b}) ;
-            return 1 if $a->{list}->[$ia]->intersects($b->{list}->[$ib]);
+            return 1 if _simple_intersects($a->{list}->[$ia], $b->{list}->[$ib]);
         }
     }
-    return 0;    
+    0;    
 }
 
 sub iterate {
@@ -673,8 +527,8 @@ sub iterate {
     # TODO: options 'no-sort', 'no-merge', 'keep-null' ...
 
     my $a = shift;
-    my $class = ref($a);
-    my $iterate = $class->new();
+    # my $class = ref($a);
+    my $iterate = $a->new();
 
     # print " [iterate ",$a,"--",ref($a)," from ", caller, "] \n";
 
@@ -694,7 +548,7 @@ sub iterate {
     my $subroutine = shift;
     foreach $ia (0 .. $#{$a->{list}}) {
         # print " [iterate:$a->{list}->[$ia] -- $subroutine ]\n";
-        $tmp = &{$subroutine} ( $class->new($a->{list}->[$ia]) );
+        $tmp = &{$subroutine} ( $a->new($a->{list}->[$ia]) );
         # print " [iterate:result:$tmp]\n";
         $iterate = $iterate->union($tmp) unless Set::Infinite::Element_Inf::is_null($tmp); 
     }
@@ -703,25 +557,14 @@ sub iterate {
 
 sub intersection {
     my $a1 = shift;
-    my $class = ref($a1);
     my $b1;
-
     $a1->trace(title=>"intersection");
-
-    if (ref ($_[0]) eq $class) {
+    if (ref ($_[0]) eq ref($a1) ) {
         $b1 = shift;
-        # print " [inter:as_is] \n";
     } 
     else {
-        # my @param = @_;
-        # print " [inter:isa:",ref($_[0])," (",$class,")] \n";
-        $b1 = $class->new(@_);  
-        # print " [inter:isa:",ref($b)," (",$class,")] \n";
+        $b1 = $a1->new(@_);  
     }
-
-    # my @param = @_;
-    # my $b = $class->new(@param);
-
     my $tmp;
     # print " [intersect ",$a,"--",ref($a)," with ", $b, "--",ref($b)," ", caller, "] \n";
 
@@ -737,7 +580,7 @@ sub intersection {
 
     if (($a1->{too_complex}) or ($b1->{too_complex})) {
         print " [inter:backtrack] \n" if $DEBUG_BT;
-        my $intersection = $class->new();
+        my $intersection = $a1->new();
         $intersection->{too_complex} = 1;
         $intersection->{parent} = [$a1->copy, $b1->copy];
         $intersection->{method} = 'intersection';
@@ -750,7 +593,7 @@ sub intersection {
     # my ($na, $nb) = (0,0);
     # $tmp = ref($a1->{list}) . ref($b1->{list}); # instantiate, just in case
     my ($ma, $mb) = ($#{$a1->{list}}, $#{$b1->{list}});
-    my $intersection = $class->new();
+    my $intersection = $a1->new();
 
     # for loop optimization
     if ($ma < $mb) {
@@ -808,46 +651,32 @@ sub intersection {
                 $i_end         = $tmp1b;
                 $open_end    = $tmp1->{open_end};
             }
-
-            # print "  [ simple: fastnew($i_beg, $i_end, $open_beg, $open_end ) ]\n";
-            # return $simple_null if 
-
+            # print " [ simple: fastnew($i_beg, $i_end, $open_beg, $open_end ) ]\n";
             $cmp1 = $i_beg <=> $i_end;
-
             unless (( $cmp1 > 0 ) or 
                     ( ($cmp1 == 0) and ($open_beg or $open_end) )) {
                 push @{$intersection->{list}}, 
-                    bless { a => $i_beg, 
-                            b => $i_end, 
-                            open_begin => $open_beg, 
-                            open_end => $open_end }, 'Set::Infinite::Simple';
+                    { a => $i_beg, b => $i_end, 
+                      open_begin => $open_beg, open_end => $open_end } ;
             }
         }
     }
-
     # print " [intersect GIVES\n    ",$intersection,"\n\n";
-
     return $intersection;    
 }
 
 sub complement {
     my $self = shift;
-    my $class = ref($self);
-
+    # my $class = ref($self);
     $self->trace(title=>"complement");
-
     # do we have a parameter?
-
     if (@_) {
-
-        if (ref ($_[0]) eq $class) {
+        if (ref ($_[0]) eq ref($self) ) {
             $a = shift;
         } 
         else {
-            $a = $class->new(@_);  
-            $a->tolerance($self->{tolerance}) if $self->{tolerance};
+            $a = $self->new(@_);  
         }
-
         $a = $a->complement;
         # print " [CPL:intersect ",$self," with ", $a, "] ";
         return $self->intersection($a);
@@ -855,31 +684,20 @@ sub complement {
 
     my ($ia);
     my $tmp;
-
     # print " [CPL:",$self,"] ";
 
     if (($#{$self->{list}} < 0) or (not defined ($self->{list}))) {
-        return $class->new(minus_infinite, infinite);
+        return $self->new(minus_infinite, infinite);
     }
 
-    my $complement = $class->new();
-    my @tmp = $self->{list}->[0]->complement;
-    # print " [CPL:ADDED:",join(";",@tmp),"] ";
+    my $complement = $self->new();
+    @{$complement->{list}} = _simple_complement($self->{list}->[0]); 
 
-    #foreach(@tmp) {
-    #     $complement->add($_); 
-    #}
-    push @{$complement->{list}}, @tmp; 
-
+    $tmp = $self->new();
     foreach $ia (1 .. $#{$self->{list}}) {
-            @tmp = $self->{list}->[$ia]->complement;
-            $tmp = $class->new();
-            # foreach(@tmp) { $tmp->add($_); }
-            push @{$tmp->{list}}, @tmp; 
-
-            $complement = $complement->intersection($tmp); # if $tmp;
+        @{$tmp->{list}} = _simple_complement($self->{list}->[$ia]); 
+        $complement = $complement->intersection($tmp); # if $tmp;
     }
-
     # print " [CPL:RES:",$complement,"] ";
 
     return $complement;    
@@ -890,7 +708,7 @@ sub complement {
 # $a, $b renamed to $a1, $b1 to prevent clashing with 'sort' 
 sub union {
     my $a1 = shift;
-    my $class = ref($a1);
+    # my $class = ref($a1);
     my $b1;
 
     $a1->trace(title=>"union");
@@ -900,16 +718,16 @@ sub union {
 
     return $a1->compact if ($#_ < 0);  # old usage
 
-    if (ref ($_[0]) eq $class) {
+    if (ref ($_[0]) eq ref($a1) ) {
         $b1 = shift;
     } 
     else {
-        $b1 = $class->new(@_);  
+        $b1 = $a1->new(@_);  
     }
 
     if (($a1->{too_complex}) or ($b1->{too_complex})) {
         print " [union:backtrack] \n" if $DEBUG_BT;
-        my $union = $class->new();
+        my $union = $a1->new();
         $union->{too_complex} = 1;
         $union->{parent} = [$a1->copy, $b1->copy];
         $union->{method} = 'union';
@@ -922,69 +740,31 @@ sub union {
     return $a1 if $#{$b1->{list}} < 0;
     return $b1 if $#{$a1->{list}} < 0;
 
-    # print " [union: new union] \n";
-    # print "\n [union: $a1 +\n       $b1 ] \n";
-    # $a1 = $class->new($a1);
-    # print " [union: $a1 +\n       $b1 ] \n";
-
     my ($ia, $ib);
     $ia = 0;
     $ib = 0;
 
-    # checking if size+order matters on speed - it does
-    # my $a_size = $#{$a1->{list}};
-    # my $b_size = $#{$b1->{list}};
-    # print " [ $a_size <=> $b_size ] \n";
-    # if ($b_size > $a_size) {
-    #     ($b1,$a1) = ($a1,$b1);
-    # }
+    #  size+order matters on speed 
 
     # print " [ ",$a1->max," <=> ",$b1->max," ] \n";
  
-    $a1 = $class->new($a1);
-
-    # my ($test, $orig);
-
-    # checking: some other methods misbehave and return an unordered list 
-    # $b1->_self_sort;
-
+    $a1 = $a1->new($a1);    # don't modify ourselves 
     my $b_list = $b1->{list};
-
     # -- frequent case - $b1 is after $a1
-        if ($b1->min > $a1->max) 
-    {
-        # if ($#{$b_list} == 0) {
-        #    # -- $b is a simple interval
-        #    print "#";
-        #    push @{$a->{list}}, $b_list->[0];
-        # }
-
-         # $test = $class->new($a);
-
-        # print "#";
+    if ($b1->min > $a1->max) {
         # print " [UNION: $a1 \n         $b1 $#{$b_list}\n       ";
-         foreach $ib (0 .. $#{$b_list}) {
-            # print " -> ",$b_list->[$ib],"\n";
-            push @{$a1->{list}}, $b_list->[$ib]; # unless $b_list->[$ib]->is_null;
-        }
-        # print "= $a1 \n"; 
-
+        push @{$a1->{list}}, @$b_list;
         return $a1;
-
-        # ($a1, $test) = ($test, $a1);
     }
-    # else { print "." }
-
-    # -- end: special case 
 
     # print " [UNION: NORMAL ] \n";
 
-     B: foreach $ib ($ib .. $#{$b_list}) {
+    B: foreach $ib ($ib .. $#{$b_list}) {
         foreach $ia ($ia .. $#{$a1->{list}}) {
             # $self->{list}->[$_ - 1] = $tmp[0];
             # splice (@{$self->{list}}, $_, 1);
 
-            my @tmp = $a1->{list}->[$ia]->union($b_list->[$ib], $a1->{tolerance});
+            my @tmp = _simple_union($a1->{list}->[$ia], $b_list->[$ib], $a1->{tolerance});
             # print " [+union: $tmp[0] ; $tmp[1] ] \n";
 
             if ($#tmp == 0) {
@@ -1020,12 +800,6 @@ sub union {
     # print " [union: result = $a ] \n";
     # $a->{cant_cleanup} = 1;
 
-    #    foreach $ia (0 .. $#{$a->{list}}) {
-    #        my @tmp = $a->{list}->[$ia];
-    #        print " #", $ia, ": ", $a->{list}->[$ia], " is ", join(" ", %{$a->{list}->[$ia]} ) , "\n";
-    #    }
-    # print " [union: is ", join(" ", %$a) , " ] \n";
-
     # print "\n TEST: $test\n A:    $a\n ORIG: $a\n B:    $b\n" if $test != $a;
 
     return $a1;    
@@ -1046,7 +820,7 @@ Makes a new object from the object's data.
 
 sub copy {
     my $self = shift;
-    my $copy = bless {}, ref($self);
+    my $copy = $self->new();
     foreach my $key (keys %{$self}) {
         $copy->{$key} = $self->{$key};
     }
@@ -1056,68 +830,52 @@ sub copy {
 
 sub new {
     my $class = shift;
-    my ($self) = bless { list => [] }, $class;
-
+    my $class_name = ref($class) ? ref($class) : $class;
+    my ($self) = bless { list => [] }, $class_name;
     # $self->trace(title=>"new");
-
     # print " [INF:new:", ref($self)," - ", join(' - ', caller), " ]\n"; # if $TRACE;
-    $self->{tolerance} = $tolerance if $tolerance;
-    $self->{type} = $type if $type;
+    # set up private variables
+    if (ref($class)) {
+        $self->{tolerance} = $class->{tolerance} if $class->{tolerance};
+        $self->{type}      = $class->{type}      if $class->{type};
+    }
+    else {
+        $self->{tolerance} = $tolerance ? $tolerance : '';
+        $self->{type} =      $type      ? $type : '';
+    }
     # print " [INF:new:$class ", $tolerance, " ",$type," ",$self->{tolerance}," ",$self->{type}," ]\n"; 
-    # $self->{list} = [];
 
-LOOP:
-    my $tmp = shift @_;
-    return $self unless defined($tmp);
-
-    # is it an array?
-    # print " [INF:ADD:",ref($tmp),"=$tmp ; ",@param,"]\n";
-    if (ref($tmp) eq 'ARRAY') {
-            my @tmp = @{$tmp};
-
-    
-            # print " INF:ADD:ARRAY:",@tmp," ";
-
-            # Allows arrays of arrays
-            $tmp = $class->new(@tmp) ;
-            foreach (@{$tmp->{list}}) {
-                push @{ $self->{list} }, Set::Infinite::Simple->new($_) ;
+    my ($tmp, $tmp2, $ref);
+    while (@_) {
+        # return $self unless @_;
+        $tmp = shift;
+        # print " [INF:ADD:",ref($tmp),"=$tmp ; @_ ]\n";
+        $ref = ref($tmp);
+        if ($ref) {
+            if ($ref eq 'ARRAY') {
+                # print " INF:ADD:ARRAY:",@tmp," ";
+                # Allows arrays of arrays
+                $tmp = $class->new(@{$tmp});  # call new() recursively
+                push @{ $self->{list} }, @{$tmp->{list}};
+                next;
             }
-            goto LOOP;
+            if ($ref eq 'HASH') {
+                # print " INF:ADD:HASH\n";
+                push @{ $self->{list} }, $tmp; 
+                next;
+            }
+            # does it have a "{list}"?
+            if ($tmp->isa(__PACKAGE__)) {
+                # print " INF:ADD:",__PACKAGE__,":",$tmp," \n";
+                push @{ $self->{list} }, @{$tmp->{list}};
+                next;
+            }
+        }
+        $tmp2 = shift;
+        push @{ $self->{list} }, _simple_new($tmp,$tmp2, $self->{type} );
+        # next;
     }
-    # does it have a "{list}"?
-
-    if ((ref(\$tmp) eq 'REF')) {
-            if (($tmp->isa(__PACKAGE__))) {   # and defined ($tmp->{list})) {
-                # print " INF:ADD:",__PACKAGE__,":",$tmp," ";
-                foreach (@{$tmp->{list}}) {
-                    # push @{ $self->{list} }, Set::Infinite::Simple->new($_) ;
-                    push @{ $self->{list} }, $_; # Set::Infinite::Simple->fastnew($_->{a}, $_->{b}, $_->{open_begin}, $_->{open_end}) ;
-                }
-                goto LOOP;
-            }
-            # does it have a "{a},{b}"?
-            if (($tmp->isa("Set::Infinite::Simple")) ) {  # and (not $tmp->is_null)) {
-                # print " INF:ADD:SIMPLE:",__PACKAGE__,":",$tmp," ";
-                # push @{ $self->{list} }, Set::Infinite::Simple->new($tmp) ;
-                push @{ $self->{list} }, $tmp; # Set::Infinite::Simple->fastnew($tmp->{a}, $tmp->{b}, $tmp->{open_begin}, $tmp->{open_end}) ;
-                # print " INF:ADD:SIMPLE:",__PACKAGE__,":",@{ $self->{list} }," \n";
-                goto LOOP;
-            }
-    }
-
-    # else {
-
-    my $tmp2 = shift @_;
-    #print " [NEW] " ;
-
-    $tmp = Set::Infinite::Simple->new($tmp,$tmp2, $self->{type} );
-    push @{ $self->{list} }, $tmp;
-
-    goto LOOP;
-
-    # }
-    # return $self;
+    $self;
 }
 
 sub min { 
@@ -1127,11 +885,7 @@ sub min {
     $self->trace(title=>"min"); 
 
     foreach(@{$self->{list}}) {
-        # print " <min-$_: ";
-        # print "    ", ref($_), " \n";
-        # print "    $_->{a} \n";
         $tmp = $_->{a};
-        # print " :$tmp /min> ";
         return $tmp unless Set::Infinite::Element_Inf::is_null($tmp) ;
     }
     # print " min:null /min> ";
@@ -1142,7 +896,7 @@ sub max {
     my ($self) = shift;
     my $tmp;
     my $i;
-    my $tmp_ptr;  # perl bug? too deep
+    my $tmp_ptr;  # perl bug? too deep - maybe due to autovivification
 
     $self->trace(title=>"max"); 
 
@@ -1162,41 +916,26 @@ sub size {
     # print " [INF:SIZE:$self->{list}->[0]->{b} - $self->{list}->[0]->{a} ] \n";
     my $size = $self->{list}->[0]->{b} - $self->{list}->[0]->{a};
     foreach(1 .. $#{$self->{list}}) {
-        $tmp = $self->{list}->[$_]->{b} - $self->{list}->[$_]->{a};
-        $size += $tmp;
+        $size += $self->{list}->[$_]->{b} - $self->{list}->[$_]->{a};
     }
     return $size; 
 };
 
 sub span { 
     my ($self) = shift;
-    my $class = ref($self);
-    return $class->new($self->min, $self->max);
+    return $self->new($self->min, $self->max);
 };
 
 sub spaceship {
     my ($tmp1, $tmp2, $inverted) = @_;
-    my $class = ref($tmp1);
-
     if ($inverted) {
-        if (ref ($tmp1) ne $class) {
-            $tmp1 = $class->new($tmp1);  
-        }
         ($tmp2, $tmp1) = ($tmp1, $tmp2);
     }
-    else {
-        if (ref ($tmp1) ne $class) {
-            $tmp2 = $class->new($tmp2);  
-        }
-    }
-
-    return $tmp1->min  <=> $tmp2->min  if ($tmp1->min  != $tmp2->min);
-    return $tmp1->size <=> $tmp2->size if ($tmp1->size != $tmp2->size);
-    return $#{$tmp1->{list}} <=> $#{$tmp2->{list}} if $#{$tmp1->{list}} != $#{$tmp2->{list}};
     foreach(0 .. $#{$tmp1->{list}}) {
         my $this  = $tmp1->{list}->[$_];
         my $other = $tmp2->{list}->[$_];
-        return $this <=> $other if $this != $other;
+        my $cmp = _simple_spaceship($this, $other);
+        return $cmp if $cmp;   # this != $other;
     }
     return 0;
 }
@@ -1210,18 +949,12 @@ sub no_cleanup {
 sub cleanup {
     my ($self) = shift;
     return $self if $self->{cant_cleanup};     # quantize output is "virtual", can't be cleaned
-    # print " [cleanup] ";
-
-    # $self->tolerance($self->{tolerance});    # ???
-
-    # my $debug_optimize = __PACKAGE__->new($self);
-
-    # removed in version 0.22.02 after deprecating "add"
-    # @{ $self->{list} } = sort @{ $self->{list} };
 
     $_ = 1;
     while ( $_ <= $#{$self->{list}} ) {
-        my @tmp = $self->{list}->[$_]->union($self->{list}->[$_ - 1], $self->{tolerance});
+        my @tmp = _simple_union($self->{list}->[$_],
+            $self->{list}->[$_ - 1], 
+            $self->{tolerance});
         if ($#tmp == 0) {
             $self->{list}->[$_ - 1] = $tmp[0];
             splice (@{$self->{list}}, $_, 1);
@@ -1230,10 +963,6 @@ sub cleanup {
             $_ ++;
         }
     }
-
-    # if (join("",@{$debug_optimize->{list}}) ne join("",@{$self->{list}})) {
-    #      print " [CLEANUP:", join(" ",@{$debug_optimize->{list}}), "\n";
-    # }
 
     return $self;
 }
@@ -1276,14 +1005,12 @@ sub real {
 
 sub as_string {
     my ($self) = shift;
-    if ($self->{too_complex}) {
-        return $too_complex;
-    }
+    return $too_complex  if $self->{too_complex};
     $self->cleanup;
-    # print " [s] ";
-    return null unless $#{$self->{list}} >= 0;
-    return join(separators(5), @{ $self->{list} } );
+    # return null          unless $#{$self->{list}} >= 0;
+    return join(separators(5), map { _simple_as_string($_) } @{$self->{list}} );
 }
+
 
 1;
 __END__
