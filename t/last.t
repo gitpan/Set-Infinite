@@ -12,6 +12,7 @@ use strict;
 use Set::Infinite qw($inf);
 $| = 1;
 
+my $neg_inf = -$inf;
 my $test = 0;
 my ($result, $errors);
 my @a;
@@ -55,7 +56,7 @@ test ("last, tail", '"@a"', '');
 
 # $Set::Infinite::TRACE = 1;
 # $Set::Infinite::PRETTY_PRINT = 1;
-$a = Set::Infinite->new(-$inf, 25)->quantize;
+$a = Set::Infinite->new($neg_inf, 25)->quantize;
 test ("quantize/complement", '$a->complement->last', "[26..$inf)");
 # $Set::Infinite::TRACE = 0;
 
@@ -67,7 +68,7 @@ test ("last, tail 1", '"$a[0]"', "[26..$inf)");
 test ("last, tail 2", '"$a[0]"', '');   # complement is empty between quantize() elements
 # $Set::Infinite::TRACE = 0;
 
-$a = Set::Infinite->new(-$inf,5)->quantize->complement->complement(10,11);
+$a = Set::Infinite->new($neg_inf,5)->quantize->complement->complement(10,11);
 
 # $a = Set::Infinite->new(5,$inf)->quantize; warn $a;
 # $a = $a->complement; warn $a;
@@ -190,9 +191,9 @@ test ("last, tail", '"@a"', '[35..36) Too complex');
 
 # $Set::Infinite::TRACE = 1;
 # $Set::Infinite::PRETTY_PRINT = 1;
-$a = Set::Infinite->new(-$inf,15)->quantize->complement(15);
+$a = Set::Infinite->new($neg_inf,15)->quantize->complement(15);
 @a = $a->last;
-test ("last, tail", '"@a"', "(-$inf..15) (15..16)");
+test ("last, tail", '"@a"', "($neg_inf..15) (15..16)");
 @a = defined $a[1] ? $a[1]->last : ();
 test ("last, tail", '"@a"', "(15..16)");
 

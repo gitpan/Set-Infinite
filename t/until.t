@@ -12,6 +12,7 @@ use strict;
 use Set::Infinite qw($inf);
 $| = 1;
 
+my $neg_inf = -$inf;
 my $test = 0;
 my ($result, $errors);
 my @a;
@@ -46,9 +47,9 @@ $a = Set::Infinite->new([10],[30]);
 test ("until after,after", 
     '$a->until( [20],[40] )', "[10..20),[30..40)");
 test ("until before,inside",
-    '$a->until( [0],[20] )', "(-$inf..0),[10..20),[30..$inf)");
+    '$a->until( [0],[20] )', "($neg_inf..0),[10..20),[30..$inf)");
 test ("until out of sync",
-    '$a->until( [-20],[0],[20],[40],[60] )', "(-$inf..0),[10..20),[30..40)");
+    '$a->until( [-20],[0],[20],[40],[60] )', "($neg_inf..0),[10..20),[30..40)");
 
 test ("until nothing",
     '$a->until()',
@@ -56,10 +57,10 @@ test ("until nothing",
 $a = Set::Infinite->new();
 test ("since nothing",
     '$a->until(10)',
-    "(-$inf..10)");
+    "($neg_inf..10)");
 test ("since nothing until nothing",
     '$a->until()',
-    "(-$inf..$inf)");
+    "($neg_inf..$inf)");
  
 # unbounded recurrences
 
@@ -67,7 +68,7 @@ test ("since nothing until nothing",
 # $Set::Infinite::PRETTY_PRINT = 1;
 
 # $a = ...0,20,40,60... forever
-$a = Set::Infinite->new( -$inf, $inf )
+$a = Set::Infinite->new( $neg_inf, $inf )
     ->quantize( quant => 20 )
     ->offset( mode => 'begin', value => [0,0] );
 # $b = ...10,30,50,70... forever

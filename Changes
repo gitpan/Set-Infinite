@@ -1,5 +1,9 @@
 Revision history for Perl extension Set::Infinite.
 
+0.52    2003-09-04
+    change tests to run under Perl 5.9.0
+    - infinity string contains spaces
+
 0.51    2003-09-02
     passes all tests under 5.00503.
     - changed ' $var=\@_ ' to ' $var=[@_] '

@@ -10,13 +10,14 @@ use strict;
 
 $| = 1;
 
-use Set::Infinite qw(inf $inf);
+use Set::Infinite qw($inf);
 
 my ($a, $a_quant, $b, $c, $d, $finite, $q, $r);
 
 
 my $test = 0;
 my ($result, $errors);
+my $neg_inf = -$inf;
 
 sub test {
 	my ($header, $sub, $expected) = @_;
@@ -39,11 +40,11 @@ sub test {
 
 
 print "1..41\n";
-    $a = Set::Infinite->new([-&inf,15]);
+    $a = Set::Infinite->new([$neg_inf,15]);
     $a_quant = $a->quantize(quant => 1);
     $finite = Set::Infinite->new([10,20]);
 
-    $b = Set::Infinite->new([15,&inf]);
+    $b = Set::Infinite->new([15,$inf]);
 
     # print "a = $a\n";
 
@@ -55,9 +56,9 @@ print "1..41\n";
 # 2 quantize has min/max
     $q = $a->quantize(quant => 1);
     # print " q $q ",$q->min," $q ",$q->max," ",$q->intersection($finite),"\n";
-    test ('min', '$q->min', "-$inf");
+    test ('min', '$q->min', "$neg_inf");
     test ('max', '$q->max', '16'  );
-    test ('span', '$q->span', "(-$inf..16)"  );
+    test ('span', '$q->span', "($neg_inf..16)"  );
     test ('size', '$q->size', $inf  );
 
     $q = $b->quantize(quant => 1);
@@ -68,7 +69,7 @@ print "1..41\n";
 	# print "r = ",$r,"\n";
     $r = $r->quantize(quant => 1);
     test ('max', '$r->max', '15'  );
-    test ('span', '$r->span', "(-$inf..15)"  );
+    test ('span', '$r->span', "($neg_inf..15)"  );
     test ('size', '$r->size', $inf  );
 
 # 10 offset
@@ -78,7 +79,7 @@ print "1..41\n";
 # $Set::Infinite::TRACE = 1;
 # $Set::Infinite::PRETTY_PRINT = 1;
     test ('max', '$q->max', '25'  );
-    test ('span', '$q->span', "(-$inf..25)"  );
+    test ('span', '$q->span', "($neg_inf..25)"  );
     test ('size', '$q->size', $inf  );
 # $Set::Infinite::TRACE = 0;
 # $Set::Infinite::PRETTY_PRINT = 0;
@@ -88,12 +89,12 @@ print "1..41\n";
     # print "r = ",$r->intersection(-1000,1000),"\n";
     # print "r tolerance = ",$r->tolerance,"\n";
     test ('max', '$r->max', '14'  );
-    test ('span', '$r->span', "(-$inf..14]"  );
+    test ('span', '$r->span', "($neg_inf..14]"  );
     test ('size', '$r->size', $inf  );
 
 # 16 max with union 
-    $q = Set::Infinite->new([-&inf,15])->quantize;
-    $r = Set::Infinite->new([-&inf,10])->quantize;
+    $q = Set::Infinite->new([$neg_inf,15])->quantize;
+    $r = Set::Infinite->new([$neg_inf,10])->quantize;
     test ('union-max', '$r->union($q)->max', '16'  );
 # max with intersection
     # TODO: test this after we implement last()
@@ -101,8 +102,8 @@ print "1..41\n";
 # min with union
 # $Set::Infinite::TRACE = 1;
 # $Set::Infinite::PRETTY_PRINT = 1;
-    $q = Set::Infinite->new([15,&inf])->quantize;
-    $r = Set::Infinite->new([10,&inf])->quantize;
+    $q = Set::Infinite->new([15,$inf])->quantize;
+    $r = Set::Infinite->new([10,$inf])->quantize;
 # $Set::Infinite::TRACE = 1;
 # $Set::Infinite::PRETTY_PRINT = 1;
     test ('union-min', '$r->union($q)->min', '10'  );
@@ -114,7 +115,7 @@ print "1..41\n";
 # 20 min/max of complement works
 # $Set::Infinite::TRACE = 1;
 # $Set::Infinite::PRETTY_PRINT = 1;
-    $r = Set::Infinite->new([-&inf,15])->complement(15)->integer->quantize(quant => 1);
+    $r = Set::Infinite->new([$neg_inf,15])->complement(15)->integer->quantize(quant => 1);
 	# print "r = ",$r,"\n";
     $r = $r->complement(15);  # complement doesn't backtrack yet
 	# print "r = ",$r,"\n";
@@ -136,13 +137,13 @@ print "1..41\n";
     test ('intersection', '$q->intersection(10,20)', '[10..16)');
 
 # 24 "date"
-	$a = Set::Infinite->new([-&inf,3800]);
+	$a = Set::Infinite->new([$neg_inf,3800]);
 	# print "s = ",$a->quantize(quant => 1, unit => 'hours')->intersection(1000,15000),"\n";
 	test ('date', '$a->quantize(quant => 1, unit => \'hours\')->intersection(1000,15000)', 
 		'[1000..7200)');
 
 # 25 almost-intersecting "date"
-	$a = Set::Infinite->new([-&inf,3800]);
+	$a = Set::Infinite->new([$neg_inf,3800]);
 	# print "t = ",$a->quantize(quant => 1, unit => 'hours')->intersection(3700,15000),"\n";
 	test ('', '$a->quantize(quant => 1, unit => \'hours\')->intersection(3700,15000)', 
 		'[3700..7200)');
@@ -165,11 +166,11 @@ print "1..41\n";
 		'[10..20]');
 
 # 30 intersection with both 'a' and 'b' complex
-        $a = Set::Infinite->new([-&inf,15]);
+        $a = Set::Infinite->new([$neg_inf,15]);
         $a_quant = $a->quantize(quant => 1);
-	$b = Set::Infinite->new([10,&inf])->quantize(quant => 1);
-	$c = Set::Infinite->new([20,&inf])->quantize(quant => 1);
-	$d = Set::Infinite->new([-&inf,12])->quantize(quant => 1);
+	$b = Set::Infinite->new([10,$inf])->quantize(quant => 1);
+	$c = Set::Infinite->new([20,$inf])->quantize(quant => 1);
+	$d = Set::Infinite->new([$neg_inf,12])->quantize(quant => 1);
 
 	# intersecting 
 	# print "x = ",$a_quant->intersection($b),"\n";
@@ -186,7 +187,7 @@ print "1..41\n";
 # $Set::Infinite::PRETTY_PRINT = 1;
 	# print "z = ",$a_quant->intersection($d),"\n";
 	test ('too-complex intersection', '$a_quant->intersection($d)', 
-		"(-$inf..13)" );
+		"($neg_inf..13)" );
 # $Set::Infinite::TRACE = 0;
 # $Set::Infinite::PRETTY_PRINT = 0;
 
@@ -210,7 +211,7 @@ print "1..41\n";
 		'[12..14),[16..18),20');
 
 	# intersecting, both complex
-	$a = Set::Infinite->new([-&inf,15]);
+	$a = Set::Infinite->new([$neg_inf,15]);
 	test ('', '$a->quantize(quant => 4)->offset( value => [1,-1] )->intersection($b)->intersection($finite)', 
 		'[10..11),[13..15)');
 

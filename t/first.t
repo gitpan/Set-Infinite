@@ -12,6 +12,7 @@ use strict;
 use Set::Infinite qw($inf);
 $| = 1;
 
+my $neg_inf = -$inf;
 my $test = 0;
 my ($result, $errors);
 my @a;
@@ -47,14 +48,14 @@ $a = Set::Infinite->new([15,18])->quantize;
 $span = $a->_quantize_span;
 test ("quantize-span", '"$span"', "[15..19)");
 
-$a = Set::Infinite->new([-$inf,10],[15,18])->quantize;
+$a = Set::Infinite->new([$neg_inf,10],[15,18])->quantize;
 $span = $a->_quantize_span;
-test ("quantize-span", '"$span"', "(-$inf..11),[15..19)");
+test ("quantize-span", '"$span"', "($neg_inf..11),[15..19)");
 
-$a = Set::Infinite->new([-$inf,10],[15,18])->quantize( quant => 2 );
+$a = Set::Infinite->new([$neg_inf,10],[15,18])->quantize( quant => 2 );
 $c = $a->union(30,34)->quantize;
 $span = $c->_quantize_span;
-test ("quantize-span", '"$span"', "(-$inf..12),[14..20),[30..35)");
+test ("quantize-span", '"$span"', "($neg_inf..12),[14..20),[30..35)");
 
 $a = Set::Infinite->new(30,34)->quantize->span;
 test ("span", '"$a"', "[30..35)");
@@ -79,13 +80,13 @@ test ("first, tail", '"@a"', '');
 # $Set::Infinite::TRACE = 1;
 # $Set::Infinite::PRETTY_PRINT = 1;
 $a = Set::Infinite->new(25,$inf)->quantize;
-test ("quantize/complement", '$a->complement->first', "(-$inf..25)");
+test ("quantize/complement", '$a->complement->first', "($neg_inf..25)");
 # $Set::Infinite::TRACE = 0;
 
 # $Set::Infinite::TRACE = 1;
 # $Set::Infinite::PRETTY_PRINT = 1;
 @a = $a->complement->first;
-test ("first, tail 1", '"$a[0]"', "(-$inf..25)");
+test ("first, tail 1", '"$a[0]"', "($neg_inf..25)");
 @a = defined $a[1] ? $a[1]->first : ();
 test ("first, tail 2", '"$a[0]"', '');   # complement is empty between quantize() elements
 # $Set::Infinite::TRACE = 0;
@@ -100,9 +101,9 @@ $a = Set::Infinite->new(25,$inf)->quantize->complement->complement(10,11);
 @a = $a[0]->first;
 # warn "2-first,tail= @a";
 
-test ("quantize/complement", '$a->first', "(-$inf..10)");
+test ("quantize/complement", '$a->first', "($neg_inf..10)");
 @a = $a->first;
-test ("first, tail", '"$a[0]"', "(-$inf..10)");
+test ("first, tail", '"$a[0]"', "($neg_inf..10)");
 # $Set::Infinite::TRACE = 1;
 @a = defined $a[1] ? $a[1]->first : ();
 # $Set::Infinite::TRACE = 0;
@@ -112,7 +113,7 @@ test ("first, tail", '"$a[0]"', '');   # complement is empty between quantize() 
 
 
 # TODO: last
-# $a = Set::Infinite->new(-$inf,25)->quantize;
+# $a = Set::Infinite->new($neg_inf,25)->quantize;
 # test ("quantize/complement", '$a->complement->last', "[26..$inf)");
 
 
@@ -212,9 +213,9 @@ test ("first, tail", '"@a"', '[35..36) Too complex');
 
 # $Set::Infinite::TRACE = 1;
 # $Set::Infinite::PRETTY_PRINT = 1;
-$a = Set::Infinite->new(-$inf,15)->quantize->complement(15);
+$a = Set::Infinite->new($neg_inf,15)->quantize->complement(15);
 @a = $a->first;
-test ("first, tail", '"@a"', "(-$inf..15) (15..16)");
+test ("first, tail", '"@a"', "($neg_inf..15) (15..16)");
 @a = defined $a[1] ? $a[1]->first : ();
 test ("first, tail", '"@a"', "(15..16)");
 

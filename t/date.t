@@ -17,6 +17,7 @@ use Set::Infinite qw($inf);
 # Just to help the warnings:
 use Set::Infinite::Date;
 
+my $neg_inf = -$inf;
 my ($timeA1, $timeA2);
 my ($timeB1, $timeB2);
 my ($time2, $time3, $time4, $time5, @a);
@@ -73,7 +74,7 @@ test('','$a->union(\'16:00:00\', \'17:00:00\')','[10:00:00..13:00:00],[16:00:00.
 
 # print " $a complement is ", $a->complement, "\n";
 
-test('','$a->complement', "(-$inf..10:00:00),(13:00:00..$inf)");
+test('','$a->complement', "($neg_inf..10:00:00),(13:00:00..$inf)");
 
 #print " $a complement (11:00:00..12:00:00) is ", $a->complement("11:00","12:00"), "\n";
 

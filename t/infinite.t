@@ -7,8 +7,9 @@
 # This is work in progress
 #
 
-use Set::Infinite qw(inf $inf);
+use Set::Infinite qw($inf);
 
+my $neg_inf = -$inf;
 my $errors = 0;
 my $test = 0;
 
@@ -62,23 +63,23 @@ $a = Set::Infinite->new(16, 17);
 test ("$a union (10..13)  ", '$a->union(10, 13)', "[10..13],[16..17]"); # 5
 
 # print "Operations on open sets\n";
-$a = Set::Infinite->new(1,inf);
+$a = Set::Infinite->new(1,$inf);
 test ("set : ", 	'$a', "[1..$inf)"); # 6
 $a = $a->complement;
-test ("[-inf,1) : ", 	'$a', "(-$inf..1)"); # 7
+test ("[-inf,1) : ", 	'$a', "($neg_inf..1)"); # 7
 $b = $a;
-test ("copy : ",	'$b',"(-$inf..1)"); # 8
+test ("copy : ",	'$b',"($neg_inf..1)"); # 8
 test ("complement : ",'$a->complement',"[1..$inf)");
-test ("union [-1..0] : ", '$a->union(-1,0)', "(-$inf..1)"); # 10
-test ("union [0..1]  : ", '$a->union(0,1)', "(-$inf..1]"); # 11
-test ("union [1..2]  : ", '$a->union(1,2)', "(-$inf..2]"); # 12
-test ("union [2..3]  : ", '$a->union(2,3)', "(-$inf..1),[2..3]"); # 13
-$b = Set::Infinite->new(- inf,1)->complement;
+test ("union [-1..0] : ", '$a->union(-1,0)', "($neg_inf..1)"); # 10
+test ("union [0..1]  : ", '$a->union(0,1)', "($neg_inf..1]"); # 11
+test ("union [1..2]  : ", '$a->union(1,2)', "($neg_inf..2]"); # 12
+test ("union [2..3]  : ", '$a->union(2,3)', "($neg_inf..1),[2..3]"); # 13
+$b = Set::Infinite->new($neg_inf,1)->complement;
 #test ("set : ", '$a, "");
 $c = $a->union($b);
-test ("union $b : ", 	'$c', "(-$inf..1),(1..$inf)"); # 14
+test ("union $b : ", 	'$c', "($neg_inf..1),(1..$inf)"); # 14
 test ("  complement : ", 	'$c->complement',"1"); # 15
-test ("union $c [1..inf) ", 	'$c->union(1,inf)', "(-$inf..$inf)"); # 16
+test ("union $c [1..inf) ", 	'$c->union(1,inf)', "($neg_inf..$inf)"); # 16
 test ("union $b [1..inf) ", 	'$b->union(1,inf)', "[1..$inf)"); # 17
 
 # print "Testing 'null' and (0..0)\n";
@@ -150,7 +151,7 @@ $a = Set::Infinite->new(1,2);
 $a = $a->union(3,4);
 test (" (1,2) (3,4) : ",'$a',"[1..2],[3..4]");
 # print "Parameter passing:\n";
-test (" complement  : ",'$a->complement',"(-$inf..1),(2..3),(4..$inf)");
+test (" complement  : ",'$a->complement',"($neg_inf..1),(2..3),(4..$inf)");
 test (" complement   (1.5,2.5) : ",'$a->complement(1.5,2.5)',"[1..1.5),[3..4]");
 test (" union        (1.5,2.5) : ",'$a->union(1.5,2.5)',"[1..2.5],[3..4]");
 test (" intersection (1.5,2.5) : ",'$a->intersection(1.5,2.5)',"[1.5..2]");
