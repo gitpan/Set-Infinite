@@ -1,5 +1,7 @@
 Set::Infinite TODO 
 
+    - tests for iterate min/max/first
+
     - refactor backtracking, min, max, first, offset, quantize
 
     - tests for min/max of iterate()

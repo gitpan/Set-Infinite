@@ -22,7 +22,7 @@ use vars qw( $TRACE $DEBUG_BT $PRETTY_PRINT $inf $minus_inf $too_complex $backtr
 @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(inf new $inf trace_open trace_close) );
 @EXPORT = qw();
 
-$VERSION = '0.43';
+$VERSION = '0.44';
 
 use Set::Infinite::Arithmetic;
 
@@ -1329,7 +1329,17 @@ sub iterate {
     my $a = shift;
     if ($a->{too_complex}) {
         $a->trace(title=>"iterate:backtrack");
-        return $a->_function( 'iterate', @_ );
+        my $return = $a->_function( 'iterate', @_ );
+
+        # first() helper
+        my @first = $a->first;
+        # warn "iterate: FIRST of $a was @first";
+        $first[0] = $first[0]->iterate( @_ ) if ref($first[0]);
+        $first[1] = $first[1]->_function( 'iterate', @_ ) if ref($first[1]);
+        # warn "iterate: FIRST got @first";
+        $return->{first} = \@first;
+
+        return $return;
     }
     $a->trace(title=>"iterate");
     return $a->SUPER::iterate( @_ );

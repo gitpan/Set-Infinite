@@ -406,7 +406,7 @@ sub iterate {
     my ($tmp, $ia);
     my $subroutine = shift;
     foreach $ia (0 .. $#{$a->{list}}) {
-        $tmp = &{$subroutine} ( $a->new($a->{list}->[$ia]) );
+        $tmp = &{$subroutine} ( $a->new($a->{list}->[$ia]), @_ );
         # warn "iterate add ". $tmp->min->ymd;
         $iterate = $iterate->union($tmp) if defined $tmp; 
     }

@@ -1,5 +1,8 @@
 Revision history for Perl extension Set::Infinite.
 
+0.43_01
+    'iterate' generates 'first' code
+
 0.43
     CPAN release
     implemented max() of 'iterate'
