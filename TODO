@@ -1,5 +1,7 @@
 Set::Infinite TODO 
 
+    - remove all 'our'
+
     - test until() with first()/min()/max()
 
     - backtrack code to 'offset' is a hack - fix it.

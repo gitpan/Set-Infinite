@@ -1,5 +1,15 @@
 Revision history for Perl extension Set::Infinite.
 
+0.42_03 / 0.42_02
+    (idem)
+
+0.42_01
+    more methods inherited from Set::Infinite::Basic
+
+0.42_00
+    Set::Infinite.pm refactored into Set::Infinite::Basic
+    Set::Infinite::_Simple removed.
+
 0.41_03
     can intersects() to an object (it checks the reference type)
 

@@ -9,7 +9,7 @@ make_readme
 
 lib/Set/Infinite.pm
 lib/Set/Infinite/Date.pm
-lib/Set/Infinite/_Simple.pm
+lib/Set/Infinite/Basic.pm
 lib/Set/Infinite/Arithmetic.pm
 
 _todo/bigfloat.t

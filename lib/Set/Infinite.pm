@@ -9,44 +9,46 @@ use strict;
 use warnings;
 
 require Exporter;
-# use AutoLoader qw(AUTOLOAD);
+use Set::Infinite::Basic;
 use Carp;
 use Data::Dumper; 
 
-our @ISA = qw(Exporter);
+use vars qw( @ISA %EXPORT_TAGS @EXPORT_OK @EXPORT $VERSION );
+use vars qw( $TRACE $DEBUG_BT $PRETTY_PRINT $inf $minus_inf $too_complex $backtrack_depth $max_backtrack_depth $max_intersection_depth );
+@ISA = qw( Exporter Set::Infinite::Basic );
 
 # This allows declaration    use Set::Infinite ':all';
-our %EXPORT_TAGS = ( 'all' => [ qw(inf new $inf) ] );
-our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(inf new $inf trace_open trace_close) );
-our @EXPORT = qw();
+%EXPORT_TAGS = ( 'all' => [ qw(inf new $inf) ] );
+@EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(inf new $inf trace_open trace_close) );
+@EXPORT = qw();
 
-our $VERSION = '0.41_03';
+$VERSION = '0.42_03';
 
-our $TRACE = 0;      # basic trace method execution
-our $DEBUG_BT = 0;   # backtrack tracer
-our $PRETTY_PRINT = 0;  # 0 = print 'Too Complex'; 1 = describe functions 
-
-# Preloaded methods go here.
-
-use Set::Infinite::_Simple;
 use Set::Infinite::Arithmetic;
 
-# global defaults for object private vars
-my  $Type = undef;
-our $tolerance = 0;
-our $fixtype = 1;
-
 # Infinity vars
-our $inf            = 10**10**10;
-our $minus_inf      = -$inf;
+$inf            = 100**100**100;
+$minus_inf      = -$inf;
 
+# obsolete!
 sub inf ()            { $inf }
 sub minus_inf ()      { $minus_inf }
 
-our $too_complex =    "Too complex";
-our $backtrack_depth = 0;
-our $max_backtrack_depth = 10;    # backtrack()
-our $max_intersection_depth = 5;  # first()
+# internal "trace" routines for debugging
+use vars qw( $trace_level %level_title );
+
+BEGIN {
+    $TRACE = 0;      # basic trace method execution
+    $DEBUG_BT = 0;   # backtrack tracer
+    $PRETTY_PRINT = 0;  # 0 = print 'Too Complex'; 1 = describe functions
+
+    $too_complex =    "Too complex";
+    $backtrack_depth = 0;
+    $max_backtrack_depth = 10;    # backtrack()
+    $max_intersection_depth = 5;  # first()
+
+    $trace_level = 0;   # indentation level
+}
 
 =head1 NAME
 
@@ -80,73 +82,26 @@ use overload
     qw("" as_string),
 ;
 
-sub type {
-    my $self = shift;
-    unless (@_) {
-        return ref($self) ? $self->{type} : $Type;
-    }
-    my $tmp_type = shift;
-    eval "use " . $tmp_type;
-    carp "Warning: can't start $tmp_type : $@" if $@;
-    if (ref($self))  {
-        $self->{type} = $tmp_type;
-        return $self;
-    }
-    else {
-        $Type = $tmp_type;
-        return $Type;
-    }
-}
-
-sub list {
-    my $self = shift;
-    # my $class = ref($self);
-    carp "Can't list an unbounded set" if $self->{too_complex};
-    my @b = ();
-    foreach (@{$self->{list}}) {
-        # next unless defined $_;
-        push @b, $self->new($_);
-    }
-    return @b;
-}
-
-sub fixtype {
-    my $self = shift;
-    $self = $self->copy;
-    $self->{fixtype} = 1;
-    return $self if $self->{too_complex};
-    my $type = $self->type;
-    foreach (@{$self->{list}}) {
-        # next unless defined $_;
-        $_->{a} = $type->new($_->{a}) unless ref($_->{a});
-        $_->{b} = $type->new($_->{b}) unless ref($_->{b});
-    }
-    return $self;
-}
-
-sub numeric {
-    my $self = shift;
-    return $self unless $self->{fixtype};
-    $self = $self->copy;
-    $self->{fixtype} = 0;
-    return $self if $self->{too_complex};
-    foreach (@{$self->{list}}) {
-        # next unless defined $_;
-        $_->{a} = 0 + $_->{a};
-        $_->{b} = 0 + $_->{b};
-    }
-    return $self;
-}
-
+# These methods are inherited from Set::Infinite::Basic
+# type 
+# list 
+# fixtype 
+# numeric 
+# min
+# max
+# integer
+# real
+# new
+# span
+# copy
+ 
+# obsolete!
 sub compact {
     return $_[0];
 }
 
-
 # internal "trace" routines for debugging
 
-our $trace_level = 0;
-our %level_title;
 sub trace { # title=>'aaa'
     return $_[0] unless $TRACE;
     my ($self, %parm) = @_;
@@ -200,12 +155,6 @@ sub trace_close {
 # creates a 'function' object that can be solved by backtrack()
 sub _function {
     my ($self, $method) = (shift, shift);
-
-    # unless ( $self->{too_complex} ) {
-    #    warn( "eval $method $self" );
-    #    return $self->$method(@_);
-    # }
-
     my $b = $self->new();
     $b->{too_complex} = 1;
     $b->{parent} = $self;   
@@ -213,15 +162,14 @@ sub _function {
     $b->{param}  = \@_;
     return $b;
 }
+
 # same as _function, but with 2 arguments
 sub _function2 {
     my ($self, $method, $arg) = (shift, shift, shift);
-
     unless ( $self->{too_complex} || $arg->{too_complex} ) {
         # warn( "eval $method $self $arg" );
         return $self->$method($arg, @_);
     }
-
     my $b = $self->new();
     $b->{too_complex} = 1;
     $b->{parent} = [ $self, $arg ];
@@ -352,7 +300,7 @@ sub quantize {
                         open_begin => 0, open_end => 1 };
         }
         else {
-                $tmp = Set::Infinite::_simple_new($this,$next, $rule{type} );
+                $tmp = Set::Infinite::Basic::_simple_new($this,$next, $rule{type} );
                 $tmp->{open_end} = 1;
                 # TODO: 'mode' is 'DATE' specific
                 if (exists $rule{mode}) {
@@ -416,10 +364,7 @@ sub select {
     #    # warn "select is complex but defineable: min=".$self->min_a ." count=$count freq=$freq";
     # }
     if ($self->{too_complex}) {
-        $res->{too_complex} = 1;
-        $res->{parent} = $self;  # ->copy;
-        $res->{method} = 'select';
-        $res->{param}  = \@_;
+        $res = $self->_function( 'select', @_ );
 
         # TODO: this is an inefficient and wrong way to solve 
         #    the min/max issue!
@@ -1014,18 +959,13 @@ sub offset {
     $self->trace_open(title=>"offset");
 
     if ($self->{too_complex}) {
-        my $b1 = $self->new();
-        $b1->{too_complex} = 1;
-        $b1->{parent} = $self;  # ->copy;
-        $b1->{method} = 'offset';
-        $b1->{param}  = \@_;
-
+        my $b1 = $self->_function( 'offset', @_ );
         # first() code
         ## $self->trace( title => "*** offset doesn't have a first! ***" );
         my ($first, $tail) = $self->first;
         # TODO: check for invalid $first, $tail
         $first = $first->offset( @_ );
-        $tail  =  $tail->_function( 'offset', @_ );
+        $tail  = $tail->_function( 'offset', @_ );
         # $self->trace( title => "*** offset got a first: @{$self->{first}} ***" );
         $b1->{first} = [$first, $tail];
 
@@ -1119,30 +1059,19 @@ sub offset {
                         open_begin => $open_begin , open_end => $open_end };
         }  # parts
     }  # self
-
     @a = sort { $a->{a} <=> $b->{a} } @a;
-
     $b1->{list} = \@a;        # change data
     $b1->{cant_cleanup} = 1; 
-
-    # print " N = $#a \n";
-
     $self->trace_close( arg => $b1 );
     return $b1;
 }
 
 # note: is_null might return a wrong value if is_too_complex is set.
 # this is due to the implementation of min()
-
 sub is_null {
     my $self = shift;
-
     return 0 if $self->{too_complex};
-    return 0 if @{$self->{list}};
-    return 1;
-
-    # my @min = $self->min_a;
-    # defined $min[0] ? undef : 1;
+    return $self->SUPER::is_null;
 }
 
 =head2 is_too_complex
@@ -1179,13 +1108,6 @@ sub _quantize_span {
                 my $arg1 = $self->{parent}[1]->_quantize_span(%param);
                 $res = $arg0->intersection( $arg1 );
             }
-            # elsif ( $self->{method} eq 'until' ) {
-            #    my $arg0 = $self->{parent}[0]->_quantize_span(%param);
-            #    my $arg1 = $self->{parent}[1]->_quantize_span(%param);
-            #    my $min = $arg0->min < $arg1->min ? $arg0->min : -$inf;
-            #    my $max = $arg0->max < $arg1->max ? $inf : $arg0->max;
-            #    $res = $arg0->new( $min, $max );
-            # }
 
             # TODO: other methods
             else {
@@ -1210,7 +1132,6 @@ sub _quantize_span {
         }
     }
     else {
-        # TODO! - use compact()
         $res = $self->iterate (   sub { $_[0] }   );
     }
     $self->trace_close( arg => $res );
@@ -1221,18 +1142,14 @@ sub backtrack {
     #
     #  NOTICE: set/reset $DEBUG_BT to enable debugging
     #
-
     my ($self, $method, $arg) = @_;
     unless ( $self->{too_complex} ) {
         $self->trace_open( title => 'backtrack '.$method );
-        # trace_open;
         my $tmp = $self->$method ($arg);
         $self->trace_close( arg => $tmp );
         return $tmp;
     }
-
     $self->trace_open( title => 'backtrack '.$self->{method} );
-    #trace_open;
 
     $backtrack_depth++;
     if ($backtrack_depth > $max_backtrack_depth) {
@@ -1320,10 +1237,7 @@ sub backtrack {
             }
             # offset - apply offset with negative values
             elsif ($my_method eq 'offset') {
-
-                # -----------------------
                 # (TODO) ????
-
                 my %tmp = @param;
 
                 #    unless (ref($tmp{value}) eq 'ARRAY') {
@@ -1343,15 +1257,10 @@ sub backtrack {
             }
             # select - check "by" behaviour
             else {    # if ($my_method eq 'select') {
-
-                # -----------------------
                 # (TODO) ????
                 # see: 'BIG, negative select' in backtrack.t
 
                 $backtrack_arg2 = $arg;
-
-                # -----------------------
-
             }
 
     print " [bt$backtrack_depth-3-10:AFTER:$backtrack_arg2;" . $my_method . ";",join(";",@param),"] \n" if $DEBUG_BT;
@@ -1380,122 +1289,55 @@ sub backtrack {
 sub intersects {
     my $a = shift;
     my ($b, $ia, $n);
-    # print " [I:", ref ($_[0]), "] ";
     if (ref ($_[0]) eq 'HASH') {
         # optimized for "quantize"
-        # $a->trace(title=>"intersects:simple ");
-        # print " n:", $#{$a->{list}}, "=$a ";
         $b = shift;
-        
         # TODO: make a test for this:
         return $a->intersects($a->new($b)) if ($a->{too_complex});
-
-        # return 0 unless defined $b;
-        # $a->trace(title=>"intersects:simple " . join(':', %$b) );
         $n = $#{$a->{list}};
         if ($n > 4) {
             foreach $ia ($n, $n-1, 0 .. $n - 2) {
-                return 1 if _simple_intersects($a->{list}->[$ia], $b);
+                return 1 if Set::Infinite::Basic::_simple_intersects($a->{list}->[$ia], $b);
             }
             return 0;
         }
         foreach $ia (0 .. $n) {
-            return 1 if _simple_intersects($a->{list}->[$ia], $b);
+            return 1 if Set::Infinite::Basic::_simple_intersects($a->{list}->[$ia], $b);
         }
-        # print "don't\n";
         return 0;    
     } 
-
     if (ref ($_[0]) eq ref($a) ) { 
         $b = shift;
     } 
     else {
         $b = $a->new(@_);  
     }
-
     $a->trace(title=>"intersects");
-    # print "-";
-
     if ($a->{too_complex}) {
-        print " [inter:complex:a] \n" if $DEBUG_BT;
         $a = $a->backtrack('intersection', $b);
-        # print " [int:WAS:b:", $b, "--",ref($b),"] \n";
     }  # don't put 'else' here
     if ($b->{too_complex}) {
-        print " [inter:complex:b] \n" if $DEBUG_BT;
         $b = $b->backtrack('intersection', $a);
     }
-
     if (($a->{too_complex}) or ($b->{too_complex})) {
         return undef;   # we don't know the answer!
     }
-
-    # no difference in time
-    # ($a, $b) = ($b, $a) if $#{$a->{list}} > $#{$b->{list}};
-
-    my $ib;
-    my ($na, $nb) = (0,0);
-    # my $intersection = $class->new();
-
-    $n = $#{$a->{list}};
-    if ($n > 4) {
-        foreach $ib ($nb .. $#{$b->{list}}) {
-            foreach $ia ($n, $n-1, 0 .. $n - 2) {
-                return 1 if _simple_intersects($a->{list}->[$ia], $b->{list}->[$ib]);
-            }
-        }
-        return 0;
-    }
-
-    foreach $ib ($nb .. $#{$b->{list}}) {
-        foreach $ia ($na .. $n) {
-            return 1 if _simple_intersects($a->{list}->[$ia], $b->{list}->[$ib]);
-        }
-    }
-    0;    
+    return $a->SUPER::intersects( $b );
 }
 
 sub iterate {
-
-    # TODO: options 'no-sort', 'no-merge', 'keep-null' ...
-
     my $a = shift;
-    # my $class = ref($a);
-    my $iterate = $a->new();
-
-    # print " [iterate ",$a,"--",ref($a)," from ", caller, "] \n";
-
     if ($a->{too_complex}) {
         $a->trace(title=>"iterate:backtrack");
-        # print " [iterate:backtrack] \n" if $DEBUG_BT;
-        $iterate->{too_complex} = 1;
-        $iterate->{parent} = $a;  # ->copy;
-        $iterate->{method} = 'iterate';
-        $iterate->{param} = \@_;
-        return $iterate;
+        return $a->_function( 'iterate', @_ );
     }
-
     $a->trace(title=>"iterate");
-
-    my ($tmp, $ia);
-    my $subroutine = shift;
-    foreach $ia (0 .. $#{$a->{list}}) {
-        # next unless defined $a->{list}->[$ia];
-        # print " [iterate:$a->{list}->[$ia] -- $subroutine ]\n";
-        $tmp = &{$subroutine} ( $a->new($a->{list}->[$ia]) );
-        # print " [iterate:result:$tmp]\n";
-        $iterate = $iterate->union($tmp) if defined $tmp; 
-    }
-    return $iterate;    
+    return $a->SUPER::iterate( @_ );
 }
 
 sub intersection {
-
-    # return undef unless defined $_[1];
-
     my $a1 = shift;
     my $b1;
-    # $a1->trace(title=>"intersection", arg => $b1);
     if (ref ($_[0]) eq ref($a1) ) {
         $b1 = shift;
     } 
@@ -1503,139 +1345,30 @@ sub intersection {
         $b1 = $a1->new(@_);  
     }
     $a1->trace_open(title=>"intersection", arg => $b1);
-    # my $tmp;
-    # print " [intersect ",$a,"--",ref($a)," with ", $b, "--",ref($b)," ", caller, "] \n";
-
-    # TODO: remove this? too specific
-    # if ( $#{ $a1->{list} } == 0 ) {
-    #    $a1->trace( title => "intersection: special case 'backtrack'" );
-    #    if ( $a1->span->contains($b1->span) ) {
-    #        # warn " --- no change";
-    #        $a1->trace_close( arg => $b1 );
-    #        return $b1;
-    #    }
-    # }
-
     if (($a1->{too_complex}) or ($b1->{too_complex})) {
         my $arg0 = $a1->_quantize_span;
         my $arg1 = $b1->_quantize_span;
-        # $a1->trace( title => "intersection: span $arg0 with $arg1");
         unless (($arg0->{too_complex}) or ($arg1->{too_complex})) {
             my $res = $arg0->_quantize_span->intersection( $arg1->_quantize_span );
             $a1->trace_close( arg => $res );
             return $res;
         }
     }
-
     if ($a1->{too_complex}) {
-        print " [inter:complex:a] \n" if $DEBUG_BT;
         $a1 = $a1->backtrack('intersection', $b1);
-        # print " [int:WAS:b:", $b1, "--",ref($b1),"] \n";
     }  # don't put 'else' here
     if ($b1->{too_complex}) {
-        print " [inter:complex:b] \n" if $DEBUG_BT;
         $b1 = $b1->backtrack('intersection', $a1);
     }
-
     if (($a1->{too_complex}) or ($b1->{too_complex})) {
-        print " [inter:backtrack] \n" if $DEBUG_BT;
-        my $intersection = $a1->new();
-        $intersection->{too_complex} = 1;
-        $intersection->{parent} = [$a1,$b1]; # [$a1->copy, $b1->copy];
-        $intersection->{method} = 'intersection';
-        $a1->trace_close( arg => $intersection );
-        return $intersection;
+        $a1->trace_close( );
+        return $a1->_function2( 'intersection', $b1 );
     }
-
-    # print " [intersect \n    ",$a,"--",ref($a)," with \n    ", $b, "--",ref($b)," \n    ", caller, "] \n";
-
-    my ($ia, $ib);
-    my ($ma, $mb) = ($#{$a1->{list}}, $#{$b1->{list}});
-    my $intersection = $a1->new();
-    # for-loop optimization (makes little difference)
-    if ($ma < $mb) { 
-        ($ma, $mb) = ($mb, $ma);
-        ($a1, $b1) = ($b1, $a1);
-    }
-    my ($tmp1, $tmp2, $tmp1a, $tmp2a, $tmp1b, $tmp2b, $i_beg, $i_end, $open_beg, $open_end, $cmp1);
-    my $a0 = 0;
-    my @a;
-
-    B: foreach $ib (0 .. $mb) {
-        $tmp2 = $b1->{list}[$ib];
-        $tmp2a = $tmp2->{a};
-        $tmp2b = $tmp2->{b};
-         A: foreach $ia ($a0 .. $ma) {
-            $tmp1 = $a1->{list}[$ia];
-            $tmp1b = $tmp1->{b};
-
-            if ($tmp1b < $tmp2a) {
-                $a0++;
-                next A;
-            }
-
-            $tmp1a = $tmp1->{a};
-            if ($tmp1a > $tmp2b) {
-                next B;
-            }
-
-            if ($tmp1a < $tmp2a) {
-                $tmp1a        = $tmp2a;
-                $open_beg     = $tmp2->{open_begin};
-            }
-            elsif ($tmp1a == $tmp2a) {
-                $open_beg     = ($tmp1->{open_begin} or $tmp2->{open_begin});
-            }
-            else {
-                $open_beg     = $tmp1->{open_begin};
-            }
-
-            if ($tmp1b > $tmp2b) {
-                $tmp1b        = $tmp2b;
-                $open_end     = $tmp2->{open_end};
-            }
-            elsif ($tmp1b == $tmp2b) {
-                $open_end     = ($tmp1->{open_end} or $tmp2->{open_end});
-            }
-            else {
-                $open_end    = $tmp1->{open_end};
-            }
-            # print " [ simple: fastnew($i_beg, $i_end, $open_beg, $open_end ) ]\n";
-            # unless (( $tmp1a > $tmp1b ) or 
-            #         ( ($tmp1a == $tmp1b) and ($open_beg or $open_end) )) {
-            if ( ( $tmp1a <= $tmp1b ) and
-                 ( ($tmp1a != $tmp1b) or 
-                   (!$open_beg and !$open_end) or
-                   ($tmp1a == $inf) or
-                   ($tmp1a == -$inf)
-                 )
-               ) {
-                push @a, 
-                    { a => $tmp1a, b => $tmp1b, 
-                      open_begin => $open_beg, open_end => $open_end } ;
-                # $intersection->trace( title => "add ". join(" ", %{$a[-1]} ));
-            }
-            # elsif {
-            # } 
-        }
-    }
-    $intersection->{list} = \@a;
-    # print " [intersect GIVES\n    ",$intersection,"\n\n";
-
-    # NOTE: trace arg removed because it would cause a "cleanup"
-    # $a1->trace_close(); # ( arg => $intersection );
-    $a1->trace_close( arg => $intersection->copy->no_cleanup );
-
-    return $intersection;    
+    return $a1->SUPER::intersection( $b1 );
 }
-
-# TODO: make complement() work with backtracking
 
 sub complement {
     my $self = shift;
-    # my $class = ref($self);
-    # $self->trace(title=>"complement");
-    # carp "Can't complement an unbounded set" if $self->{too_complex};
     # do we have a parameter?
     if (@_) {
         if (ref ($_[0]) eq ref($self) ) {
@@ -1645,48 +1378,17 @@ sub complement {
             $a = $self->new(@_);  
         }
         $self->trace_open(title=>"complement", arg => $a);
-        #trace_open;
         $a = $a->complement;
-        # print " [CPL:intersect ",$self," with ", $a, "] ";
         my $tmp =$self->intersection($a);
         $self->trace_close( arg => $tmp );
         return $tmp;
     }
-
     $self->trace_open(title=>"complement");
-
     if ($self->{too_complex}) {
-        # TODO: check set "span" when backtracking
-        my $b1 = $self->new();
-        $b1->{too_complex} = 1;
-        $b1->{parent} = $self;  # ->copy;
-        $b1->{method} = 'complement';
-        $b1->{param}  = \@_;
-        $self->trace_close( arg => $b1 );
-        return $b1;
+        $self->trace_close( );
+        return $self->_function( 'complement', @_ );
     }
-
-    my ($ia);
-    my $tmp;
-    # print " [CPL:",$self,"] ";
-
-    if (($#{$self->{list}} < 0) or (not defined ($self->{list}))) {
-        $self->trace_close( arg => $self->new(minus_inf, inf) ) if $TRACE;
-        return $self->new(minus_inf, inf);
-    }
-
-    my $complement = $self->new();
-    @{$complement->{list}} = _simple_complement($self->{list}->[0]); 
-
-    $tmp = $self->new();
-    foreach $ia (1 .. $#{$self->{list}}) {
-        @{$tmp->{list}} = _simple_complement($self->{list}->[$ia]); 
-        $complement = $complement->intersection($tmp); # if $tmp;
-    }
-    # print " [CPL:RES:",$complement,"] ";
-
-    $self->trace_close( arg => $complement );
-    return $complement;    
+    return $self->SUPER::complement;
 }
 
 =head2 until
@@ -1706,8 +1408,6 @@ Note: this function is still experimental.
 sub until {
     my $a1 = shift;
     my $b1;
-    # print " [until] \n";
-    # print " [until: new b] \n";
     if (ref ($_[0]) eq ref($a1) ) {
         $b1 = shift;
     } 
@@ -1715,16 +1415,9 @@ sub until {
         $b1 = $a1->new(@_);  
     }
     $a1->trace_open(title=>"until", arg => $b1);
-
     # warn "until: $a1 n=". $#{ $a1->{list} } ." $b1 n=". $#{ $b1->{list} } ;
-
     if (($a1->{too_complex}) or ($b1->{too_complex})) {
-        print " [until:backtrack] \n" if $DEBUG_BT;
-        my $u = $a1->new();
-        $u->{too_complex} = 1;
-        $u->{parent} = [$a1,$b1]; 
-        $u->{method} = 'until';
-
+        my $u = $a1->_function2( 'until', $b1 );
         # first() code
         $a1->trace( title=>"computing first()" );
         my @first1 = $a1->first;
@@ -1745,195 +1438,27 @@ sub until {
         $a1->trace_close( arg => $u );
         return $u;
     }
-
-    my @b1_min = $b1->min_a;
-    my @a1_max = $a1->max_a;
-
-    unless (defined $b1_min[0]) {
-        # $#{$b1->{list}} < 0;
-        $a1->trace_close( arg => $a1->until($inf) );
-        return $a1->until($inf);
-    }
-    unless (defined $a1_max[0]) {
-        # $#{$a1->{list}} < 0;
-        $a1->trace_close( arg => $a1->new(-$inf)->until($b1) );
-        return $a1->new(-$inf)->until($b1);
-    }
-
-    my ($ia, $ib, $begin, $end);
-    $ia = 0;
-    $ib = 0;
-
-    # print " [ ",$a1->max," <=> ",$b1->max," ] \n";
-    my $u = $a1->new;   
-    my $last = -$inf;
-    while ( ($ia <= $#{$a1->{list}}) && ($ib <= $#{$b1->{list}})) {
-        $begin = $a1->{list}[$ia]{a};
-        $end   = $b1->{list}[$ib]{b};
-        if ( $end < $begin ) {
-            push @{$u->{list}}, {
-                a => $last ,
-                b => $end ,
-                open_begin => 0 ,
-                open_end => 1 };
-            $ib++;
-            $last = $end;
-            next;
-        }
-        push @{$u->{list}}, { 
-            a => $begin , 
-            b => $end ,
-            open_begin => 0 , 
-            open_end => 1 };
-        $ib++;
-        $ia++;
-        $last = $end;
-    }
-    if ($ia <= $#{$a1->{list}}) {
-        push @{$u->{list}}, {
-            a => $a1->{list}[$ia]{a} ,
-            b => $inf ,
-            open_begin => 0 ,
-            open_end => 1 };
-    }
-
-    # warn "until got $u n=". ( 1 + $#{$u->{list}} );
-    $a1->trace_close( arg => $u );
-    return $u;    
+    return $a1->SUPER::until( $b1 );
 }
 
- 
 
 sub union {
     my $a1 = shift;
-    # my $class = ref($a1);
     my $b1;
-
-    # print " [UNION] \n";
-    # print " [union: new b] \n";
-
-    if ($#_ < 0) {  # old usage
-        $a1->trace(title=>"union", arg => $a1);
-        return $a1;  # ->compact;
-    }
-
+    return $a1 if $#_ < 0;
     if (ref ($_[0]) eq ref($a1) ) {
         $b1 = shift;
     } 
     else {
         $b1 = $a1->new(@_);  
     }
-
     $a1->trace_open(title=>"union", arg => $b1);
-
-    # test for union with empty set
-    # warn "union: $a1 n=". $#{ $a1->{list} } ." $b1 n=". $#{ $b1->{list} } ;
-    if ( $#{ $a1->{list} } < 0 and ! $a1->{too_complex} ) {
-        $b1->trace_close( arg => $b1 );
-        return $b1;
-    }
-    if ( $#{ $b1->{list} } < 0 and ! $b1->{too_complex} ) {
-        $a1->trace_close( arg => $a1 );
-        return $a1;
-    }
-
     if (($a1->{too_complex}) or ($b1->{too_complex})) {
-        print " [union:backtrack] \n" if $DEBUG_BT;
-        my $union = $a1->new();
-        $union->{too_complex} = 1;
-        $union->{parent} = [$a1,$b1];   # [$a1->copy, $b1->copy];
-        $union->{method} = 'union';
-        $a1->trace_close( arg => $union );
-        return $union;
+        $a1->trace_close( );
+        return $a1->_function2( 'union', $b1);
     }
-
-    # -- special case: $a1 or $b1 is empty
-     # print " A=0 B=$b1 " if $#{$a1->{list}} < 0;
-     # print " B=0 A=$a1 " if $#{$b1->{list}} < 0;
-
-    my @b1_min = $b1->min_a;
-    my @a1_max = $a1->max_a;
-
-    unless (defined $b1_min[0]) {
-        # $#{$b1->{list}} < 0;
-        $a1->trace_close( arg => $a1 );
-        return $a1;
-    }
-    unless (defined $a1_max[0]) {
-        # $#{$a1->{list}} < 0;
-        $a1->trace_close( arg => $b1 );
-        return $b1;
-    }
-
-    my ($ia, $ib);
-    $ia = 0;
-    $ib = 0;
-
-    #  size+order matters on speed 
-
-    # print " [ ",$a1->max," <=> ",$b1->max," ] \n";
- 
-    $a1 = $a1->new($a1);    # don't modify ourselves 
-    my $b_list = $b1->{list};
-    # -- frequent case - $b1 is after $a1
-    if ($b1_min[0] > $a1_max[0]) {
-        # print " [UNION: $a1 \n         $b1 $#{$b_list}\n       ";
-        push @{$a1->{list}}, @$b_list;
-        $a1->trace_close( arg => $a1 );
-        return $a1;
-    }
-
-    # print " [UNION: NORMAL ] \n";
-
-    B: foreach $ib ($ib .. $#{$b_list}) {
-        foreach $ia ($ia .. $#{$a1->{list}}) {
-            # $self->{list}->[$_ - 1] = $tmp[0];
-            # splice (@{$self->{list}}, $_, 1);
-
-            my @tmp = _simple_union($a1->{list}->[$ia], $b_list->[$ib], $a1->{tolerance});
-            # print " [+union: $tmp[0] ; $tmp[1] ] \n";
-
-            if ($#tmp == 0) {
-                    $a1->{list}->[$ia] = $tmp[0];
-                    next B;
-            }
-
-            # print " [union:index-a: ($ia .. ", $#{$a->{list}}, ")  \n";
-            # print " [union:index-b: ($ib .. ", $#{$b_list}, ")  \n";
-            # print "  a -- ($a->{list}->[$ia]->{a} >= \n";
-            # print "  b -- $b_list->[$ib] ref=",ref($b_list->[$ib])," => ",join(" - ", %{$b_list->[$ib]}),"\n";
-            my %hash = %{$b_list->[$ib]};
-            # print "    -- $hash{a} ]\n";
-            # print "    -- $b_list->[$ib]->{a} ]\n";
-
-            # this doesn't always work -- use a temp variable instead:  if ($a->{list}->[$ia]->{a} >= $b->{list}->[$ib]->{a}) 
-            if ($a1->{list}->[$ia]->{a} >= $hash{a}) 
-            {
-                # print "+ ";
-                # splice(@array,$index,0,$value)
-                # insert $b[$ib] before $a[$ia] 
-                splice (@{$a1->{list}}, $ia, 0, $b_list->[$ib]);
-                # $a->add($b->{list}->[$ib]);
-                next B;
-            }
-        }
-        # print "- ";
-        # $a->add($b->{list}->[$ib]);
-        push @{$a1->{list}}, $b_list->[$ib];
-    }
-    # print " [union: done from ", join(" ", caller), " ] \n";
-    # print " [union: result = $a ] \n";
-    # $a->{cant_cleanup} = 1;
-
-    # print "\n TEST: $test\n A:    $a\n ORIG: $a\n B:    $b\n" if $test != $a;
-
-    # $a->trace(title=>"end: union");
-
-    $a1->trace_close( arg => $a1 );
-    return $a1;    
+    return $a1->SUPER::union( $b1 );
 }
-
-# use Data::Dumper; warn 'using Data::Dumper';
 
 # there are some ways to process 'contains':
 # A CONTAINS B IF A == ( A UNION B )
@@ -1942,20 +1467,11 @@ sub union {
 #    - can backtrack = works for unbounded sets
 sub contains {
     my $a = shift;
-    # $TRACE = 1;
     $a->trace_open(title=>"contains");
-
-    # print Dumper($a);
-    # print Dumper($_[0]);
-
     if ( $a->{too_complex} ) { 
         # we use intersection because it is better for backtracking
         my $b = (ref $_[0] eq ref $a) ? $_[0] : $a->new(@_);
-        # $TRACE = 1;
-        # $PRETTY_PRINT = 1;
         my $b1 = $a->intersection($b);
-        # $TRACE = 0;
-        # warn "testing $b == $b1 => ". ($b1 == $b ? 1 : 0);
         if ( $b1->{too_complex} ) {
             $b1->trace_close( arg => 'undef' );
             return undef;
@@ -1968,124 +1484,12 @@ sub contains {
         $b1->trace_close( arg => 'undef' );
         return undef;
     }
-    # warn " compare $b1 == $a ";
     $a->trace_close( arg => ($b1 == $a ? 1 : 0) );
     return ($b1 == $a) ? 1 : 0;
 }
 
-
-=head2 copy
-
-Makes a new object from the object's data.
-
-=cut
-
-sub copy {
-    my $self = shift;
-    my $copy = $self->new();
-    return $copy unless ref($self);   # constructor!
-    foreach my $key (keys %{$self}) {
-        if ( ref( $self->{$key} ) eq 'ARRAY' ) {
-            @{ $copy->{$key} } = @{ $self->{$key} };
-        }
-        else {
-            $copy->{$key} = $self->{$key};
-        }
-    }
-
-    # these are "cache" keys and had better be flushed (test?)
-    # delete $copy->{max} if exists $copy->{max};
-    # delete $copy->{min} if exists $copy->{min};
-
-    return $copy;
-}
-
-
-sub new {
-    my $class = shift;
-    my $class_name = ref($class) ? ref($class) : $class;
-    my ($self) = bless { list => [] }, $class_name;
-    # $self->trace(title=>"new");
-    # print " [INF:new:", ref($self)," - ", join(' - ', caller), " ]\n"; # if $TRACE;
-    # set up private variables
-    if (ref($class)) {
-        $self->{tolerance} = $class->{tolerance}; # if $class->{tolerance};
-        $self->{type}      = $class->{type};      # if $class->{type};
-        $self->{fixtype}   = $class->{fixtype};   # if $class->{fixtype};
-    }
-    else {
-        $self->{tolerance} = $tolerance ? $tolerance : 0;
-        $self->{type} =      $class_name->type;
-        $self->{fixtype} =   $fixtype   ? $fixtype : 0;
-    }
-    # warn " [INF:new:$class $class_name tol:$tolerance tol:".$self->{tolerance}." type:".$self->{type}." ]"; 
-
-    my ($tmp, $tmp2, $ref);
-    while (@_) {
-        # return $self unless @_;
-        $tmp = shift;
-        # print " [INF:ADD:",ref($tmp),"=$tmp ; @_ ]\n";
-        $ref = ref($tmp);
-        if ($ref) {
-            if ($ref eq 'ARRAY') {
-                # print " INF:ADD:ARRAY:",@tmp," ";
-                # Allows arrays of arrays
-                $tmp = $class->new(@{$tmp});  # call new() recursively
-                push @{ $self->{list} }, @{$tmp->{list}};
-                next;
-            }
-            if ($ref eq 'HASH') {
-                # print " INF:ADD:HASH\n";
-                push @{ $self->{list} }, $tmp; 
-                next;
-            }
-            # does it have a "{list}"?
-            if ($tmp->isa(__PACKAGE__)) {
-                # print " INF:ADD:",__PACKAGE__,":",$tmp," \n";
-                push @{ $self->{list} }, @{$tmp->{list}};
-                next;
-            }
-        }
-        $tmp2 = shift;
-        # print " [$tmp:",ref($tmp),"]eq[$tmp2:",ref($tmp2),"] ";
-        # if (Set::Infinite::Element_Inf::is_null($tmp)) {
-        #    carp " [1]$tmp is null ";
-        # }
-        # if (Set::Infinite::Element_Inf::is_null($tmp2)) {
-        #    carp " [2]$tmp2 is null ";
-        # }
-        push @{ $self->{list} }, _simple_new($tmp,$tmp2, $self->{type} );
-        # next;
-    }
-    $self;
-}
-
-sub min { 
-    $_[0]->trace_open(title=>"min"); 
-    #trace_open;
-    # don't! "wantarray" breaks some tests in Date::Set!
-    # wantarray ? $_[0]->min_a : ($_[0]->min_a)[0] 
-
-    my $tmp;
-
-    if ( $_[0]->{too_complex} ) {
-        $tmp = ($_[0]->min_a)[0];
-        # warn "min would be $tmp";
-        # if ($tmp != -$inf) {
-        #    $tmp = $_[0]->first;
-        #    $tmp = ($tmp->min_a)[0] if defined $tmp;
-        # }
-    }
-    else {
-        $tmp = ($_[0]->min_a)[0];
-    }
-    $_[0]->trace_close( arg => $tmp );
-    return $tmp;
-}
-
 sub min_a { 
     my ($self) = shift;
-
     if (exists $self->{min} ) {
         $self->trace(title=>"min_a cache= @{$self->{min}}" ) if $TRACE; 
         return @{$self->{min}};
@@ -2093,8 +1497,6 @@ sub min_a {
     $self->trace_open(title=>"min_a"); 
     my $tmp;
     my $i;
-
-
     if ($self->{too_complex}) {
         my $method = $self->{method};
         # offset, select, quantize
@@ -2174,44 +1576,17 @@ sub min_a {
     }
 
     $self->trace( title=> 'min simple tolerance='. $self->{tolerance}  );
-    for($i = 0; $i <= $#{$self->{list}}; $i++) {
-        # foreach(0 .. $#{$self->{list}}) {
-        # next unless defined $self->{list}[$i];
-        $tmp = $self->{list}[$i]->{a};
-        my $tmp2 = $self->{list}[$i]{open_begin};
-        if ($tmp2 and $self->{tolerance}) {
-            $tmp2 = 0;
-            $tmp += $self->{tolerance};
-        }
-        #print "min:$tmp ";
-        $tmp2 = 0 unless defined $tmp2;
-        $self->trace_close( arg => "$tmp $tmp2" ) if $TRACE;
-        return @{$self->{min}} = ($tmp, $tmp2);  
-    }
     $self->trace_close( arg => 'undef 0' );
-    return @{$self->{min}} = (undef, 0);   
+    return $self->SUPER::min_a;
 };
 
-
-
-sub max { 
-    $_[0]->trace_open(title=>"max"); 
-    #trace_open;
-    # don't! "wantarray" breaks some tests in Date::Set!
-    # wantarray ? $_[0]->max_a : ($_[0]->max_a)[0]
-    my $tmp = ($_[0]->max_a)[0];
-    $_[0]->trace_close( arg => $tmp );
-    return $tmp;
-}
 
 sub max_a { 
     my ($self) = shift;
     return @{$self->{max}} if exists $self->{max};
     my $tmp;
     my $i;
-
     $self->trace_open(title=>"max_a"); 
-
     if ($self->{too_complex}) {
         my $method = $self->{method};
         # offset, select, quantize
@@ -2310,92 +1685,30 @@ sub max_a {
             }
         }
     }
-
-    for($i = $#{$self->{list}}; $i >= 0; $i--) {
-        ## $tmp_ptr = $self->{list}->[$i];
-        ## $tmp = $tmp_ptr->{b};
-
-        # next unless defined $self->{list}[$i];
-        $tmp = $self->{list}[$i]{b};
-        my $tmp2 = $self->{list}[$i]{open_end};
-        if ($tmp2 and $self->{tolerance}) {
-            $tmp2 = 0;
-            $tmp -= $self->{tolerance};
-        }
-        # print "max:$tmp open=$tmp2\n";
-        $tmp2 = 0 unless defined $tmp2;
-        $self->trace_close( arg => "$tmp $tmp2" ) if $TRACE;
-        return @{$self->{max}} = ($tmp, $tmp2);  
-    }
     $self->trace_close( arg => "undef 0" ) if $TRACE;
-    return @{$self->{max}} = (undef, 0); 
+    return $self->SUPER::max_a;
 };
 
 sub size { 
     my ($self) = shift;
     my $tmp;
-    # $self->cleanup;
-    # print " [INF:SIZE:$self->{list}->[0]->{b} - $self->{list}->[0]->{a} ] \n";
-
     if ($self->{too_complex}) {
+        # TODO: quantize could use 'quantize_span'
         # print " max ",$self->{method}," ",$self->{parent}->max,"\n";
-        # if ($self->{method} eq 'quantize') {
         my @min = $self->min_a;
         my @max = $self->max_a;
         return undef unless defined $max[0] and defined $min[0];
         return $max[0] - $min[0];
-        # }
     }
-
-    my $size = 0;
-    foreach(0 .. $#{$self->{list}}) {
-        # next unless defined $self->{list}->[$_];
-        $size += $self->{list}->[$_]->{b} - $self->{list}->[$_]->{a};
-        $size -= $self->{tolerance} if $self->{list}->[$_]->{open_begin};
-        $size -= $self->{tolerance} if $self->{list}->[$_]->{open_end};
-     }
-    return $size; 
+    return $self->SUPER::size;
 };
 
-sub span { 
-    my ($self) = shift;
-    my @max = $self->max_a;
-    my @min = $self->min_a;
-    return undef unless defined $min[0] and defined $max[0];
-    # print " span: @min -- @max \n";
-
-    # TODO: what happens if max/min is undef
-
-    my $a1 = $self->new($min[0], $max[0]);
-    $a1->{list}[0]{open_end} = $max[1];
-    $a1->{list}[0]{open_begin} = $min[1];
-    return $a1;
-};
 
 sub spaceship {
     my ($tmp1, $tmp2, $inverted) = @_;
-    carp "Can't compare unbounded sets" if $tmp1->{too_complex} or $tmp2->{too_complex};
-
-    if ($inverted) {
-        ($tmp2, $tmp1) = ($tmp1, $tmp2);
-    }
-    foreach(0 .. $#{$tmp1->{list}}) {
-        my $this  = $tmp1->{list}->[$_];
-        if ($_ > $#{ $tmp2->{list} } ) { 
-            # warn "$tmp1 is bigger";
-            return 1; 
-        }
-        my $other = $tmp2->{list}->[$_];
-
-        # my @caller = caller(1);
-        # print " [",$caller[1],":",$caller[2]," spaceship $tmp1 $tmp2 ]\n";
-
-        my $cmp = _simple_spaceship($this, $other);
-        # warn "compare: $this, $other => $cmp";
-        return $cmp if $cmp;   # this != $other;
-    }
-    # warn "equal: $tmp1 == $tmp2 -- $#{$tmp1->{list}} == $#{ $tmp2->{list} }";
-    return $#{$tmp1->{list}} == $#{ $tmp2->{list} } ? 0 : -1;
+    carp "Can't compare unbounded sets" 
+        if $tmp1->{too_complex} or $tmp2->{too_complex};
+    return $tmp1->SUPER::spaceship( $tmp2, $inverted );
 }
 
 sub no_cleanup {
@@ -2408,15 +1721,9 @@ sub cleanup {
     my ($self) = shift;
     return $self if $self->{too_complex};
     return $self if $self->{cant_cleanup};     # quantize output is "virtual", can't be cleaned
-
     $_ = 1;
     while ( $_ <= $#{$self->{list}} ) {
-        # unless (defined $self->{list}->[$_]) {
-        #    splice (@{$self->{list}}, $_, 1);
-        #    next;
-        # }
-
-        my @tmp = _simple_union($self->{list}->[$_],
+        my @tmp = Set::Infinite::Basic::_simple_union($self->{list}->[$_],
             $self->{list}->[$_ - 1], 
             $self->{tolerance});
         if ($#tmp == 0) {
@@ -2427,49 +1734,28 @@ sub cleanup {
             $_ ++;
         }
     }
-
     return $self;
 }
-
-
-#-------- tolerance, integer, real
 
 
 sub tolerance {
     my $self = shift;
     my $tmp = pop;
-    # my $self = shift;
-    # print " tolerance $self = $tmp \n";
     if (ref($self)) {  
         # local
-
         return $self->{tolerance} unless defined $tmp;
-
         if ($self->{too_complex}) {
-            my $b1 = $self->new();
-            $b1->{too_complex} = 1;
-            $b1->{parent} = $self;  
-            $b1->{method} = 'tolerance';
-            $b1->{param}  = [ $tmp ];
+            my $b1 = $self->_function( 'tolerance', $tmp );
             $b1->{tolerance} = $tmp;   # for max/min processing
             return $b1;
         }
-
         $self = $self->copy;
         $self->{tolerance} = $tmp;
         return $self;
     }
     # global
-    $tolerance = $tmp if defined($tmp);
-    return $tolerance;
-}
-
-sub integer { 
-    $_[0]->tolerance (1);
-}
-
-sub real {
-    $_[0]->tolerance (0);
+    __PACKAGE__->SUPER::tolerance( $tmp ) if defined($tmp);
+    return __PACKAGE__->SUPER::tolerance;   
 }
 
 
@@ -2486,11 +1772,10 @@ sub _pretty_print {
 
 sub as_string {
     my $self = shift;
-    # return "()" if $PRETTY_PRINT && $self->is_null;
-    return ( $PRETTY_PRINT ? $self->_pretty_print : $too_complex ) if $self->{too_complex};
+    return ( $PRETTY_PRINT ? $self->_pretty_print : $too_complex ) 
+        if $self->{too_complex};
     $self->cleanup;
-    # return null          unless $#{$self->{list}} >= 0;
-    return join(separators(5), map { _simple_as_string($_) } @{$self->{list}} );
+    return $self->SUPER::as_string;
 }
 
 
