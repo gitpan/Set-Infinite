@@ -1,5 +1,13 @@
 Revision history for Perl extension Set::Infinite.
 
+0.5502  2004-03-14
+- New methods: start_set / end_set 
+  These are the inverse of the "until" method.
+  Suggested by Reinhold May
+
+0.5501 
+    refactored _backtrack method
+
 0.55   2003-11-16
     - bug fix: $set = Set::Infinite->new( -10, 0 );
       created a set with "-10" instead of [-10..0]

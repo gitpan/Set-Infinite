@@ -20,7 +20,7 @@ use overload
 
 use vars qw(@EXPORT_OK $VERSION 
     $TRACE $DEBUG_BT $PRETTY_PRINT $inf $minus_inf $neg_inf 
-    %_first %_last
+    %_first %_last %_backtrack
     $too_complex $backtrack_depth 
     $max_backtrack_depth $max_intersection_depth
     $trace_level %level_title );
@@ -40,7 +40,7 @@ sub compact { @_ }
 
 
 BEGIN {
-    $VERSION = 0.55;
+    $VERSION = 0.5502;
     $TRACE = 0;         # enable basic trace method execution
     $DEBUG_BT = 0;      # enable backtrack tracer
     $PRETTY_PRINT = 0;  # 0 = print 'Too Complex'; 1 = describe functions
@@ -314,6 +314,10 @@ sub select {
 }
 
 BEGIN {
+
+  # %_first and %_last hashes are used to backtrack the value
+  # of first() and last() of an infinite set
+
   %_first = (
     'complement' =>
         sub {
@@ -931,90 +935,99 @@ sub _quantize_span {
 }
 
 
-sub _backtrack {
-    my ($self, $method, $arg) = @_;
-    return $self->$method ($arg) unless $self->{too_complex};
-    $self->trace_open( title => 'backtrack '.$self->{method} ) if $TRACE;
 
-    $backtrack_depth++;
-    if ($backtrack_depth > $max_backtrack_depth) {
-        carp (__PACKAGE__ . ": Backtrack too deep (more than " . $max_backtrack_depth . " levels)");
-    }
+BEGIN {
 
-    # backtrack on parent sets
-    if (ref($self->{parent}) eq 'ARRAY') {
-        # has 2 parents (intersection, union, until ...)
-        # data structure: {method} - method name, {parent} - array, parent list
+    %_backtrack = (
 
-        $self->trace( title=>"array - method is $method" );
-        if ($self->{method} eq 'until') {
+        until => sub {
+            my ($self, $arg) = @_;
             my $before = $self->{parent}[0]->intersection( $neg_inf, $arg->min )->max;
             $before = $arg->min unless $before;
             my $after = $self->{parent}[1]->intersection( $arg->max, $inf )->min;
             $after = $arg->max unless $after;
-            $arg = $arg->new( $before, $after );
-        }
+            return $arg->new( $before, $after );
+        },
 
-        my $result1 = $self->{parent}[0];
-        $result1 = $result1->_backtrack($method, $arg) if $result1->{too_complex};
-        my $result2 = $self->{parent}[1];
-        $result2 = $result2->_backtrack($method, $arg) if $result2->{too_complex};
-        if ( $result1->{too_complex} or $result2->{too_complex} ) {
-            # backtrack failed...
-            $backtrack_depth--;
-            $self->trace_close( arg => $self ) if $TRACE;
-            # return the simplified version
-            return $result1->_function2( $self->{method}, $result2 );
-        }
+        iterate => sub {
+            my ($self, $arg) = @_;
+            my $before = $self->{parent}->intersection( $neg_inf, $arg->min )->max;
+            $before = $arg->min unless $before;
+            my $after = $self->{parent}->intersection( $arg->max, $inf )->min;
+            $after = $arg->max unless $after;
 
-        # apply {method}
-        my $method = $self->{method};
-        my $result = $result1->$method ($result2);
+            return $arg->new( $before, $after );
+        },
 
-        $backtrack_depth--;
-        $self->trace_close( arg => $result ) if $TRACE;
-        return $result;
-    }  # parent is ARRAY
+        quantize => sub {
+            my ($self, $arg) = @_;
+            if ($arg->{too_complex}) {
+                return $arg;
+            }
+            else {
+                return $arg->quantize( @{$self->{param}} )->_quantize_span;
+            }
+        },
 
-    # has 1 parent and parameters (offset, select, quantize)
-    # data structure: {method} - method name, {param} - array, param list
+        offset => sub {
+            my ($self, $arg) = @_;
+            # offset - apply offset with negative values
+            my %tmp = @{$self->{param}};
+            my @values = sort @{$tmp{value}};
 
-    my $result1 = $self->{parent};
-    my @param = @{$self->{param}};
-    my $my_method = $self->{method};
-    my $backtrack_arg2 = $arg;
+            my $backtrack_arg2 = $arg->offset( 
+                   unit => $tmp{unit}, 
+                   mode => $tmp{mode}, 
+                   value => [ - $values[-1], - $values[0] ] );
+            return $arg->union( $backtrack_arg2 );   # fixes some problems with 'begin' mode
+        },
 
-    # quantize() and offset() require special treatment because 
-    # they may result in weird min/max values
+    );
+}
 
-    if ($my_method eq 'iterate') {
-        my $before = $self->{parent}->intersection( $neg_inf, $arg->min )->max;
-        $before = $arg->min unless $before;
-        my $after = $self->{parent}->intersection( $arg->max, $inf )->min;
-        $after = $arg->max unless $after;
-        $backtrack_arg2 = $arg->new( $before, $after );
+
+sub _backtrack {
+    my ($self, $method, $arg) = @_;
+    return $self->$method ($arg) unless $self->{too_complex};
+
+    $self->trace_open( title => 'backtrack '.$self->{method} ) if $TRACE;
+
+    $backtrack_depth++;
+    if ( $backtrack_depth > $max_backtrack_depth ) {
+        carp ( __PACKAGE__ . ": Backtrack too deep " .
+               "(more than $max_backtrack_depth levels)" );
     }
-    elsif ($my_method eq 'quantize') {
-        if ($arg->{too_complex}) {
-            $backtrack_arg2 = $arg;
+
+    if (exists $_backtrack{ $self->{method} } ) {
+        $arg = $_backtrack{ $self->{method} }->( $self, $arg );
+    }
+
+    my $result;
+    if ( ref($self->{parent}) eq 'ARRAY' ) {
+        # has 2 parents (intersection, union, until)
+
+        my ( $result1, $result2 ) = @{$self->{parent}};
+        $result1 = $result1->_backtrack( $method, $arg )
+            if $result1->{too_complex};
+        $result2 = $result2->_backtrack( $method, $arg )
+            if $result2->{too_complex};
+
+        $method = $self->{method};
+        if ( $result1->{too_complex} || $result2->{too_complex} ) {
+            $result = $result1->_function2( $method, $result2 );
         }
         else {
-            $backtrack_arg2 = $arg->quantize(@param)->_quantize_span;
+            $result = $result1->$method ($result2);
         }
     }
-    elsif ($my_method eq 'offset') {
-        # offset - apply offset with negative values
-        my %tmp = @param;
-        my @values = sort @{$tmp{value}};
+    else {
+        # has 1 parent and parameters (offset, select, quantize)
 
-        $backtrack_arg2 = $arg->offset( unit => $tmp{unit}, mode => $tmp{mode}, value => [- $values[-1], - $values[0]] );
-
-        $backtrack_arg2 = $arg->union( $backtrack_arg2 );   # fixes some problems with 'begin' mode
+        $result = $self->{parent}->_backtrack( $method, $arg ); 
+        $method = $self->{method};
+        $result = $result->$method ( @{$self->{param}} );
     }
 
-    $result1 = $result1->_backtrack($method, $backtrack_arg2); 
-    $method = $self->{method};
-    my $result = $result1->$method (@param);
     $backtrack_depth--;
     $self->trace_close( arg => $result ) if $TRACE;
     return $result;
@@ -1126,6 +1139,20 @@ sub until {
         return $a1->_function2( 'until', $b1 );
     }
     return $a1->SUPER::until( $b1 );
+}
+
+
+sub start_set {
+    return $_[0]->iterate(
+        sub { $_[0]->min }
+    );
+}
+
+
+sub end_set {
+    return $_[0]->iterate(
+        sub { $_[0]->max }
+    );
 }
 
 
@@ -1564,6 +1591,23 @@ gives
 
     [0..2), [5..6), [7..10)
 
+=head2 start_set
+
+=head2 end_set
+
+These methods do the inverse of the "until" method.
+
+Given:
+
+    [0..2), [5..6), [7..10)
+
+start_set is:
+
+    0,5,7
+
+end_set is:
+
+    2,6,10
 
 =head2 quantize
 

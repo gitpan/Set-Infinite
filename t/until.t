@@ -37,7 +37,7 @@ sub test {
 	print " \n";
 }
 
-print "1..24\n";
+print "1..26\n";
 $| = 1;
 
 # $Set::Infinite::TRACE = 1;
@@ -81,6 +81,16 @@ test ("until unbounded recurrence",
 test ("until unbounded recurrence, later",
     '$a->until( $b )->intersection(15,55)',
     "[20..30),[40..50)");
+
+# inverse function - start_set/end_set
+#  Note: Tests should verify that intersection bactracking
+#  (it splits the spans!) does not modify the start/end values.
+test ("start_set - until unbounded recurrence",
+    '$a->until( $b )->start_set->intersection(5,45)', 
+    "20,40");
+test ("end_set - until unbounded recurrence",
+    '$a->until( $b )->end_set->intersection(5,45)', 
+    "10,30");
 
 # let's test if contains() works properly with unbounded recurrences
 # because we'll need that
