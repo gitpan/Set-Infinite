@@ -12,18 +12,18 @@ use Set::Infinite;
 my $errors = 0;
 my $test = 0;
 
-print "1..80\n";
+print "1..81\n";
 
 sub test {
 	my ($header, $sub, $expected) = @_;
 	$test++;
-	#print "\t# $header \n";
+	# print "\t# $header $sub \n";
 	$result = eval $sub;
 	if ("$expected" eq "$result") {
 		print "ok $test";
 	}
 	else {
-		print "not ok $test\n"; # \t# expected \"$expected\" got \"$result\"";
+		print "not ok $test\n \t# expected $header = \"$expected\" got \"$result\"";
 		$errors++;
 	}
 	print " \n";
@@ -38,6 +38,20 @@ sub stats {
 	}
 }
 
+
+$a = Set::Infinite->new([1],[2],[3],[4]);
+test ("slice  ", '$a', "1,2,3,4");
+
+# slice
+$a = Set::Infinite->new(1..3);
+test ("slice  ", '$a', "[1..2],3");
+
+# slice
+$a = Set::Infinite->new([10..13,15,17]);
+# print " slice: $a \n";
+test ("slice  ", '$a', "[10..11],[12..13],[15..17]");
+
+
 # print "Union\n";
 $a = Set::Infinite->new(10, 13);
 # print " a is ", $a, "\n";
@@ -47,13 +61,13 @@ $a = Set::Infinite->new(16, 17);
 test ("$a union (10..13)  ", '$a->union(10, 13)', "[10..13],[16..17]");
 
 # print "Operations on open sets\n";
-$a = Set::Infinite->new(1,inf);
-test ("set : ", '$a', "[1..inf)");
+$a = Set::Infinite->new(1,'inf');
+test ("set : ", 	'$a', "[1..inf)");
 $a = $a->complement;
-test ("[-inf,1) : ", '$a', "(-inf..1)");
+test ("[-inf,1) : ", 	'$a', "(-inf..1)");
 $b = $a;
-test ("copy : ",'$b',"(-inf..1)");
-test ("complement : ",$a->complement,"");
+test ("copy : ",	'$b',"(-inf..1)");
+test ("complement : ",'$a->complement',"[1..inf)");
 test ("union [-1..0] : ", '$a->union(-1,0)', "(-inf..1)");
 test ("union [0..1]  : ", '$a->union(0,1)', "(-inf..1]");
 test ("union [1..2]  : ", '$a->union(1,2)', "(-inf..2]");
@@ -61,46 +75,46 @@ test ("union [2..3]  : ", '$a->union(2,3)', "(-inf..1),[2..3]");
 $b = Set::Infinite->new(-inf,1)->complement;
 #test ("set : ", '$a, "");
 $c = $a->union($b);
-test ("union $b : ", '$c', "(-inf..1),(1..inf)");
-test ("  complement : ", '$c->complement',"1");
-test ("union $c [1..inf) ", '$c->union(1,inf)', "(-inf..inf)");
-test ("union $b [1..inf) ", '$b->union(1,inf)', "[1..inf)");
+test ("union $b : ", 	'$c', "(-inf..1),(1..inf)");
+test ("  complement : ", 	'$c->complement',"1");
+test ("union $c [1..inf) ", 	'$c->union(1,"inf")', "(-inf..inf)");
+test ("union $b [1..inf) ", 	'$b->union(1,"inf")', "[1..inf)");
 
 # print "Testing 'null' and (0..0)\n";
 
 $a = Set::Infinite->new();
-test ("null : ",$a,"null");
-test ("is-null : ",'$a->is_null',"1");
+test ("null : ",	'$a', "null");
+test ("is-null : ",	'$a->is_null',"1");
 
 $a = Set::Infinite->new('null');
-test ("null : ",$a,"null");
-test ("is-null : ",'$a->is_null',"1");
+test ("null : ",	'$a', "null");
+test ("is-null : ",	'$a->is_null',"1");
 
 $a = Set::Infinite->new(undef);
-test ("null : ",$a,"null");
-test ("is-null : ",'$a->is_null',"1");
+test ("null : ",	'$a',"null");
+test ("is-null : ",	'$a->is_null',"1");
 
 $a = Set::Infinite->new();
-test ("(0,0) intersects to null : ",$a->intersects(0,0),"0");
-test ("(0,0) intersection to null : ",$a->intersection(0,0),"null");
+test ("(0,0) intersects to null : ",	'$a->intersects(0,0)',"0");
+test ("(0,0) intersection to null : ",	'$a->intersection(0,0)',"null");
 
 $a = Set::Infinite->new(0,0);
-test ("(0,0) intersects to null : ",$a->intersects(),"0");
-test ("(0,0) intersection to null : ",$a->intersection(),"null");
+test ("(0,0) intersects to null : ",'$a->intersects()',"0");
+test ("(0,0) intersection to null : ",'$a->intersection()',"null");
 
-test ("(0,0) intersects to 0    : ",$a->intersects(0),"1");
-test ("(0,0) intersection to 0    : ",$a->intersection(0),"0");
+test ("(0,0) intersects to 0    : ",'$a->intersects(0)',"1");
+test ("(0,0) intersection to 0    : ",'$a->intersection(0)',"0");
 test ("is-null : ",'$a->is_null',"0");
 
 $a = Set::Infinite->new();
-test ("(0,0) union to null : ",$a->union(0,0),"0");
+test ("(0,0) union to null : ",'$a->union(0,0)',"0");
 
 $a = Set::Infinite->new(0,0);
 test ("(0,0) union to null : ",$a->union(),"0");
 
 $a = Set::Infinite->new(0,0);
-test ("(0,0) intersects to (1,1) : ",$a->intersects(1,1),"0");
-test ("(0,0) intersection to (1,1) : ",$a->intersection(1,1)->as_string,"null");
+test ("(0,0) intersects to (1,1) : ",'$a->intersects(1,1)',"0");
+test ("(0,0) intersection to (1,1) : ",'$a->intersection(1,1)->as_string',"null");
 
 
 # print "New:\n";
@@ -144,14 +158,14 @@ $a->add(3, 4);
 $a->add(-1, 0);
 $b = Set::Infinite->new($a);
 $b->cleanup;
-test ("Interval: (1,2) (3, 4) (-1, 0) : $b \n");
+# test ("Interval: (1,2) (3, 4) (-1, 0) : $b \n");
 
 $a = $b;
 $a->add(0, 1);
 $a->add(7, 8);
 $a->add(6, 7.5);
 $a->cleanup;
-test ("Interval: add (0, 1) (7, 8) (6, 7.5) : $a \n");
+# test ("Interval: add (0, 1) (7, 8) (6, 7.5) : $a \n");
 
 # print "Integer + cleanup:\n";
 
@@ -195,11 +209,11 @@ test ("intersection 2.1 .. 2.3 : ", '$a->intersection(Set::Infinite->new(2.1,2.3
 test ("Union 5.5 : ", '$a->union(5.5)', "[1..2],5.5");
 test ("intersection 0.0 .. 4.0 5 .. 6 : ", '$a->intersection(Set::Infinite->new([0.0,4.0],[5.0,6.0]))', "[1..2]");
 
-$a = Set::Infinite->new(2,1,4,5);
-$b = Set::Infinite->new(2.1,1.1,4.1,5.1);
-test ("intersection $a with $b", '$a->intersection($b)', "[1.1..2]");
-test ("size of $b is : ", '$b->size', "1");
-test ("span of $b is : ", '$b->span', "[1.1..2.1]");
+$a = Set::Infinite->new(2,1, 4,5);
+$b = Set::Infinite->new(2.1,1.1, 4.1,5.1);
+test ("intersection $a with $b", '$a->intersection($b)', "[1.1..2],[4.1..5]");
+test ("size of $b is : ", '$b->size', "2");
+test ("span of $b is : ", '$b->span', "[1.1..5.1]");
 
 tie $a, 'Set::Infinite', [1,2], [9,10];
 test ("tied: ",'$a',"[1..2],[9..10]");

@@ -8,7 +8,7 @@ use strict;
 use warnings;
 
 require Exporter;
-our $VERSION = "0.12";
+our $VERSION = "0.13";
 
 my $package = 'Set::Infinite::Quantize_Date';
 our @EXPORT = qw();
@@ -148,14 +148,23 @@ sub new {
 	$self->{mult} = 1;
 
 	if ($self->{type} eq 'seconds') {
-		$rest = $self->{date_begin}[0] % $self->{quant};
+
+		# $rest = $self->{date_begin}[0] % $self->{quant};
+		# modulo operation - can't use `%'
+		my $tmp1 = int($self->{date_begin}[0] / $self->{quant});
+ 		$rest = $self->{date_begin}[0] - $tmp1 * $self->{quant};
+
 		$self->{first} = timelocal(
 			$self->{date_begin}[0] - $rest,	$self->{date_begin}[1],	$self->{date_begin}[2], 
 			$self->{date_begin}[3],	$self->{date_begin}[4],$self->{date_begin}[5]);
 		$self->{mult} = $second_size;
 	}
 	elsif ($self->{type} eq 'minutes') {
-		$rest = $self->{date_begin}[1] % $self->{quant};
+		# $rest = $self->{date_begin}[1] % $self->{quant};
+		# modulo operation - can't use `%'
+		my $tmp1 = int($self->{date_begin}[1] / $self->{quant});
+ 		$rest = $self->{date_begin}[1] - $tmp1 * $self->{quant};
+
 		$self->{first} = timelocal(
 			0,$self->{date_begin}[1] - $rest, $self->{date_begin}[2], 
 			$self->{date_begin}[3], $self->{date_begin}[4],$self->{date_begin}[5]);

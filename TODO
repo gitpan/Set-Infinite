@@ -1,0 +1,13 @@
+TODO
+
+Make a private mode for `type'
+
+Make a global mode for `open_*' 
+
+Create a `dirty' variable so it knows when to cleanup.
+
+Find out how to accelerate `type' mode.
+
+use `isa' to test paramenter types
+
+correct syntax problems due to accepting ( [ 1 .. 10 ] ) as input - see POD.

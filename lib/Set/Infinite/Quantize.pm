@@ -8,7 +8,7 @@ use strict;
 use warnings;
 
 require Exporter;
-our $VERSION = "0.12";
+our $VERSION = "0.13";
 
 my $package = 'Set::Infinite::Quantize';
 our @EXPORT = qw();
@@ -39,8 +39,9 @@ Set::Infinite::Quantize - arrays of subsets
 sub get_index {
 	my ($self) = shift;
 	my ($index) = shift;
-	my $rest = $self->{begin} % $self->{quant};
-	return $self->{begin} - $rest + $self->{quant} * $index;
+	# my $rest = $self->{begin} % $self->{quant};
+	my $tmp = int($self->{begin} / $self->{quant});
+	return ($tmp + $index) * $self->{quant};
 }
 
 sub new {

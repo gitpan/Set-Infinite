@@ -24,7 +24,7 @@ our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(type) );
 our @EXPORT = qw(
 	
 );
-our $VERSION = '0.12';
+our $VERSION = '0.13';
 
 
 # Preloaded methods go here.
@@ -59,7 +59,7 @@ sub quantize {
 	my $tmp = quantizer;
 	# print " [INF:QUANT $tmp,",@_,",$self]\n";
 	tie @a, $tmp, @_, $self;
-	return \@a;
+	return @a;
 }
 
 sub is_null {
@@ -177,6 +177,8 @@ LOOP:
 		if (ref($tmp) eq 'ARRAY') {
 			my @tmp = @{$tmp};
 
+			# print " INF:ARRAY:",@tmp," ";
+
 			$tmp = Set::Infinite->new(@tmp) ;
 			foreach (@{$tmp->{list}}) {
 				push @{ $self->{list} }, Set::Infinite::Simple->new($_) ;
@@ -195,9 +197,12 @@ LOOP:
 			push @{ $self->{list} }, Set::Infinite::Simple->new($tmp) ;
 		}
 		else {
-			$tmp = Set::Infinite::Simple->new($tmp,@param);
+			my $tmp2 = shift @param;
+			$tmp = Set::Infinite::Simple->new($tmp,$tmp2);
 			$tmp->tolerance($self->{tolerance});
 			push @{ $self->{list} }, $tmp;
+
+			goto LOOP;
 		}
 
 	return $self;
@@ -351,6 +356,7 @@ sub TIEARRAY {
 
 sub FETCHSIZE {
 	my ($self) = shift;
+	# print " FETCHSIZE \n";
 	return 1 + $#{$self->{list}}; 
 }
 
@@ -377,6 +383,7 @@ sub FETCH {
 	my ($self) = shift;
 	if (@_) {
 		# we have an index, so we are an array
+		# print " FETCH \n";
 		my $index = shift;
 		return $self->{list}[$index];
 	}
@@ -525,7 +532,7 @@ Global functions:
 		Example: 
 
 			$a = Set::Infinite->new([1,3]);
-			print join (" ", @{$a->quantize(1)} );
+			print join (" ", $a->quantize(1) );
 
 		Gives: 
 
@@ -565,38 +572,32 @@ It is invoked by:
 
 It requires HTTP:Date and Time::Local
 
-It changes quantize function behavior to accept time units:
+It changes quantize function behaviour to accept time units:
 
 	$a = Set::Infinite->new('2001-05-02', '2001-05-13');
-	print "Weeks in $a: ", join (" ", @{$a->quantize('weeks', 1)});
+	print "Weeks in $a: ", join (" ", $a->quantize('weeks', 1) );
 
 	$a = Set::Infinite->new('09:30', '10:35');
-	print "Quarters of hour in $a: ", join (" ",@{$a->quantize('minutes', 15)});
+	print "Quarters of hour in $a: ", join (" ", $a->quantize('minutes', 15) );
 
-Units can be years, months, days, weeks, hours, minutes, or	seconds.
+Units can be years, months, days, weeks, hours, minutes, or seconds.
 
 max and min functions will show in date/time format, unless
 they are used with `0 + '.
 
 =head1 CAVEATS
 
+	$a = Set::Infinite->new(10,1);
+		Will be interpreted as [1..10]
+
 	$a = Set::Infinite->new(1,2,3,4);
-		Invalid: ",3,4" will be ignored. Use [1,2],[3,4] instead.
+		Will be interpreted as [1..2],[3..4] instead of [1,2,3,4].
+		You probably want ->new([1],[2],[3],[4]) instead,
+		or maybe ->new(1,4) 
 
-	$a = Set::Infinite->new(1..2);
-		Invalid: "1..2" will be ignored. Use [1,2] instead.
-
-=head1 TODO
-
-	Make a private mode for `type'
-
-	Make a global mode for `open_*' 
-
-	Create a `dirty' variable so it knows when to cleanup.
-
-	Find out how to accelerate `type' mode.
-
-	use `isa' to test paramenter types
+	$a = Set::Infinite->new(1..3);
+		Will be interpreted as [1..2],3 instead of [1,2,3].
+		You probably want ->new(1,3) instead.
 
 =head1 AUTHOR
 

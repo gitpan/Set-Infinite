@@ -115,7 +115,7 @@ Internal:
 require Exporter;
 
 package Set::Infinite::Simple;
-$VERSION = "0.12";
+$VERSION = "0.13";
 
 my $package        = 'Set::Infinite::Simple';
 @ISA = qw(Exporter);
@@ -175,7 +175,12 @@ sub open_begin {
 
 sub is_null {
 	my $self = shift;
-	return (($self->{a} eq null) or ($self->{a} eq "")) ? 1 : 0;
+	return 1 unless defined($self->{a});
+
+	my $tmp = $self->{a} . "";
+	return (($tmp eq null) or ($tmp eq "")) ? 1 : 0;
+
+	# return $self->{a}->is_null;
 }
 
 sub intersects {
@@ -340,8 +345,9 @@ sub add {
 	if (ref($param[0]) eq 'ARRAY') {
 		# get 2 elements from it
 		my @aux = @{$param[0]};
-		$aux[1] = $aux[0] unless defined($aux[1]);
-		@param = ($aux[0], $aux[1], @param[1..$#param]);
+		# print " SIMPLE:ARRAY:",@aux," ";
+		# $aux[1] = $aux[0] unless defined($aux[1]);
+		@param = ($aux[0], $aux[-1], @param[1..$#param]);
 	}
 
 	# is it now defined?
@@ -356,6 +362,7 @@ sub add {
 
 	if (ref($tmp) eq $package) {
 		($self->{a}, $self->{b}) =  ($tmp->{a}, $tmp->{b});
+		# $self->{b} = $self->{a} unless $self->{b};
 		$self->tolerance($tmp->{tolerance}) 	if defined $tmp->{tolerance};
 		$self->open_begin($tmp->{open_begin})	if defined $tmp->{open_begin};
 		$self->open_end($tmp->{open_end})   	if defined $tmp->{open_end};
@@ -365,7 +372,7 @@ sub add {
 
 	my $tmp1_elem = Set::Infinite::Element->new($tmp);
 	my $tmp2_elem = Set::Infinite::Element->new($tmp2);
-	if ($tmp2_elem == undef) {
+	if ($tmp2_elem->is_null) {
 		($self->{a}, $self->{b}) = ($tmp1_elem, $tmp1_elem);
 	}
 	else {
@@ -419,6 +426,10 @@ sub cmp {
 
 sub cleanup {
 	my ($self) = shift;
+	# print " SIMPLE:UNDEF-A " unless defined($self->{a});
+	# print " SIMPLE:UNDEF-B " unless defined($self->{b});
+	undef $self->{a} unless defined($self->{b});
+	return if $self->is_null;
 	if ($self->{a} > $self->{b}) {
 		($self->{a}, $self->{b}) = ($self->{b}, $self->{a});
 	}
@@ -434,7 +445,7 @@ sub tolerance {
 		$class->{tolerance} = $tmp if ($tmp ne '');
 		return $class;
 	}
-	$tolerance = $tmp if ($tmp ne '');
+	$tolerance = $tmp if defined($tmp) and ($tmp ne '');
 	return $tolerance;
 }
 
@@ -467,9 +478,9 @@ sub as_string {
 	my ($self) = shift;
 	my $s;
 	$self->cleanup;
+	return null if $self->is_null;
 	my $tmp1 = "$self->{a}";
 	my $tmp2 = "$self->{b}";
-	return null if $self->is_null;
 	return $tmp1 if $tmp1 eq $tmp2;
 	$s = $self->{open_begin} ? $separators[2] : $separators[0];
 	$s .= $tmp1 . $separators[4] . $tmp2;
@@ -530,9 +541,12 @@ sub STORE {
 		# we have a valid index and data, so we are an array
 		my $index = $data;
 		$data = shift;
-		$self->{a} = $data if $index == 0;
-		$self->{b} = $data if $index == 1;
-		$self->cleanup;
+		# print " STORE $data at $index ";
+		$self->{a} = Set::Infinite::Element->new($data) if $index == 0;
+		$self->{b} = Set::Infinite::Element->new($data) if $index == 1;
+		# print " = $self\n";
+		$self->cleanup if defined($self->{a}) and defined($self->{b});# unless it will become null!
+		# print " = $self\n";
 		return ($data, @_);
 	}
 	$self = new($data, @_);

@@ -1,7 +1,29 @@
 Revision history for Perl extension Set::Infinite.
 
-0.01  Mon May 14 14:43:09 2001
-	- made Makefile.PL; v.0.010
+0.13
+	Simple.pm and Element.pm:
+	Corrected many warnings related to testing undef values on hash
+
+	Quantize.pm and Quantize_Date.pm
+	work on real sized chunks too - don't use `%' integer module operation.
+
+	Infinite.pm 
+	quantize returns tied array. It can be used directly with `foreach'.
+	Pod and tests corrected.
+
+	Infinite.pm
+	Accepts slices as input. There are syntax problems - see "CAVEATS" in pod.
+	tests added.
+
+	Simple.pm
+	Will not cleanup if acessed as tied array, until both a and b are defined or a method is called,
+	so that we can set a, then b.
+
+0.12
+	Correction in Set::Infinite::Simple::intersection
+	[5..5) is null
+
+	New function: quantize
 
 0.11
 	Set::Infinite
@@ -17,8 +39,6 @@ Revision history for Perl extension Set::Infinite.
 	Set::Infinite::Date->date_format
 	use `pop' instead of `shift', or read parameters
 
-0.12
-	Correction in Set::Infinite::Simple::intersection
-	[5..5) is null
-
-	New function: quantize
+0.01  Mon May 14 14:43:09 2001
+	- made Makefile.PL; v.0.010
+

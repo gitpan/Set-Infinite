@@ -12,19 +12,28 @@ use warnings;
 
 use Set::Infinite::Quantize;
 
+
+# print "test: ",join (" ",  Set::Infinite->new([1,3])->quantize(1) ), "\n";
+# foreach (
+#	Set::Infinite->new([1,3],[5,10])->quantize(0.5)
+#	) { print " $_ "; }
+#print "\n";
+
+
+
 print "1..7\n";
 
 #print "1: \n";
 $a = Set::Infinite->new([1,3]);
 #print join (" ",@{$a->quantize(1)}),"\n";
-print "not " unless join (" ",@{$a->quantize(1)}) eq 
+print "not " unless join (" ", $a->quantize(1) ) eq 
 	"[1..2) [2..3) [3..4) ";
 print "ok 1\n";
 
 #print "25: \n";
 $a = Set::Infinite->new([315,434], [530,600]);
 #print join (" ",@{$a->quantize(25)}),"\n";
-print "not " unless join (" ",@{$a->quantize(25)}) eq 
+print "not " unless join (" ", $a->quantize(25) ) eq 
 	"[300..325) [325..350) [350..375) [375..400) [400..425) [425..450)    [525..550) [550..575) [575..600) [600..625)";
 print "ok 2\n";
 

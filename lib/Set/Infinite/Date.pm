@@ -80,7 +80,7 @@ Internal functions:
 
 require Exporter;
 package Set::Infinite::Date;
-$VERSION = "0.12";
+$VERSION = "0.13";
 
 my $package = 'Set::Infinite::Date';
 @EXPORT = qw();
@@ -129,7 +129,7 @@ sub time2date (;$)  {
 	foreach ($sec,$min,$hour,$mday,$mon,$year) {
 		$_ = '0' . $_ if $_ < 10;
 	}
-	my $tmp = $date_format;
+	$tmp = $date_format;
 	$tmp =~ s/year/$year/;
 	$tmp =~ s/month/$mon/;
 	$tmp =~ s/day/$mday/;
@@ -156,7 +156,8 @@ sub time2hour {
 sub hour2time {
 	#  00, 00:00, or 00:00:00
 	my $a = shift;
-	my ($tmp, $tmp_min, $tmp_sec) = split(":", $a, 3);
+	# my ($tmp, $tmp_min, $tmp_sec) = (0,0,0);
+	my ($tmp, $tmp_min, $tmp_sec) = split(":", $a . ":0:0"); # , 3);
 	return $tmp * $hour_size + $tmp_min * $minute_size + $tmp_sec * $second_size;
 }
 
@@ -177,6 +178,7 @@ sub add {
 
 sub spaceship {
 	my ($tmp1, $tmp2, $inverted) = @_;
+	#print " [DATE:CMP:",caller(1),"]\n";
 	$tmp2 = Set::Infinite::Date->new($tmp2) unless ref($tmp2) eq 'Set::Infinite::Date';
 	if ($inverted) {
 		return ( $tmp2->{a} <=> $tmp1->{a} );

@@ -195,9 +195,9 @@ test ("intersection 0.0 ... 4.0 5 ... 6 : ", '$a->intersection(Set::Infinite->ne
 
 $a = Set::Infinite->new(2,1,4,5);
 $b = Set::Infinite->new(2.1,1.1,4.1,5.1);
-test ("intersection $a with $b", '$a->intersection($b)', "[1.1..2.]");
-test ("size of $b is : ", '$b->size', "1.");
-test ("span of $b is : ", '$b->span', "[1.1..2.1]");
+test ("intersection $a with $b", '$a->intersection($b)', "[1.1..2.],[4.1..5.]");
+test ("size of $b is : ", '$b->size', "2.");
+test ("span of $b is : ", '$b->span', "[1.1..5.1]");
 
 tie $a, 'Set::Infinite', [1,2], [9,10];
 test ("tied: ",'$a',"[1...2.],[9...10.]");

@@ -56,12 +56,12 @@ Global:
 require Exporter;
 
 package Set::Infinite::Element;
-$VERSION = "0.12";
+$VERSION = "0.13";
 
 my $package        = 'Set::Infinite::Element';
 @ISA = qw(Exporter);
 @EXPORT = qw();
-@EXPORT_OK = qw(infinite minus_infinite type null quantizer);
+@EXPORT_OK = qw(infinite minus_infinite type null quantizer is_null);
 
 use strict;
 use Carp;
@@ -115,6 +115,7 @@ sub quantizer {
 	return $quantizer;
 }
 
+
 sub quantize {
 	my $self = shift;
 	my (@a);
@@ -123,7 +124,7 @@ sub quantize {
 }
 
 sub infinite {
-	$infinite = shift if @_;
+ 	$infinite = shift if @_;
 	return Set::Infinite::Element->new($infinite);
 }
 
@@ -138,7 +139,8 @@ sub null {
 
 sub is_null {
 	my $self = shift;
-	return (($self->{v} eq null) or ($self->{v} eq "")) ? 1 : 0;
+	my $tmp = $self->{v} . "";
+	return (($tmp eq null) or ($tmp eq "")) ? 1 : 0;
 }
 
 sub add {
@@ -183,24 +185,31 @@ sub sub {
 }
 
 sub spaceship {
-	my ($self, $tmp2, $inverted) = @_;
+	my ($tmp1, $tmp2, $inverted) = @_;
 	my $res;
 	my ($stmp1, $stmp2);
 
-	$tmp2 = Set::Infinite::Element->new($tmp2) unless ref($tmp2) eq 'Set::Infinite::Element';
-	my $tmp1 = $self;
+	# print " [ELEM:CMP:",ref($tmp1),"=$tmp1 <=> ",ref($tmp2),"=$tmp2] \n";
+	if (ref($tmp2)) {
+		$tmp2 = Set::Infinite::Element->new($tmp2) unless ref($tmp2) eq 'Set::Infinite::Element';
+		$tmp2 = $tmp2->{v};
+	} else {
+		$tmp2 = '' unless (defined($tmp2)); 	# keep warnings quiet
+	}
+
+	# my $tmp1 = $self;
+	$tmp1 = $tmp1->{v};
 
 	if ($inverted) {
 		($tmp2, $tmp1) = ($tmp1, $tmp2);
 	}
 
-	$tmp1 = $tmp1->{v};
-	$tmp2 = $tmp2->{v};
 	$stmp1 = "$tmp1";
 	$stmp2 = "$tmp2";
 
 	if    ($stmp1 eq $stmp2) 		{ $res = 0; }
 	elsif ($stmp2 eq "")    	 	{ $res = 1; }
+	elsif ($stmp1 eq "")    	 	{ $res = -1; }
 	elsif ($stmp1 eq $infinite) 	{ $res = 1; }
 	elsif ($stmp2 eq $infinite) 	{ $res = -1; }
 	elsif ($stmp1 eq "-$infinite") 	{ $res = -1; }
@@ -229,6 +238,8 @@ sub cmp {
 sub new {
 	my ($self) = bless {}, shift;
 	my $val = shift;
+
+	$val = '' unless defined($val);
 
 	if ( ref($val) eq 'Set::Infinite::Element' ) {
 		$self->{v} = $val->{v};

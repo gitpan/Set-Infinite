@@ -27,6 +27,7 @@ sub test {
 		print "not ok $test"; # \n\t# expected \"$expected\" got \"$result\"";
 		$errors++;
 	}
+	# print "\n\t# $header expected \"$expected\" got \"$result\"";
 	print " \n";
 }
 
@@ -230,11 +231,11 @@ test ("(-infinite) cmp -inf ",
   '(Set::Infinite::Simple->new(- infinite)) cmp "-inf"', "0");
 
 # print "Complement:\n";
-test ("(1,1)  ", 'Set::Infinite::Simple->new(1,1)->complement', "(1..inf)");
-test ("(null) ", 'Set::Infinite::Simple->new()->complement', "(-inf..inf)");
-test ("(1,infinite)", 'Set::Infinite::Simple->new(1,inf)->complement', "(-inf..1)");
-test ("(-infinite,1)", 'Set::Infinite::Simple->new(-inf,1)->complement', "(1..inf)");
-test ("(-infinite,infinite)", 'Set::Infinite::Simple->new(-inf,inf)->complement', "null");
+test ("(1,1)  ", 	'Set::Infinite::Simple->new(1,1)->complement', "(1..inf)");
+test ("(null) ", 	'Set::Infinite::Simple->new()->complement', "(-inf..inf)");
+test ("(1,infinite)", 	'Set::Infinite::Simple->new(1,"inf")->complement', "(-inf..1)");
+test ("(-infinite,1)", 	'Set::Infinite::Simple->new("-inf",1)->complement', "(1..inf)");
+test ("(-infinite,infinite)", 	'Set::Infinite::Simple->new("-inf","inf")->complement', "null");
 test ("complement(10..20) (5,15) : ", 'Set::Infinite::Simple->new(10,20)->complement(5,15)', "(15..20]");
 
 # print "Integer Complement:\n";
@@ -243,11 +244,11 @@ test ("(1,1) ",
 test ("(null) ", 
 	'Set::Infinite::Simple->new()->integer->complement', "(-inf..inf)");
 test ("(1,infinite) ", 
-	'Set::Infinite::Simple->new(1,inf)->integer->complement' , "(-inf..1)");
+	'Set::Infinite::Simple->new(1,"inf")->integer->complement' , "(-inf..1)");
 test ("(-infinite,1) ", 
-	'Set::Infinite::Simple->new(-inf,1)->integer->complement', "(1..inf)");
+	'Set::Infinite::Simple->new("-inf",1)->integer->complement', "(1..inf)");
 test ("(-infinite,infinite) ", 
-	'Set::Infinite::Simple->new(-inf,inf)->integer->complement' , "null");
+	'Set::Infinite::Simple->new("-inf","inf")->integer->complement' , "null");
 test ("complement(10..20) (5,15) ", 
 	'Set::Infinite::Simple->new(10,20)->integer->complement(5,15)', "(15..20]");
 
