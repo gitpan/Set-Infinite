@@ -115,7 +115,7 @@ Internal:
 require Exporter;
 
 package Set::Infinite::Simple;
-$VERSION = "0.010";
+$VERSION = "0.11";
 
 my $package        = 'Set::Infinite::Simple';
 @ISA = qw(Exporter);

@@ -1,11 +1,15 @@
 package Set::Infinite;
 
+# Copyright (c) 2001 Flavio Soibelmann Glock. All rights reserved.
+# This program is free software; you can redistribute it and/or
+# modify it under the same terms as Perl itself.
+
 require 5.005_62;
 use strict;
 use warnings;
 
 require Exporter;
-use AutoLoader qw(AUTOLOAD);
+# use AutoLoader qw(AUTOLOAD);
 
 our @ISA = qw(Exporter);
 
@@ -20,7 +24,7 @@ our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(type) );
 our @EXPORT = qw(
 	
 );
-our $VERSION = '0.010';
+our $VERSION = '0.11';
 
 
 # Preloaded methods go here.

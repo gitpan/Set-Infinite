@@ -52,7 +52,7 @@ Global:
 require Exporter;
 
 package Set::Infinite::Element;
-$VERSION = "0.010";
+$VERSION = "0.11";
 
 my $package        = 'Set::Infinite::Element';
 @ISA = qw(Exporter);
@@ -76,7 +76,7 @@ our $null      = 'null';
 
 sub type {
 	if (@_) {
-		$type = shift;
+		$type = pop;
 		eval "use $type";
 		if ( (eval "(new $type (4)) cmp (new $type (3))") != 1) {
 			if ((eval "new $type (4)") != 4) {

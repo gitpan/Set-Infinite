@@ -74,7 +74,7 @@ Internal functions:
 
 require Exporter;
 package Set::Infinite::Date;
-$VERSION = "0.010";
+$VERSION = "0.11";
 
 my $package = 'Set::Infinite::Date';
 @EXPORT = qw();
@@ -101,7 +101,7 @@ our $second_size = $minute_size / 60;
 our $date_format = "year-month-day hour:min:sec";
 
 sub date_format {
-	$date_format = shift if @_;
+	$date_format = pop if @_;
 	return $date_format;
 }
 

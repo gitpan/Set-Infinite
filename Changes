@@ -3,4 +3,17 @@ Revision history for Perl extension Set::Infinite.
 0.01  Mon May 14 14:43:09 2001
 	- made Makefile.PL; v.0.010
 
+0.11
+	Set::Infinite
+	Copyright message
+
+	Set::Infinite Line 8:
+	# use AutoLoader qw(AUTOLOAD);
+
+	Deep recursion on subroutine "Set::Infinite::add" at h:/util/Perl/site/lib/Set/Infinite.pm line 318.
+	Deep recursion on subroutine "Set::Infinite::Simple::new" at h:/util/Perl/site/lib/Set/Infinite.pm line 184.
+	solution: 
+	Set::Infinite::Element->type and
+	Set::Infinite::Date->date_format
+	use `pop' instead of `shift', or read parameters
 
