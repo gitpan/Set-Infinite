@@ -24,7 +24,7 @@ use vars qw( @ISA %EXPORT_TAGS @EXPORT_OK @EXPORT $VERSION
 @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(inf new $inf trace_open trace_close) );
 @EXPORT = qw();
 
-$VERSION = '0.48';
+$VERSION = '0.49';
 
 use Set::Infinite::Arithmetic;
 
@@ -593,12 +593,17 @@ sub first {
 
             my $retry_count = 0;
             my (@first, @min, $which, $first1, $intersection);
-            my $which_order = 0;
 
-            while ($retry_count++ < $max_intersection_depth) {
+            SEARCH: while ($retry_count++ < $max_intersection_depth) {
+                return undef unless defined $parent[0];
+                return undef unless defined $parent[1];
+
                 @{$first[0]} = $parent[0]->first;
                 @{$first[1]} = $parent[1]->first;
                 $self->trace( title=>"trying #$retry_count: $first[0][0] -- $first[1][0]" );
+
+                # warn "trying #$retry_count: $first[0][0] -- $first[1][0]" ;
+
                 unless ( defined $first[0][0] ) {
                     # warn "don't know first of $method";
                     $self->trace_close( arg => 'undef' );
@@ -615,41 +620,51 @@ sub first {
                     $self->trace( title=>"can't find min()" );
                     $self->trace_close( arg => 'undef' );
                     return undef;
-                }
-                $which = ($min[0][0] < $min[1][0]) ? 1-$which_order : $which_order; 
-                ($first1, $parent[$which]) = @{ $first[$which] };
-                # $self->trace( title=>"which = $which < $first1 , $parent[$which] >" );
+                } 
 
-                # warn "ref ". ref($first1);
-                if ( $first1->is_null ) {
+                # $which is the index to the bigger "first".
+                $which = ($min[0][0] < $min[1][0]) ? 1 : 0;  
+
+                # warn " which $which ";
+
+                for my $which1 ( $which, 1 - $which ) {
+
+                  my $tmp_parent = $parent[$which1];
+                  ($first1, $parent[$which1]) = @{ $first[$which1] };
+                  # $self->trace( title=>"which = $which1 < $first1 , $parent[$which1] >" );
+
+                  # warn "ref ". ref($first1);
+                  if ( $first1->is_null ) {
                     # warn "first1 empty! count $retry_count";
                     # trace_close;
                     # return $first1, undef;
                     $intersection = $first1;
-                    last;
-                }
-                # warn "intersection is $first1 + $parent[$which] ($min1[0]), $parent[1-$which] ($min2[0]) count $retry_count";
+                    $which = $which1;
+                    last SEARCH;
+                  }
+                  # warn "intersection is $first1 + $parent[$which1] ($min1[0]), $parent[1-$which1] ($min2[0]) count $retry_count";
 
-# $TRACE = 1;
-                $intersection = $first1->intersection( $parent[1-$which] );
-# $TRACE = 0;
-                unless ( $intersection->is_null ) { 
+                  # $TRACE = 1;
+                  $intersection = $first1->intersection( $parent[1-$which1] );
+
+                  # warn "intersection with $first1 is $intersection";
+
+                  # $TRACE = 0;
+                  unless ( $intersection->is_null ) { 
                     # $self->trace( title=>"got an intersection" );
                     if ( $intersection->is_too_complex ) {
                         $self->trace( title=>"got a too_complex intersection" );
+                        $parent[$which1] = $tmp_parent;
                     }
                     else {
                         $self->trace( title=>"got an intersection" );
-                        last;
+                        $which = $which1;
+                        last SEARCH;
                     }
-                };
-                unless ( defined $parent[$which] ) {
-                    # no luck - try inverting $which order
-                    $self->trace( title=>"retrying - invert order" );
-                    $parent[$which] = $first1;  # get it back
-                    $which_order = 1 - $which_order;
-                    # last;
+                  };
+
                 }
+
                 $self->trace( title=>"next try" );
             }
             $self->trace( title=>"exit loop" );
@@ -737,6 +752,13 @@ sub first {
             return @{$self->{first}} = ($first, $tail);
         } # end: first-union
 
+        if ($method eq 'until') {
+            my @parent = @{ $self->{parent} };
+            my $redo = $parent[0]->until( $parent[1] );
+            my @first = $redo->first;
+            return wantarray ? @first : $first[0];
+        }
+
         # 'quantize', 'select', 'recur_by_rule', 'offset', 'iterate'
         # warn "first() doesn't know how to do $method-first, but maybe $method() knows";
         # warn " parent was ".$self->{parent};
@@ -819,12 +841,15 @@ sub last {
 
             my $retry_count = 0;
             my (@last, @max, $which, $last1, $intersection);
-            my $which_order = 0;
 
-            while ($retry_count++ < $max_intersection_depth) {
+            SEARCH: while ($retry_count++ < $max_intersection_depth) {
+                return undef unless defined $parent[0];
+                return undef unless defined $parent[1];
+
                 @{$last[0]} = $parent[0]->last;
                 @{$last[1]} = $parent[1]->last;
                 $self->trace( title=>"trying #$retry_count: $last[0][0] -- $last[1][0]" ) if $TRACE;
+                # warn "last trying #$retry_count: $last[0][0] -- $last[1][0]" ;
                 unless ( defined $last[0][0] ) {
                     # warn "don't know last of $method";
                     $self->trace_close( arg => 'undef' );
@@ -842,39 +867,48 @@ sub last {
                     $self->trace_close( arg => 'undef' );
                     return undef;
                 }
-                $which = ($max[0][0] > $max[1][0]) ? 1-$which_order : $which_order;
-                ($last1, $parent[$which]) = @{ $last[$which] };
-                # warn "ref ". ref($last1);
-                if ( $last1->is_null ) {
+
+                # $which is the index to the smaller "last".
+                $which = ($max[0][0] > $max[1][0]) ? 1 : 0;
+
+                for my $which1 ( $which, 1 - $which ) {
+
+                  my $tmp_parent = $parent[$which1];
+                  ($last1, $parent[$which1]) = @{ $last[$which1] };
+                  # warn "ref ". ref($last1);
+                  if ( $last1->is_null ) {
                     # warn "first1 empty! count $retry_count";
                     # trace_close;
                     # return $first1, undef;
+                    $which = $which1;
                     $intersection = $last1;
-                    last;
-                }
-                $intersection = $last1->intersection( $parent[1-$which] );
-# $TRACE = 0;
-                unless ( $intersection->is_null ) {
+                    last SEARCH;
+                  }
+                  $intersection = $last1->intersection( $parent[1-$which1] );
+
+                  # warn "last intersection with $last1 is $intersection [$which1]";
+
+                  # $TRACE = 0;
+                  unless ( $intersection->is_null ) {
                     # $self->trace( title=>"got an intersection" );
                     if ( $intersection->is_too_complex ) {
-                        $self->trace( title=>"got a too_complex intersection" );                    }
+                        $self->trace( title=>"got a too_complex intersection" ); 
+                        # warn "too complex intersection";
+                        $parent[$which1] = $tmp_parent;
+                    }
                     else {
                         $self->trace( title=>"got an intersection" );
-                        last;
+                        $which = $which1;
+                        last SEARCH;
                     }
-                };
-                unless ( defined $parent[$which] ) {
-                    # no luck - try inverting $which order
-                    $self->trace( title=>"retrying - invert order" );
-                    $parent[$which] = $last1;  # get it back
-                    $which_order = 1 - $which_order;
-                    # last;
+                  };
+
                 }
+
                 $self->trace( title=>"next try" );
             }
             $self->trace( title=>"exit loop" );
             if ( $intersection->is_null ) {
-                # my ($second1, $second2);
                 $self->trace( title=> "got no intersection so far" );
             }
 
@@ -1178,12 +1212,18 @@ sub backtrack {
         # print " [bt$backtrack_depth-3.5:complex: 2-PARENTS ] \n";
 
         $self->trace( title=>"array - method is $method" );
+
         if ($self->{method} eq 'until') {
             $self->trace( title=>"trying to find out from < $arg > - before" );
-            # print "[ min,max = ",$arg->min," - ", $arg->max,"]\n";
+            # warn "[ min,max = ", ( ref($arg->min) ? $arg->min->datetime : $arg->min ) ," - ", $arg->max,"]\n";
+            # warn "[ a-max = ", ( ref($self->{parent}[0]->max) ? $self->{parent}[0]->max->datetime : $self->{parent}[0]->max ) ," ]\n";
+            # warn "[ b-min = ", ( ref($self->{parent}[1]->min) ? $self->{parent}[1]->min->datetime : $self->{parent}[1]->min ) ," ]\n";
+
             my $before = $self->{parent}[0]->intersection( -$inf, $arg->min )->max;
+            $before = $arg->min unless $before;
             $self->trace( title=>"trying to find out from < $arg > - after" );
             my $after = $self->{parent}[1]->intersection( $arg->max, $inf )->min;
+            $after = $arg->max unless $after;
             $self->trace( title=>"before, after is < $before , $after >" );
             $arg = $arg->new( $before, $after );
         }
@@ -1383,10 +1423,12 @@ sub intersection {
         }
     }
     if ($a1->{too_complex}) {
-        $a1 = $a1->backtrack('intersection', $b1);
+        # added: unless $b1->{too_complex}
+        $a1 = $a1->backtrack('intersection', $b1) unless $b1->{too_complex};
     }  # don't put 'else' here
     if ($b1->{too_complex}) {
-        $b1 = $b1->backtrack('intersection', $a1);
+        # added: unless $b1->{too_complex}
+        $b1 = $b1->backtrack('intersection', $a1) unless $a1->{too_complex};
     }
     if (($a1->{too_complex}) or ($b1->{too_complex})) {
         $a1->trace_close( );
@@ -1443,13 +1485,14 @@ sub until {
         $a1->trace( title=>"first $first2[0]{list}[0]{a} ".$first2[0]{list}[0]{open_end} );
         my ($first, $tail);
         if ( $first2[0] <= $first1[0] ) {
-            $first = $a1->new()->until( $first2[0] );
-            $tail = $a1->_function( "until", $first2[1] );
+            # added ->first because it returns 2 spans if $a1 == $a2
+            $first = $a1->new()->until( $first2[0] )->first;
+            $tail = $a1->_function2( "until", $first2[1] );
         }
         else {
             $first = $a1->new( $first1[0] )->until( $first2[0] );
             if ( defined $first1[1] ) {
-                $tail = $first1[1]->_function( "until", $first2[1] );
+                $tail = $first1[1]->_function2( "until", $first2[1] );
             }
             else {
                 $tail = undef;

@@ -274,8 +274,10 @@ sub _simple_as_string {
     $self->{open_begin} = 1 if ($self->{a} == -$inf );
     $self->{open_end}   = 1 if ($self->{b} == $inf );
     my $tmp1 = $self->{a};
+    $tmp1 = $tmp1->datetime if UNIVERSAL::can( $tmp1, 'datetime' );
     $tmp1 = "$tmp1";
     my $tmp2 = $self->{b};
+    $tmp2 = $tmp2->datetime if UNIVERSAL::can( $tmp2, 'datetime' );
     $tmp2 = "$tmp2";
     return $tmp1 if $tmp1 eq $tmp2;
     $s = $self->{open_begin} ? $separators[2] : $separators[0];
@@ -444,7 +446,7 @@ sub intersection {
         $tmp2 = $b1->{list}[$ib];
         $tmp2a = $tmp2->{a};
         $tmp2b = $tmp2->{b};
-         A: foreach $ia ($a0 .. $ma) {
+        A: foreach $ia ($a0 .. $ma) {
             $tmp1 = $a1->{list}[$ia];
             $tmp1b = $tmp1->{b};
 

@@ -1,5 +1,8 @@
 Revision history for Perl extension Set::Infinite.
 
+0.49
+    fixed: "first/last" of intersection between recurrences
+
 0.48
     fixed: backtracking on a partially defined set.
     fixed: first of a union with an empty set.
