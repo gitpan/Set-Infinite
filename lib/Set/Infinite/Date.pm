@@ -80,7 +80,7 @@ Internal functions:
 
 require Exporter;
 package Set::Infinite::Date;
-$VERSION = "0.16";
+$VERSION = "0.17";
 
 my $package = 'Set::Infinite::Date';
 @EXPORT = qw();
@@ -169,23 +169,27 @@ sub div {
 
 sub sub {
 	my ($tmp1, $tmp2, $inverted) = @_;
-	$tmp2 = Set::Infinite::Date->new($tmp2) unless ref($tmp2) and $tmp2->isa('Set::Infinite::Date');
+	$tmp2 = Set::Infinite::Date->new($tmp2) unless ref($tmp2) and $tmp2->isa(__PACKAGE__);
 	if ($inverted) {
+		return - $tmp1 if $tmp2->is_null;
 		return Set::Infinite::Date->new( $tmp2->{a} - $tmp1->{a} );
 	}
+	return $tmp1 unless defined($tmp2);
 	return Set::Infinite::Date->new( $tmp1->{a} - $tmp2->{a} );
 }
 
 sub add {
 	my ($tmp1, $tmp2, $inverted) = @_;
-	$tmp2 = Set::Infinite::Date->new($tmp2) unless ref($tmp2) and $tmp2->isa('Set::Infinite::Date');
+	return $tmp1 unless defined($tmp2);
+	$tmp2 = Set::Infinite::Date->new($tmp2) unless ref($tmp2) and $tmp2->isa(__PACKAGE__);
 	return Set::Infinite::Date->new( $tmp1->{a} + $tmp2->{a} );
 }
 
 sub spaceship {
 	my ($tmp1, $tmp2, $inverted) = @_;
 	#print " [DATE:CMP:",caller(1),"]\n";
-	$tmp2 = Set::Infinite::Date->new($tmp2) unless ref($tmp2) and $tmp2->isa('Set::Infinite::Date');
+	return 1 unless defined($tmp2);
+	$tmp2 = Set::Infinite::Date->new($tmp2) unless ref($tmp2) and $tmp2->isa(__PACKAGE__);
 	if ($inverted) {
 		return ( $tmp2->{a} <=> $tmp1->{a} );
 	}

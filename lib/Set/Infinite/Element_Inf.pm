@@ -36,7 +36,7 @@ Global:
 require Exporter;
 
 package Set::Infinite::Element_Inf;
-$VERSION = "0.16";
+$VERSION = "0.17";
 
 my $package        = 'Set::Infinite::Element_Inf';
 @ISA = qw(Exporter);
@@ -277,6 +277,8 @@ sub spaceship {
 
 	# print " [CMP:",ref($tmp1),"=$tmp1 <=> ",ref($tmp2),"=$tmp2] \n";
 	# $tmp2 = '' unless (defined($tmp2)); 	# keep warnings quiet
+
+	$tmp2 = "" unless defined($tmp2);
 
 	if ($inverted) {
 		($tmp2, $tmp1) = ($tmp1, $tmp2);

@@ -1,5 +1,9 @@
 Revision history for Perl extension Set::Infinite.
 
+0.17
+	Correction in Simple.pm line-ending, and TODO filename on Windows
+	Element_Inf and Date.pm test for undefined parameters on OpenBSD
+
 0.16
 	40% speed improvement in tests over version 0.14.
 

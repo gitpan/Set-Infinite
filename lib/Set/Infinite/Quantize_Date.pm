@@ -8,7 +8,7 @@ use strict;
 use warnings;
 
 require Exporter;
-our $VERSION = "0.16";
+our $VERSION = "0.17";
 
 my $package = 'Set::Infinite::Quantize_Date';
 our @EXPORT = qw();

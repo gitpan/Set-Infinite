@@ -8,7 +8,7 @@ lib/Set/Infinite/Date.pm
 lib/Set/Infinite/Element.pm
 lib/Set/Infinite/Simple.pm
 MANIFEST
-TODO
+Todo.txt
 Makefile.PL
 todo/bigfloat.t
 todo/bigint.t

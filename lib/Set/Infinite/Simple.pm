@@ -121,7 +121,7 @@ v0.15
 require Exporter;
 
 package Set::Infinite::Simple;
-$VERSION = "0.16";
+$VERSION = "0.17";
 
 my $package        = 'Set::Infinite::Simple';
 @ISA = qw(Exporter);
@@ -332,11 +332,11 @@ sub union {
 			return ( $tmp1, $tmp2 );
 		}
 		if (($tmp1->{b} == $tmp2->{a}) and $tmp1->{open_end} and $tmp2->{open_begin}) {
-			# self disjuncts b?
+			# self disjuncts b
 			return ( $tmp1, $tmp2 ); 
 		}
 		if (($tmp2->{b} == $tmp1->{a}) and $tmp2->{open_end} and $tmp1->{open_begin}) {
-			# self disjuncts b?
+			# self disjuncts b
 			return ( $tmp1, $tmp2 );
 		}
 	}
