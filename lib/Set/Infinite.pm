@@ -20,11 +20,13 @@ use vars qw( @ISA %EXPORT_TAGS @EXPORT_OK @EXPORT $VERSION
 @ISA = qw( Set::Infinite::Basic Exporter );
 
 # This allows declaration    use Set::Infinite ':all';
-%EXPORT_TAGS = ( 'all' => [ qw(inf new $inf) ] );
-@EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(inf new $inf trace_open trace_close) );
+%EXPORT_TAGS = ( 'all' => [ qw(inf $inf) ] );
+@EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , 
+    qw(inf $inf trace_open trace_close) );
+    # qw(inf new $inf trace_open trace_close) );
 @EXPORT = qw();
 
-$VERSION = 0.52;
+$VERSION = 0.53;
 
 use Set::Infinite::Arithmetic;
 

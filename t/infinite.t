@@ -79,8 +79,8 @@ $b = Set::Infinite->new($neg_inf,1)->complement;
 $c = $a->union($b);
 test ("union $b : ", 	'$c', "($neg_inf..1),(1..$inf)"); # 14
 test ("  complement : ", 	'$c->complement',"1"); # 15
-test ("union $c [1..inf) ", 	'$c->union(1,inf)', "($neg_inf..$inf)"); # 16
-test ("union $b [1..inf) ", 	'$b->union(1,inf)', "[1..$inf)"); # 17
+test ("union $c [1..inf) ", 	'$c->union(1,$inf)', "($neg_inf..$inf)"); # 16
+test ("union $b [1..inf) ", 	'$b->union(1,$inf)', "[1..$inf)"); # 17
 
 # print "Testing 'null' and (0..0)\n";
 

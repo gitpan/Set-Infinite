@@ -1,5 +1,9 @@
 Revision history for Perl extension Set::Infinite.
 
+0.53    2003-09-05
+    - fixes a test that fails under 5.00503
+    - does not export 'new'
+
 0.52    2003-09-04
     change tests to run under Perl 5.9.0
     - infinity string contains spaces
