@@ -1,5 +1,16 @@
 Revision history for Perl extension Set::Infinite.
 
+0.43
+    CPAN release
+    implemented max() of 'iterate'
+
+0.42_05
+    implemented min() of 'iterate'
+    fixed complex union with empty set
+
+0.42_04
+    finished removing 'our'
+
 0.42_03 / 0.42_02
     (idem)
 

@@ -10,11 +10,13 @@ use Carp;
 use Time::Local;
 use POSIX qw(floor);
 
-our @EXPORT = qw();
-our @EXPORT_OK = qw();
-# our @EXPORT_OK = qw( %subs_offset2 %Offset_to_value %Value_to_offset %Init_quantizer );
+use vars qw( @EXPORT @EXPORT_OK $inf );
 
-our $inf = 10**10**10;    # $Set::Infinite::inf;  doesn't work! (why?)
+@EXPORT = qw();
+@EXPORT_OK = qw();
+# @EXPORT_OK = qw( %subs_offset2 %Offset_to_value %Value_to_offset %Init_quantizer );
+
+$inf = 100**100**100;    # $Set::Infinite::inf;  doesn't work! (why?)
 
 =head2 NAME
 
@@ -26,12 +28,13 @@ Flavio Soibelmann Glock - fglock@pucrs.br
 
 =cut
 
- 
-our $day_size =    timegm(0,0,0,2,3,2001) - timegm(0,0,0,1,3,2001);
-our $hour_size =   $day_size / 24;
-our $minute_size = $hour_size / 60;
-our $second_size = $minute_size / 60;
+use vars qw( $day_size $hour_size $minute_size $second_size ); 
+$day_size =    timegm(0,0,0,2,3,2001) - timegm(0,0,0,1,3,2001);
+$hour_size =   $day_size / 24;
+$minute_size = $hour_size / 60;
+$second_size = $minute_size / 60;
 
+use vars qw( %_MODE %subs_offset2 %Offset_to_value @week_start %Init_quantizer %Value_to_offset %Offset_to_value );
 
 =head2 %_MODE hash of subs
 
@@ -48,7 +51,7 @@ option 'strict' will return intersection($a,offset). Default: none.
 =cut
 
 # return value = ($this, $next, $cmp)
-our %_MODE = (
+%_MODE = (
     circle => sub {
             if ($_[3] >= 0) {
                 &{ $_[0] } ($_[1], $_[3], $_[4] ) 
@@ -81,7 +84,7 @@ Returned $object+$offset1, $object+$offset2 may be scalars or objects.
 
 =cut
 
-our %subs_offset2 = (
+%subs_offset2 = (
     weekdays =>    sub {
         # offsets to week-day specified
         # 0 = first sunday from today (or today if today is sunday)
@@ -205,7 +208,7 @@ our %subs_offset2 = (
 );
 
 
-our @week_start = ( 0, -1, -2, -3, 3, 2, 1, 0, -1, -2, -3, 3, 2, 1, 0 );
+@week_start = ( 0, -1, -2, -3, 3, 2, 1, 0, -1, -2, -3, 3, 2, 1, 0 );
 
 =head2 %Offset_to_value($object, $offset)
 
@@ -232,7 +235,7 @@ by the memoization cache.
 
 =cut
 
-our %Offset_to_value = (
+%Offset_to_value = (
     weekyears =>    sub {
         my ($self, $index) = @_;
         my $epoch = timegm( 0,0,0, 
@@ -295,7 +298,7 @@ our %Offset_to_value = (
 
 # Maps an 'offset value' to a 'value'
 
-our %Value_to_offset = (
+%Value_to_offset = (
     one =>      sub { floor( $_[1] / $_[0]{quant} ) },
     seconds =>  sub { floor( $_[1] / $_[0]{quant} ) },
     minutes =>  sub { floor( $_[1] / $_[0]{quant} ) },
@@ -343,7 +346,7 @@ our %Value_to_offset = (
 
 # Initialize quantizer
 
-our %Init_quantizer = (
+%Init_quantizer = (
     one =>       sub {},
     seconds =>   sub { $_[0]->{quant} *= $second_size },
     minutes =>   sub { $_[0]->{quant} *= $minute_size },

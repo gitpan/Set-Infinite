@@ -15,14 +15,14 @@ use Data::Dumper;
 
 use vars qw( @ISA %EXPORT_TAGS @EXPORT_OK @EXPORT $VERSION );
 use vars qw( $TRACE $DEBUG_BT $PRETTY_PRINT $inf $minus_inf $too_complex $backtrack_depth $max_backtrack_depth $max_intersection_depth );
-@ISA = qw( Exporter Set::Infinite::Basic );
+@ISA = qw( Set::Infinite::Basic Exporter );
 
 # This allows declaration    use Set::Infinite ':all';
 %EXPORT_TAGS = ( 'all' => [ qw(inf new $inf) ] );
 @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(inf new $inf trace_open trace_close) );
 @EXPORT = qw();
 
-$VERSION = '0.42_03';
+$VERSION = '0.43';
 
 use Set::Infinite::Arithmetic;
 
@@ -69,7 +69,7 @@ It works on reals or integers.
 You can provide your own objects or let it make them for you
 using the `type'.
 
-It works very well on dates, providing schedule checks (intersections),
+It works with dates too, providing schedule checks (intersections),
 unions, and infinite recurrences.
 
 =head1 METHODS
@@ -1455,6 +1455,8 @@ sub union {
     $a1->trace_open(title=>"union", arg => $b1);
     if (($a1->{too_complex}) or ($b1->{too_complex})) {
         $a1->trace_close( );
+        return $a1 if $b1->is_null;
+        return $b1 if $a1->is_null;
         return $a1->_function2( 'union', $b1);
     }
     return $a1->SUPER::union( $b1 );
@@ -1502,7 +1504,22 @@ sub min_a {
         # offset, select, quantize
         if ( ref $self->{parent} ne 'ARRAY' ) {
             my @parent;
-            # print " min ",$self->{method}," ",$self->{parent}->min_a,"\n";
+            # warn " min ",$self->{method}," ",$self->{parent}->min_a;
+
+            if ($method eq 'iterate') {
+                # warn "min of iterate";
+                @parent = $self->{parent}->min_a;
+                unless (defined $parent[0]) {
+                    $self->trace_close( arg => "@parent" ) if $TRACE;
+                    return @{$self->{min}} = @parent;  # undef
+                }
+                # warn "min of iterate @parent";
+                my $min = $self->new( $parent[0] )->iterate( @{ $self->{param} } );
+                # warn "iterate got ". $min->min->ymd;
+                @parent = $min->min_a;
+                $self->trace_close( arg => "@parent" ) if $TRACE;
+                return @{$self->{min}} = @parent;
+            }
 
             if ($method eq 'complement') {
                 @parent = $self->{parent}->min_a;
@@ -1593,6 +1610,18 @@ sub max_a {
         if ( ref $self->{parent} ne 'ARRAY' ) {
             my @parent;
             # print " max ",$self->{method}," ",$self->{parent}->max_a,"\n";
+
+            if ($method eq 'iterate') {
+                @parent = $self->{parent}->max_a;
+                unless (defined $parent[0]) {
+                    $self->trace_close( arg => "@parent" ) if $TRACE;
+                    return @{$self->{max}} = @parent;  # undef
+                }
+                my $max = $self->new( $parent[0] )->iterate( @{ $self->{param} } );
+                @parent = $max->max_a;
+                $self->trace_close( arg => "@parent" ) if $TRACE;
+                return @{$self->{max}} = @parent;
+            }
 
             if ($method eq 'complement') {
                 @parent = $self->{parent}->min_a;
@@ -1833,10 +1862,6 @@ __END__
 
         default are [ ] ( ) '..' ','.
 
-    infinite($i)
-
-        chooses 'infinite' name. default is 'inf'
-
     inf
 
         returns an 'Infinity' number.
@@ -1983,6 +2008,10 @@ max and min functions will also show in date/time format.
         You probably want ->new(1,3) instead.
 
 =head1 SEE ALSO
+
+    DateTime::Set
+
+    the perl-date-time project <http://datetime.perl.org> (soon)
 
     Date::Set
 

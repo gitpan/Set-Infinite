@@ -127,16 +127,16 @@ use overload
 	'/' => \&div,
 	qw("" as_string);
 
+use vars qw( $day_size $hour_size $minute_size $second_size $date_format %date_cache %time2date_cache );
+$day_size = timegm(0,0,0,2,3,2001) - timegm(0,0,0,1,3,2001);
+$hour_size = $day_size / 24;
+$minute_size = $hour_size / 60;
+$second_size = $minute_size / 60;
 
-our $day_size = timegm(0,0,0,2,3,2001) - timegm(0,0,0,1,3,2001);
-our $hour_size = $day_size / 24;
-our $minute_size = $hour_size / 60;
-our $second_size = $minute_size / 60;
+$date_format = "year-month-day hour:min:sec";
 
-our $date_format = "year-month-day hour:min:sec";
-
-our %date_cache = ();
-our %time2date_cache = ();
+%date_cache = ();
+%time2date_cache = ();
 
 sub date_format {
 	$date_format = pop if @_;
@@ -194,6 +194,7 @@ sub hour2time {
 	return $tmp * $hour_size + $tmp_min * $minute_size + $tmp_sec * $second_size;
 }
 
+# div() returns (epoch / x)
 sub div {
 	my ($tmp1, $tmp2) = @_;
 	return $tmp1->{a} / $tmp2;

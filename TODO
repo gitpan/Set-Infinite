@@ -1,6 +1,8 @@
 Set::Infinite TODO 
 
-    - remove all 'our'
+    - refactor backtracking, min, max, first, offset, quantize
+
+    - tests for min/max of iterate()
 
     - test until() with first()/min()/max()
 
@@ -8,20 +10,9 @@ Set::Infinite TODO
 
     - change "link to self" to "link to copy" in first()
 
-    no - make separate methods for quantize, quantize-first and quantize-last
-
-    done - first() of a select/complement should return next interval,
-      instead of 'null'
-
-        [1..2),[2..3)
-              ^      ^should return here
-              returns here
-
     - finish last()
 
     - change iterate() to use first() ?
-
-    - finish first(n) for unbounded sets
 
     - finish select/first defined "boundedness" for negative by
       and tests for negative by

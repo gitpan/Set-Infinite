@@ -42,7 +42,7 @@ $a = Set::Infinite->new([1,3]);
 
 # $a = $a->quantize(quant => 1);
 # $a = $a->compact;
-# our @a = $a->list;
+# @a = $a->list;
 # exit;
 
 test ( '', ' join (" ", $a->quantize(quant => 1)->compact->list ) ',
