@@ -4,9 +4,9 @@ package Set::Infinite::Basic;
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 
-require 5.005_62;
+require 5.005_03;
 use strict;
-use warnings;
+# use warnings;
 
 require Exporter;
 use Carp;

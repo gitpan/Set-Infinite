@@ -4,9 +4,9 @@ package Set::Infinite;
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 
-require 5.005_62;
+require 5.005_03;
 use strict;
-use warnings;
+# use warnings;
 
 require Exporter;
 use Set::Infinite::Basic;
@@ -24,7 +24,7 @@ use vars qw( @ISA %EXPORT_TAGS @EXPORT_OK @EXPORT $VERSION
 @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(inf new $inf trace_open trace_close) );
 @EXPORT = qw();
 
-$VERSION = '0.50';
+$VERSION = 0.51;
 
 use Set::Infinite::Arithmetic;
 
@@ -147,7 +147,7 @@ sub _function {
     $b->{too_complex} = 1;
     $b->{parent} = $self;   
     $b->{method} = $method;
-    $b->{param}  = \@_;
+    $b->{param}  = [ @_ ];
     return $b;
 }
 
@@ -162,7 +162,7 @@ sub _function2 {
     $b->{too_complex} = 1;
     $b->{parent} = [ $self, $arg ];
     $b->{method} = $method;
-    $b->{param}  = \@_;
+    $b->{param}  = [ @_ ];
     return $b;
 }
 
@@ -262,18 +262,22 @@ sub quantize {
     }
 
     $rule{fixtype} = 1 unless exists $rule{fixtype};
-    $Set::Infinite::Arithmetic::Init_quantizer{$rule{unit}} (\%rule);
+    # $Set::Infinite::Arithmetic::Init_quantizer{$rule{unit}} (\%rule);
+    $Set::Infinite::Arithmetic::Init_quantizer{$rule{unit}}->(\%rule);
 
     $rule{sub_unit} = $Set::Infinite::Arithmetic::Offset_to_value{$rule{unit}};
     carp "Quantize unit '".$rule{unit}."' not implemented" unless ref( $rule{sub_unit} ) eq 'CODE';
 
     my ($max, $open_end) = $parent->max_a;
-    $rule{offset} = $Set::Infinite::Arithmetic::Value_to_offset{$rule{unit}} (\%rule, $min);
-    my $last_offset = $Set::Infinite::Arithmetic::Value_to_offset{$rule{unit}} (\%rule, $max);
+    # $rule{offset} = $Set::Infinite::Arithmetic::Value_to_offset{$rule{unit}} (\%rule, $min);
+    $rule{offset} = $Set::Infinite::Arithmetic::Value_to_offset{$rule{unit}}->(\%rule, $min);
+    # my $last_offset = $Set::Infinite::Arithmetic::Value_to_offset{$rule{unit}} (\%rule, $max);
+    my $last_offset = $Set::Infinite::Arithmetic::Value_to_offset{$rule{unit}}->(\%rule, $max);
     $rule{size} = $last_offset - $rule{offset} + 1; 
     my ($index, $tmp, $this, $next);
     for $index (0 .. $rule{size} ) {
-        ($this, $next) = $rule{sub_unit} (\%rule, $index);
+        # ($this, $next) = $rule{sub_unit} (\%rule, $index);
+        ($this, $next) = $rule{sub_unit}->(\%rule, $index);
         unless ( $rule{fixtype} ) {
                 $tmp = { a => $this , b => $next ,
                         open_begin => 0, open_end => 1 };
@@ -1247,6 +1251,7 @@ sub backtrack {
         # apply {method}
         # print "\n\n<eval-2 method:$self->{method} - $the_method \n\n";
         # $result = &{ \& { $self->{method} } } ($result1, $result2);
+
         my $method = $self->{method};
         $result = $result1->$method ($result2);
         # print "\n\n/eval-2> \n\n";

@@ -35,3 +35,4 @@ _eg/schedule_check.pl
 _eg/weekly_to_html.pl
 _eg/recurring.pl
 
+META.yml                                Module meta-data (added by MakeMaker)

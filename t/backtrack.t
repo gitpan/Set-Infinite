@@ -1,4 +1,4 @@
-#/bin/perl
+#/bin/perl -w
 # Copyright (c) 2001 Flavio Soibelmann Glock. All rights reserved.
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
@@ -6,7 +6,7 @@
 # Tests for Set::Infinite backtracking
 
 use strict;
-use warnings;
+# use warnings;
 
 $| = 1;
 

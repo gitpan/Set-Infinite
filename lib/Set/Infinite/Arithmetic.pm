@@ -4,7 +4,7 @@ package Set::Infinite::Arithmetic;
 # modify it under the same terms as Perl itself.
 
 use strict;
-use warnings;
+# use warnings;
 require Exporter;
 use Carp;
 use Time::Local;

@@ -1,21 +1,25 @@
-#/bin/perl
+#/bin/perl -w
 # Copyright (c) 2001 Flavio Soibelmann Glock. All rights reserved.
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 
 =head1 NAME
 
-Set::Infinite::Date - 'date' scalar - Deprecated - use Date::Set instead
+Set::Infinite::Date - date scalar. Deprecated. use Date::Set instead.
 
 =head1 SYNOPSIS
 
-This module is obsolete - use Date::Set instead
+This module is obsolete - use DateTime::Set instead
 
 	use Set::Infinite::Date;
 
 	$a = Set::Infinite::Date->new("10:00");
 
 	This module requires Time::Local
+
+=head1 DESCRIPTION
+
+This module is obsolete - use DateTime::Set instead
 
 =head1 USAGE
 
@@ -91,7 +95,7 @@ my $DEBUG = 1;
 );
 
 use strict;
-use warnings;
+# use warnings;
 use Carp;
 use Time::Local;
 # use Set::Infinite::Element_Inf;

@@ -1,5 +1,10 @@
 Revision history for Perl extension Set::Infinite.
 
+0.51    2003-09-02
+    passes all tests under 5.00503.
+    - changed ' $var=\@_ ' to ' $var=[@_] '
+    compiles under Perl 5.00503.  Patch by Mathieu Arnold.
+
 0.50
     count()
     fixed: size() does not try to add 'zero' to object.
