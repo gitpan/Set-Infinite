@@ -1,5 +1,8 @@
 Revision history for Perl extension Set::Infinite.
 
+0.39
+    fixed a bug in spaceship() that affected Date::Set::Timezone
+
 0.38 - changes to 0.37:
     new method first()
     min() and max() improved

@@ -271,14 +271,40 @@ sub _simple_union {
     return \%tmp;
 }
 
+# v.0.39 fixed this:
+# sub _simple_spaceship {
+#    my ($tmp1, $tmp2, $inverted) = @_;
+#    my $cmp = $tmp1->{a} <=> $tmp2->{a};
+#    if ($inverted) {
+#        return $cmp ? - $cmp : $tmp2->{b} <=> $tmp1->{b}; 
+#    }
+#    return $cmp ? $cmp : $tmp1->{b} <=> $tmp2->{b};
+# }
+
 sub _simple_spaceship {
     my ($tmp1, $tmp2, $inverted) = @_;
-    my $cmp = $tmp1->{a} <=> $tmp2->{a};
+    my $cmp;
+    # print "_simple_spaceship: $tmp1 <=> $tmp2 ($inverted) \n";
     if ($inverted) {
-        return $cmp ? - $cmp : $tmp2->{b} <=> $tmp1->{b}; 
+        $cmp = $tmp1->{a} <=> $tmp2->{a};
+        return -$cmp if $cmp;
+        $cmp = $tmp1->{open_begin} <=> $tmp2->{open_begin};
+        return $cmp if $cmp;
+        $cmp = $tmp1->{b} <=> $tmp2->{b};
+        return -$cmp if $cmp;
+        $cmp = $tmp1->{open_end} <=> $tmp2->{open_end};
+        return $cmp;
     }
-    return $cmp ? $cmp : $tmp1->{b} <=> $tmp2->{b};
+    $cmp = $tmp1->{a} <=> $tmp2->{a};
+    return $cmp if $cmp;
+    $cmp = $tmp1->{open_begin} <=> $tmp2->{open_begin};
+    return -$cmp if $cmp;
+    $cmp = $tmp1->{b} <=> $tmp2->{b};
+    return $cmp if $cmp;
+    $cmp = $tmp1->{open_end} <=> $tmp2->{open_end};
+    return -$cmp;
 }
+
 
 sub _simple_new {
     my $tmp = shift;
