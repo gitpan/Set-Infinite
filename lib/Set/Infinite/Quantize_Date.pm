@@ -8,14 +8,15 @@ use strict;
 use warnings;
 
 require Exporter;
-our $VERSION = "0.19";
+our $VERSION = "0.24";
 
-my $package = 'Set::Infinite::Quantize_Date';
 our @EXPORT = qw();
 our @EXPORT_OK = qw();
+our @ISA = qw(Set::Infinite::Quantize);
 
 use Time::Local;
 use Set::Infinite qw(type);
+use Set::Infinite::Quantize;
 
 =head2 NAME
 
@@ -128,7 +129,7 @@ sub new {
 	# my ($self) = bless \%rules, $class;
 	# print " [ PARENT:ISA:", ref($parent), "] ";
 
-	$self->{unit} = 'days' unless $self->{unit};
+	$self->{unit} = 'seconds' unless $self->{unit};
 	$self->{quant} = 1 unless $self->{quant};
 
 	# may be "simple"!
@@ -146,7 +147,7 @@ sub new {
 	# print " [Q-DATE:MODE:",$self->{mode},"]\n";
 	# print " [Q-DATE:",join(";",%$self),"]\n";
 
-	@{$self->{date_begin}} = gmtime( $self->{dates}->min->epoch );
+	@{$self->{date_begin}} = gmtime( 0 + $self->{dates}->min );
 	$self->{date_begin}[5] += 1900;
 
 	$self->{first} = timegm( @{$self->{date_begin}} );
@@ -204,7 +205,7 @@ sub new {
 	}
 
 
-	$self->{time2_end} = $self->{dates}->max->epoch;
+	$self->{time2_end} = 0 + $self->{dates}->max;
 
 	# print " [QUANT: = 2 + ($self->{time2_end} - $self->{first}) /  ($self->{quant} * $self->{mult})]\n";
 
@@ -213,32 +214,6 @@ sub new {
 
 	# print " [QD:new:end] ";
 	return $self;
-}
-
-# TIE
-
-sub TIEARRAY {
-	my $class = shift;
-	my $self = $class->new(@_);
-	return $self;
-}
-
-sub FETCHSIZE {
-	my ($self) = shift;
-	return $self->{size}; 
-}
-
-sub STORESIZE {
-	return @_;
-}
-
-sub CLEAR {
-	my ($self) = shift;
-	return @_;
-}
-
-sub EXTEND {
-	return @_;
 }
 
 sub FETCH {
@@ -278,13 +253,6 @@ sub FETCH {
 		return $tmp;
 	}
 	return Set::Infinite::Simple->simple_null;
-}
-
-sub STORE {
-	return @_;
-}
-
-sub DESTROY {
 }
 
 

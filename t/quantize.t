@@ -16,12 +16,24 @@ use warnings;
 use Set::Infinite::Quantize;
 
 
-# print "test: ",join (" ",  Set::Infinite->new([1,3])->quantize(quant => 1) ), "\n";
-# foreach (
-#	Set::Infinite->new([1,3],[5,10])->quantize(quant => 0.5)
-#	) { print " $_ "; }
-#print "\n";
+my $test = 0;
+my ($result, $errors);
 
+sub test {
+	my ($header, $sub, $expected) = @_;
+	$test++;
+	#print "\t# $header \n";
+	$result = eval $sub;
+	if ("$expected" eq "$result") {
+		print "ok $test";
+	}
+	else {
+		print "not ok $test"; # \n\t# expected \"$expected\" got \"$result\"";
+		print "\n\t# $sub expected \"$expected\" got \"$result\"";
+		$errors++;
+	}
+	print " \n";
+}
 
 
 print "1..8\n";
@@ -29,16 +41,15 @@ print "1..8\n";
 #print "1: \n";
 $a = Set::Infinite->new([1,3]);
 #print join (" ",@{$a->quantize(quant => 1)}),"\n";
-print "not " unless join (" ", $a->quantize(quant => 1) ) eq 
-	"[1..2) [2..3) [3..4) ";
-print "ok 1\n";
+test ( '', ' join (" ", $a->quantize(quant => 1) ) ',
+	"[1..2) [2..3) [3..4)");
 
 #print "25: \n";
 $a = Set::Infinite->new([315,434], [530,600]);
 #print join (" ",@{$a->quantize(quant => 25)}),"\n";
-print "not " unless join (" ", $a->quantize(quant => 25) ) eq 
-	"[300..325) [325..350) [350..375) [375..400) [400..425) [425..450)    [525..550) [550..575) [575..600) [600..625)";
-print "ok 2\n";
+test ( '', ' join (" ", $a->quantize(quant => 25) ) ',
+	"[300..325) [325..350) [350..375) [375..400) [400..425) [425..450) [525..550) [550..575) [575..600) [600..625)");
+
 
 
 my (@a);
@@ -47,7 +58,7 @@ my (@a);
 @a = Set::Infinite->new([315,434], [530,600])->quantize(quant=>25);
 # tie @a, 'Set::Infinite::Quantize', 25, [315,434], [530,600];
 #print join (" ",@a),"\n";
-print "not " unless join (" ",@a) eq "[300..325) [325..350) [350..375) [375..400) [400..425) [425..450)    [525..550) [550..575) [575..600) [600..625)";
+print "not " unless join (" ",@a) eq "[300..325) [325..350) [350..375) [375..400) [400..425) [425..450) [525..550) [550..575) [575..600) [600..625)";
 print "ok 3\n";
 
 #print "25: \n";
@@ -60,7 +71,7 @@ print "ok 4\n";
 # tie @a, 'Set::Infinite::Quantize', 25, 300,434;
 @a = Set::Infinite->new([300,434])->quantize(quant=>25);
 #print join (" ",@a),"\n";
-print "not " unless join (" ",@a) eq "[300..325) [325..350) [350..375) [375..400) [400..425) [425..450) ";
+print "not " unless join (" ",@a) eq "[300..325) [325..350) [350..375) [375..400) [400..425) [425..450)";
 print "ok 5\n";
 
 # tie @a, 'Set::Infinite::Quantize', 25, 315,450;
@@ -72,14 +83,14 @@ print "ok 6\n";
 # tie @a, 'Set::Infinite::Quantize', 25, 300,450;
 @a = Set::Infinite->new([300,450])->quantize(quant=>25);
 #print join (" ",@a),"\n";
-print "not " unless join (" ",@a) eq "[300..325) [325..350) [350..375) [375..400) [400..425) [425..450) [450..475) ";
+print "not " unless join (" ",@a) eq "[300..325) [325..350) [350..375) [375..400) [400..425) [425..450) [450..475)";
 print "ok 7\n";
 
 # recursive test
 $a = Set::Infinite->new([1,3]);
 # print "r: ", $a->quantize(quant => 1)->quantize(quant => 1), "\n";
 print "not " unless join (" ", $a->quantize(quant => 1)->quantize(quant => 1) ) eq 
-	"[1..2) [2..3) [3..4)  ";
+	"[1..2) [2..3) [3..4)";
 print "ok 8\n";
 
 

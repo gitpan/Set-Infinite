@@ -1,10 +1,10 @@
-TODO - version 0.22
+TODO - version 0.25
 
-	make offset accept ICal times
+	verify, document parameter syntax everywhere
+
+	extra: make offset accept ICal times
 
 	change recurring.pl because offset supports 'Date' hours
-
-	make offset support days, etc.
 
 	extra: offset option "middle"
 
@@ -20,8 +20,6 @@ TODO - version 0.22
 
 	check: english: "infinite" x "infinity"
 
-	check: if Set::Infinite->is_null works after quantize
-
 	think about: "push-pop", "dup", "drop" mechanism
 
 	think about: some "if-else" mechanism
@@ -31,23 +29,14 @@ TODO - version 0.22
 
 	extra: multiple offset (like: two days in month) 
 
-	oo: provide a general filter mechanism (quantize, select, etc)
+	oo: provide a general filter "install" mechanism (quantize, select, etc)
+	check: cleanup "type" hack
 
 	tie: make "virtual" union, etc ? -- would be new filters
 
-	check: cleanup "type" hack
-
-	optimization: Set::Infinite : assume the list is sorted : union, intersect, etc
-
 	oo-date: check for extensibility
 
-	extra: check if it is working: min and max for quantize, select, offset
-
 	extra: make work with -inf, inf : quantize, select, offset 
-
-	extra: make compact set : quantize, select.
-	offset is ok.
-	will need some kind of internal index.
 
 	extra: syntax for quantize: ...->quantize('years')
 
@@ -104,17 +93,12 @@ TODO - version 0.22
 	Quantized:                [*********)[*********)[*********)
 	Quantized->Stricted:          [*****)[*********)[******]
 
-	old: Make a private mode for `type'
-
 	old: Make a global mode for `open_*' 
 
 	old: Create a `dirty' variable so it knows when to cleanup.
 
-	old: Find out how to accelerate `type' mode.
-
 	old: use `isa' to test parameter types
-
-	oo: use __PACKAGE__ everywhere
+	old, oo: use __PACKAGE__ everywhere
 
 	old: correct syntax problems due to accepting ( [ 1 .. 10 ] ) as input - see POD.
 

@@ -44,8 +44,7 @@ Date input format:
 
 String conversion functions:
 
-	epoch
-	0 + $s	returns the Date as a time-number. 
+	0 + $s	returns the Date as a time-number (epoch).
 			This is faster than	date2time or hour2time.
 
 	time2date 
@@ -84,7 +83,6 @@ package Set::Infinite::Date;
 $VERSION = "0.17";
 
 my $DEBUG = 1;
-my $package = 'Set::Infinite::Date';
 # @ISA = qw(Set::Infinite::Simple); # DON'T !
 @ISA = qw(Set::Infinite::Element_Inf);  # is_null
 @EXPORT = qw();
@@ -315,30 +313,8 @@ sub as_string {
 	return $self->{string};
 }
 
-sub epoch {
-	return 0 + $_[0]->{a};
-}
-
-# TIE
-
-sub TIESCALAR {
-	my $class = shift;
-	my $self = $class->new(@_);
-	return $self;
-}
-
-sub FETCH {
-	my ($self) = shift;
-	return $self->as_string;
-}
-
-sub STORE {
-	my ($self) = shift;
-	$self = new(@_);
-	return @_;
-}
-
-sub DESTROY {
-}
+# sub epoch {
+#	return 0 + $_[0]->{a};
+# }
 
 1;

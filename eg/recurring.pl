@@ -19,17 +19,17 @@ my $interval = Set::Infinite->new($base_date . '-01')->quantize(unit=>'months');
 # print "Weeks: ", $interval->quantize(unit=>'weeks'), "\n\n";
 
 my $tuesdays = $interval->quantize(unit=>'weeks')->
-	offset( mode => 'begin', value => [ 2 * $day_size, 3 * $day_size] );
+	offset( mode => 'begin', unit=>'days', value => [ 2, 3] );
 
 print "tuesdays: ", $tuesdays, "\n\n";
 
 my $fifteenth = $interval->quantize(unit=>'months')->
-	offset( mode => 'begin', value => [ 14 * $day_size, 15 * $day_size] );
+	offset( mode => 'begin', unit=>'days', value => [ 14, 15] );
 
 print "fifteenth: ", $fifteenth, "\n\n";
 
 print "events in $base_date: ", $tuesdays -> complement ( $fifteenth ) ->
-	offset( mode => 'begin', value => [ 13 * $hour_size, 14 * $hour_size] );
+	offset( mode => 'begin', unit=>'hours', value => [ 13, 14] );
 print "\n";
 
 1;

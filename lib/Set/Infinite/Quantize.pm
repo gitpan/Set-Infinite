@@ -5,15 +5,15 @@ package Set::Infinite::Quantize;
 # modify it under the same terms as Perl itself.
 
 # CHANGES
+# 0.24 - now is a base class for Quantize_Date
 # 0.21 - change quantize(1) -> quantize( quant => 1 )
 
 use strict;
 use warnings;
 
 require Exporter;
-our $VERSION = "0.21";
+our $VERSION = "0.24";
 
-my $package = 'Set::Infinite::Quantize';
 our @EXPORT = qw();
 our @EXPORT_OK = qw();
 
@@ -30,23 +30,25 @@ Set::Infinite::Quantize - arrays of subsets
 =head2 TODO
 
 	returns '' when an index does not match. alternatives?
-
-	Quantization function? (eg: months)
-	Quantization base? (eg: time/years or hours)
+	Quantization base? (eg: time/years or hours) (default = same as quantization function)
+	Let user choose if result is intersects (default) or intersection, or 
+	sparse (default) or compact.
 
 =head2 DONE
 
-	make `foreach' work (find out `$#' in advance)
+	`foreach' works (find out `$#' in advance)
 	make it work on the `set' instead of `span' (let user choose)
+	Quantization function? (eg: months)
 
 =cut
 
 sub get_index {
-	my ($self) = shift;
-	my ($index) = shift;
-	# my $rest = $self->{begin} % $self->{quant};
+	my ($self, $index) = @_;
 	my $tmp = int($self->{begin} / $self->{quant});
 	return ($tmp + $index) * $self->{quant};
+
+	# non-aligned mode:
+	# return  $index * $self->{quant} + $self->{begin};
 }
 
 sub new {
@@ -107,7 +109,7 @@ sub FETCH {
 	my ($self) = shift;
 	my $index = shift;
 	my $this = get_index($self, $index);
-	my $next = get_index($self, $index + 1);
+	my $next = $this + $self->{quant};
 	# >  is for close-ended
 	# >= is for open-ended
 	# if ($this >= $self->{end}) {

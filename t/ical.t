@@ -66,7 +66,7 @@ test('','$a->complement','(-inf..19971024T120000Z),(19971024T130000Z..inf)');
 test('','$a->complement("19971024T122000Z","19971024T124000Z")','[19971024T120000Z..19971024T122000Z),(19971024T124000Z..19971024T130000Z]');
 
 test ('', ' join (" ", $a->quantize(unit=>"weeks") ) ',
-	"[19971019Z..19971026Z) ");
+	"[19971019Z..19971026Z)");
 
 
 # "This event happens from 13:00 to 14:00 every Tuesday, unless that Tuesday is the 15th of the month."

@@ -109,6 +109,6 @@ print "<table border=1>";
 	}
 	}
 print "</table>";
-print "</body>";
+print "</body>\n";
 
 1;

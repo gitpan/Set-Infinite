@@ -37,6 +37,7 @@ use Date::ICal;
 use Set::Infinite::Element_Inf;
 
 use overload
+	'0+' => \&Date::ICal::epoch,
 	'<=>' => \&spaceship,
 	'cmp' => \&cmp,
 	'-' => \&sub,
@@ -56,8 +57,8 @@ sub add {
 	my ($tmp1, $tmp2) = @_;
 	# print " [ical:add:", $tmp1, " + ", ref($tmp2), "->", $tmp2, "] ";
 
-	unless (ref($tmp2) and $tmp2->isa(__PACKAGE__)) { $tmp2 = __PACKAGE__->new($tmp2); }
-	return __PACKAGE__->new( $tmp1->epoch + $tmp2->epoch );
+	# unless (ref($tmp2) and $tmp2->isa(__PACKAGE__)) { $tmp2 = __PACKAGE__->new($tmp2); }
+	return __PACKAGE__->new( $tmp1->epoch + $tmp2 );
 
 	# return Date::ICal::add($tmp1, $tmp2);
 }
@@ -67,8 +68,11 @@ sub sub {
 	# print " [ical:sub:", $tmp1, " - ", ref($tmp2), "->", $tmp2, "] ";
 	# print " [duration:", $tmp1->epoch, "] ";
 
-	return $tmp2->epoch - $tmp1->epoch if $inverted;
-	return $tmp1->epoch - $tmp2->epoch;
+	$tmp1 = $tmp1->epoch if ref($tmp1);
+	$tmp2 = $tmp2->epoch if ref($tmp2);
+
+	return $tmp2 - $tmp1 if $inverted;
+	return $tmp1 - $tmp2;
 
 	# if it could represent a duration
 	# return __PACKAGE__->new( epoch => ($tmp2->epoch - $tmp1->epoch) ) if $inverted;

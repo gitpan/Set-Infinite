@@ -37,7 +37,6 @@ require Exporter;
 package Set::Infinite::Element_Inf;
 $VERSION = "0.17";
 
-my $package        = 'Set::Infinite::Element_Inf';
 @ISA = qw(Exporter);
 @EXPORT = qw();
 @EXPORT_OK = qw(infinite minus_infinite null is_null elem_undef inf);

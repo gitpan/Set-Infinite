@@ -23,7 +23,7 @@ our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(type inf) );
 our @EXPORT = qw(
 );
 
-our $VERSION = '0.23';
+our $VERSION = '0.24';
 
 
 # Preloaded methods go here.
@@ -40,9 +40,33 @@ sub null();
 
 
 use overload
+	# '@{}' => \&{ 
+	#	return () unless $#_ >= 0;
+	#	print " [\@:$_[0]:",caller,":", ref(\$_[0]), "] "; 
+	#	# return () if ref(\$_[0]) eq 'SCALAR'; # ???
+	#	# return () unless exist $_[0]->{list};
+	#	return compact_array($_[0]->{list});
+	# },
 	'<=>' => \&spaceship,
 	'cmp' => \&cmp,
-	qw("" as_string);
+	qw("" as_string),
+;
+
+sub compact_array {
+	my @a = @_;
+	my (@b);
+	# print " [as_array] \n";
+	foreach (@a) {
+		# print " |$_|", ref($_) , "\n";
+		unless ( Set::Infinite::Element_Inf::is_null($_->{a}) ) {
+			my $tmp = __PACKAGE__->new($_);
+			# print "  --> ", $tmp->as_string, " ", ref($tmp) , "\n";
+			push @b, $tmp;
+			# bless $b[-1], __PACKAGE__;
+		}
+	}
+	return @b;
+}
 
 # quantize: splits in same-size subsets
 sub quantize {
@@ -54,7 +78,7 @@ sub quantize {
 	tie @a, $tmp, $self, @_;
 
 	# array output: can be used by "foreach"
-	return @a if wantarray; 
+	return compact_array(@a) if wantarray; 
 	
 	# object output: can be further "intersection", "union", etc.
 	my $b = __PACKAGE__->new($self); # clone myself
@@ -76,7 +100,8 @@ sub select {
 
 	# array output: can be used by "foreach"
 	# if (wantarray) { print " [wantarray] " }
-	return @a if wantarray; 
+	# return @a if wantarray; 
+	return compact_array(@a) if wantarray; 
 	
 	# object output: can be further "intersection", "union", etc.
 	my $b = __PACKAGE__->new($self); # clone myself
@@ -97,7 +122,8 @@ sub offset {
 
 	# array output: can be used by "foreach"
 	# if (wantarray) { print " [wantarray] " }
-	return @a if wantarray; 
+	# return @a if wantarray; 
+	return compact_array(@a) if wantarray; 
 	
 	# object output: can be further "intersection", "union", etc.
 	my $b = __PACKAGE__->new($self); # clone myself
@@ -329,7 +355,7 @@ LOOP:
 		return $self unless defined($tmp);
 
 		# is it an array?
-		#print " [INF:ADD:",ref($tmp),"=$tmp ; ",@param,"]\n";
+		# print " [INF:ADD:",ref($tmp),"=$tmp ; ",@param,"]\n";
 		if (ref($tmp) eq 'ARRAY') {
 			my @tmp = @{$tmp};
 
@@ -359,7 +385,9 @@ LOOP:
 			}
 			# does it have a "{a},{b}"?
 			elsif (($tmp->isa("Set::Infinite::Simple")) ) {  # and (not $tmp->is_null)) {
+				# print " INF:ADD:SIMPLE:",__PACKAGE__,":",$tmp," ";
 				push @{ $self->{list} }, Set::Infinite::Simple->new($tmp) ;
+				# print " INF:ADD:SIMPLE:",__PACKAGE__,":",@{ $self->{list} }," \n";
 				goto LOOP;
 			}
 		}
@@ -403,6 +431,7 @@ sub size {
 	my ($self) = shift;
 	my $tmp;
 	# $self->cleanup;
+	# print " [INF:SIZE:$self->{list}->[0]->{b} - $self->{list}->[0]->{a} ] \n";
 	my $size = $self->{list}->[0]->{b} - $self->{list}->[0]->{a};
 	foreach(1 .. $#{ @{ $self->{list} } }) {
 		$tmp = $self->{list}->[$_]->{b} - $self->{list}->[$_]->{a};
@@ -521,6 +550,7 @@ sub new {
 sub as_string {
 	my ($self) = shift;
 	$self->cleanup;
+	# print " [s] ";
 	return null unless $#{$self->{list}} >= 0;
 	return join(separators(5), @{ $self->{list} } );
 }
@@ -587,9 +617,6 @@ sub STORE {
 
 sub DESTROY {
 }
-
-
-# Autoload methods go after =cut, and are processed by the autosplit program.
 
 1;
 __END__
@@ -738,13 +765,11 @@ Global functions:
 
 	offset ( parameters )
 
-		Offsets the subsets.
-
-		The selection function is external to this module:
-		Parameters may vary depending on implementation. 
+		Offsets the subsets. Parameters: 
 
 			value   - default=[0,0]
 			mode    - default='offset'. Possible values are: 'offset', 'begin', 'end'.
+			unit    - type of value. Can be 'days', 'weeks', 'hours', 'minutes', 'seconds'.
 
 	type($i)
 
@@ -788,7 +813,7 @@ use:
 Both require Time::Local.
 Set::Infinite::ICal requires Date::ICal.
 
-Thay change quantize function behaviour to accept time units:
+They change quantize function behaviour to accept time units:
 
 	use Set::Infinite;
 	use Set::Infinite::Quantize_Date;
@@ -801,10 +826,9 @@ Thay change quantize function behaviour to accept time units:
 	$a = Set::Infinite->new('09:30', '10:35');
 	print "Quarters of hour in $a: ", join (" ", $a->quantize(unit => 'minutes', quant => 15) );
 
-Units can be years, months, days, weeks, hours, minutes, or seconds.
+Quantize units can be years, months, days, weeks, hours, minutes, or seconds.
 
-max and min functions will also show in date/time format, unless
-they are printed with '->epoch'.
+max and min functions will also show in date/time format.
 
 =head1 CAVEATS
 

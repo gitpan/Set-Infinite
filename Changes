@@ -1,5 +1,12 @@
 Revision history for Perl extension Set::Infinite.
 
+0.24
+	offset has 'unit' parameter
+ 	'epoch' removed. use 0+ instead.
+	Quantize_Date is an extension of Quantize.
+	quantize, select, offset return a compact array of Set::Infinite instead of a sparse array of Set::Infinite::Simple
+		- no longer needs to test for null elements.
+
 0.23
 	changed localtime to gmtime everywhere
 	new object type: ICal. Requires Date::ICal; marked as experimental

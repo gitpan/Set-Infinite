@@ -13,6 +13,7 @@ use warnings;
 my $b;
 my $c;
 my $events;
+my $last_workdays;
 
 my $test = 0;
 my ($result, $errors);
@@ -49,7 +50,7 @@ use Set::Infinite::Quantize_Date;
 Set::Infinite->type('Set::Infinite::Date');
 
 
-print "1..9\n";
+print "1..10\n";
 
 
 $a = Set::Infinite->new(['2001-01-01','2001-01-23'],['2001-02-01','2001-02-03']);
@@ -101,28 +102,43 @@ test (  "end:    ", '$a->offset( mode => "end", value => [-1,1] )',
 
 # "This event happens from 13:00 to 14:00 every Tuesday, unless that Tuesday is the 15th of the month."
 
-my $day_size = Set::Infinite::Date::day_size();
-my $hour_size = $day_size / 24;
 my $interval = Set::Infinite->new('2001-05-01')->quantize(unit=>'months');
-
 # print "Weeks: ", $interval->quantize(unit=>'weeks'), "\n";
-
 my $tuesdays = $interval->quantize(unit=>'weeks')->
-	offset( mode => 'begin', value => [ 2 * $day_size, 3 * $day_size] );
-
+	offset( mode => 'begin', unit => 'days', value => [2, 3] );
 # print "tuesdays: ", $tuesdays, "\n";
-
 my $fifteenth = $interval->quantize(unit=>'months')->
-	offset( mode => 'begin', value => [ 14 * $day_size, 15 * $day_size] );
-
+	offset( mode => 'begin', unit => 'days', value => [14, 15] );
 # print "fifteenth: ", $fifteenth, "\n";
-
 $events =  $tuesdays -> complement ( $fifteenth ) ->
-	offset( mode => 'begin', value => [ 13 * $hour_size, 14 * $hour_size] );
-
+	offset( mode => 'begin', unit => 'hours', value => [13, 14] );
 # print "events in may 2001: ", $events;
 
 test (  "offset: ", ' $events ',
 	"[2001-05-01 13:00:00..2001-05-01 14:00:00),[2001-05-08 13:00:00..2001-05-08 14:00:00),[2001-05-22 13:00:00..2001-05-22 14:00:00),[2001-05-29 13:00:00..2001-05-29 14:00:00)");
 
+# RRULE:FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1
+# which means 'the last work day of the month'. 
+
+$interval = Set::Infinite->new('2001-05-01', '2001-07-31');
+
+my $workdays = 
+	$interval->quantize(unit=>'weeks')->
+	offset( unit => 'days', value => [1, -1] );
+
+my $month_ends = 
+	$interval->quantize(unit=>'months')->
+	offset( mode => 'end', unit => 'days', value => [-4, 0] );
+
+$last_workdays =
+	$workdays->intersection($month_ends)->
+	offset( mode => 'end', unit => 'days', value => [-1, 0] );
+
+#print "interval: $interval\n";
+#print "workdays: ", $workdays, "\n";
+#print "month ends: ", $month_ends, "\n";
+#print "last workdays: ", $last_workdays, "\n";
+
+test( "last workday ", ' $last_workdays ', 
+	"[2001-05-31 00:00:00..2001-06-01 00:00:00),[2001-06-29 00:00:00..2001-06-30 00:00:00),[2001-07-31 00:00:00..2001-08-01 00:00:00)");
 1;
