@@ -32,7 +32,7 @@ foreach(<FILE>) {
 		$sala[$n] = $1; 
 	}
 	elsif (/hour:\s+(.*)\.\.(.*)$/) {
-		$horario[$n]->add($1,$2);
+		$horario[$n] = $horario[$n]->union($1,$2);
 	}
 }
 
@@ -43,8 +43,8 @@ foreach $i ( 0 .. $n ) {
 		if (($sala[$i] eq $sala[$j]) and ($horario[$i]->intersects($horario[$j]))) {
 			$tmp = $horario[$i]->intersection($horario[$j]);
 
-			$colisao[$i]->add($tmp);
-			$colisao[$j]->add($tmp);
+			$colisao[$i] = $colisao[$i]->union($tmp);
+			$colisao[$j] = $colisao[$j]->union($tmp);
 
 			print "Colisao:      sala $sala[$i]\n";
 			print "    evento:   $evento[$i]\n";

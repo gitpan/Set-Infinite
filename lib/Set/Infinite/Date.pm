@@ -85,16 +85,16 @@ require Exporter;
 package Set::Infinite::Date;
 
 my $DEBUG = 1;
-# @ISA = qw(Set::Infinite::Simple); # DON'T !
-# @ISA = qw(Set::Infinite::Element_Inf);  # is_null
 @EXPORT = qw();
 @EXPORT_OK = qw(
-	time2date date2time time2hour hour2time quantizer day_size
+	time2date date2time time2hour hour2time 
 );
 
 use strict;
+use warnings;
+use Carp;
 use Time::Local;
-# use Set::Infinite::Element_Inf;
+use Set::Infinite::Element_Inf;
 
 #--- THIS FUNCTION IS (HEAVILY) MODIFIED FROM HTTP::Date -- Copyright 1995-1999, Gisle Aas
 
@@ -127,9 +127,6 @@ use overload
 	'/' => \&div,
 	qw("" as_string);
 
-our $quantizer = 'Set::Infinite::Quantize_Date';
-our $selector  = 'Set::Infinite::Select';
-our $offsetter = 'Set::Infinite::Offset';
 
 our $day_size = timegm(0,0,0,2,3,2001) - timegm(0,0,0,1,3,2001);
 our $hour_size = $day_size / 24;
@@ -140,15 +137,6 @@ our $date_format = "year-month-day hour:min:sec";
 
 our %date_cache = ();
 our %time2date_cache = ();
-
-sub day_size { $day_size }
-
-sub quantizer {
-	# if (@_) {
-	#	$quantizer = pop;
-	# }
-	return $quantizer;
-}
 
 sub date_format {
 	$date_format = pop if @_;
@@ -244,19 +232,13 @@ sub add {
 
 sub spaceship {
 	my ($tmp1, $tmp2, $inverted) = @_;
-
-	return 1 unless defined($tmp2);
-
-	if ( ref($tmp2) eq __PACKAGE__ ) {
-		if ($inverted) {
-			return ( $tmp2->{a} <=> $tmp1->{a} );
-		}
-		return ( $tmp1->{a} <=> $tmp2->{a} );
-	}
-
 	if ($inverted) {
 		return ( $tmp2 <=> $tmp1->{a} );
 	}
+
+        # my @caller = caller(1);
+        # print " [",$caller[1],":",$caller[2]," <=> $tmp1 $tmp2 ]\n" ;
+
 	return ( $tmp1->{a} <=> $tmp2 );
 }
 
@@ -278,7 +260,9 @@ sub new {
 
 	if (exists $date_cache{$tmp}) {
 		# print "*";
-		return $date_cache{$tmp};
+        ### TODO: this breaks t/date_select_offset.t test #12
+        ###    because it is mixing modes 0 and 2
+		### return $date_cache{$tmp};
 	}
 	# print "N";
 	$tmp = '' unless defined $tmp;

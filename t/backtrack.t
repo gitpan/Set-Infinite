@@ -33,7 +33,7 @@ sub test {
 }
 
 
-print "1..40\n";
+print "1..41\n";
     $a = Set::Infinite->new([-&inf,15]);
     $a_quant = $a->quantize(quant => 1);
     $finite = Set::Infinite->new([10,20]);
@@ -208,8 +208,9 @@ print "1..40\n";
 
 # complement
 	#  (TODO ????)
+        # $Set::Infinite::TRACE = 1;
         # $Set::Infinite::DEBUG_BT = 1;
-        # test ('', '$a_quant->complement->intersection([0,5])', 'TODO');
+        test ('', '$a_quant->complement->intersection([0,25])', '[16..25]');
 
 # size
 	#  (TODO ????)

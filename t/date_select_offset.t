@@ -46,7 +46,6 @@ sub stats {
 
 
 use Set::Infinite;
-# use Set::Infinite::Quantize_Date;
 
 Set::Infinite->type('Set::Infinite::Date');
 
@@ -116,18 +115,21 @@ test (  "end:    ", '$a->offset( mode => "end", value => [-1,1] )',
 
 
 # "This event happens from 13:00 to 14:00 every Tuesday, unless that Tuesday is the 15th of the month."
-
+# print "  #12\n";
 my $interval = Set::Infinite->new('2001-05-01')->quantize(unit=>'months');
-# print "Weeks: ", $interval->quantize(unit=>'weeks'), "\n";
+# print "  # Weeks: ", $interval->quantize(unit=>'weeks'), "\n";
 my $tuesdays = $interval->quantize(unit=>'weeks')->
 	offset( mode => 'begin', unit => 'days', value => [2, 3] );
-# print "tuesdays: ", $tuesdays, "\n";
+# print "  # tuesdays: ", $tuesdays, "\n";
 my $fifteenth = $interval->quantize(unit=>'months')->
 	offset( mode => 'begin', unit => 'days', value => [14, 15] );
-# print "fifteenth: ", $fifteenth, "\n";
+# print "  # fifteenth: ", $fifteenth, "\n";
+# print "  # tuesdays less fifteenth: ", $tuesdays-> complement($fifteenth), "\n";
+# print "  # tuesdays MODE: ", $tuesdays->min->{a}, "\n";
+# print "  # tuesdays less fifteenth at 13:00 : ", $tuesdays-> complement($fifteenth)->offset( mode => 'begin', unit => 'hours', value => [13, 14] ), "\n";
 $events =  $tuesdays -> complement ( $fifteenth ) ->
 	offset( mode => 'begin', unit => 'hours', value => [13, 14] );
-# print "events in may 2001: ", $events;
+# print "  # events in may 2001: ", $events;
 
 test (  "offset: ", ' $events ',
 	"[2001-05-01 13:00:00..2001-05-01 14:00:00),[2001-05-08 13:00:00..2001-05-08 14:00:00),[2001-05-22 13:00:00..2001-05-22 14:00:00),[2001-05-29 13:00:00..2001-05-29 14:00:00)");

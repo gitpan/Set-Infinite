@@ -25,7 +25,7 @@ foreach(<FILE>) {
 	}
 	elsif (/hour:\s+(.*)\.\.(.*)$/) {
 		#print " event $event[$n] room $room[$n] Hour: $1 - $2\n";
-		$schedule[$n]->add($1,$2);
+		$schedule[$n] = $schedule[$n]->union($1,$2);
 	}
 
 }

@@ -28,7 +28,7 @@ foreach(<FILE>) {
 		$sala[$n] = $1; 
 	}
 	elsif (/hour:\s+(.*)\.\.(.*)$/) {
-		$horario[$n]->add($1,$2);
+		$horario[$n] = $horario[$n]->union($1,$2);
 	}
 }
 

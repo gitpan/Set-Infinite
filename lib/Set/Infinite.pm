@@ -11,6 +11,7 @@ use warnings;
 require Exporter;
 # use AutoLoader qw(AUTOLOAD);
 use Carp;
+use Data::Dumper; 
 
 our @ISA = qw(Exporter);
 
@@ -19,7 +20,7 @@ our %EXPORT_TAGS = ( 'all' => [ qw(type inf new $inf) ] );
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(type inf new $inf) );
 our @EXPORT = qw();
 
-our $VERSION = '0.37';
+our $VERSION = '0.37_44';
 
 our $TRACE = 0;      # basic trace method execution
 our $DEBUG_BT = 0;   # backtrack tracer
@@ -27,6 +28,7 @@ our $DEBUG_BT = 0;   # backtrack tracer
 # Preloaded methods go here.
 
 use Set::Infinite::_Simple;
+use Set::Infinite::Arithmetic;
 
 # global defaults for object private vars
 our $type = '';
@@ -35,8 +37,6 @@ our $fixtype = 1;
 
 # Infinity vars
 our $inf            = 10**10**10;
-our $null           = undef;
-our $undef          = undef;
 our $minus_inf      = -$inf;
 
 sub inf ()            { $inf }
@@ -106,7 +106,7 @@ sub list {
     carp "Can't list an unbounded set" if $self->{too_complex};
     my @b = ();
     foreach (@{$self->{list}}) {
-        next unless defined $_;
+        # next unless defined $_;
         push @b, $self->new($_);
     }
     return @b;
@@ -118,7 +118,7 @@ sub fixtype {
     $self->{fixtype} = 1;
     return $self if $self->{too_complex};
     foreach (@{$self->{list}}) {
-        next unless defined $_;
+        # next unless defined $_;
         $_->{a} = $type->new($_->{a}) unless ref($_->{a});
         $_->{b} = $type->new($_->{b}) unless ref($_->{b});
     }
@@ -132,7 +132,7 @@ sub numeric {
     $self->{fixtype} = 0;
     return $self if $self->{too_complex};
     foreach (@{$self->{list}}) {
-        next unless defined $_;
+        # next unless defined $_;
         $_->{a} = 0 + $_->{a};
         $_->{b} = 0 + $_->{b};
     }
@@ -140,26 +140,7 @@ sub numeric {
 }
 
 sub compact {
-    my $self = shift;
-    # my $class = ref($self);
-
-    my $b = $self->new();
-    if ($self->{too_complex}) {
-        $self->trace(title=>"compact:backtrack"); 
-        # print " [compact:backtrack] \n" if $DEBUG_BT;
-        $b->{too_complex} = 1;
-        $b->{parent} = $self;  # ->copy;
-        $b->{method} = 'compact';
-        $b->{param}  = \@_;
-        return $b;
-    }
-    $self->trace(title=>"compact");
-    foreach (@{$self->{list}}) {
-        next unless defined $_;
-        push @{$b->{list}}, $_;
-    }
-    $b->{cant_cleanup} = 1; 
-    return $b;
+    return $_[0];
 }
 
 sub trace { # title=>'aaa'
@@ -172,16 +153,12 @@ sub trace { # title=>'aaa'
     return $self;
 }
 
-use Set::Infinite::Quantize_Date;
-use Set::Infinite::Function;     # used under Select/Offset
-use Set::Infinite::Select;       # tied
-use Set::Infinite::Offset;       # tied
 
 # quantize: splits in same-size subsets
 
 sub quantize {
     my $self = shift;
-    # $self->trace(title=>"quantize"); 
+    $self->trace(title=>"quantize"); 
     if (($self->{too_complex}) or 
         ($self->min and $self->min == -&inf) or 
         ($self->max and $self->max == &inf)) {
@@ -194,14 +171,64 @@ sub quantize {
         $b->{param}  = \@_;
         return $b;
     }
-    $self->trace(title=>"quantize"); 
-    my (@a);
-    my %param = @_;
-    my @a2;
-    tie @a, 'Set::Infinite::Quantize_Date', $self, %param;
-    my $b = $self->new();        # $self); # clone myself
+    # $self->trace(title=>"quantize"); 
+    my @a;
+    my %rule = @_;
+    my $b = $self->new();    
+    my $parent = $self;
+
+    $rule{unit} =   'one' unless $rule{unit};
+    $rule{quant} =  1     unless $rule{quant};
+    $rule{parent} = $parent; 
+    $rule{strict} = $parent unless exists $rule{strict};
+    $rule{type} =   $parent->{type};
+
+    my ($min, $open_begin) = $parent->min_a;
+
+    # print " [MIN:$min] \n";
+    unless (defined $min) {
+        # print " [NULL!]\n";
+        return $b;    
+    }
+
+    if (ref($min)) {
+        # TODO: mode is 'Date' specific
+        $rule{mode} = $min->{mode} if (exists $min->{mode});
+    }
+
+    $rule{fixtype} = 1 unless exists $rule{fixtype};
+    $Set::Infinite::Arithmetic::Init_quantizer{$rule{unit}} (\%rule);
+
+    $rule{sub_unit} = $Set::Infinite::Arithmetic::Offset_to_value{$rule{unit}};
+    carp "Quantize unit '".$rule{unit}."' not implemented" unless ref( $rule{sub_unit} ) eq 'CODE';
+
+    my ($max, $open_end) = $parent->max_a;
+    $rule{offset} = $Set::Infinite::Arithmetic::Value_to_offset{$rule{unit}} (\%rule, $min);
+    my $last_offset = $Set::Infinite::Arithmetic::Value_to_offset{$rule{unit}} (\%rule, $max);
+    $rule{size} = $last_offset - $rule{offset} + 1; 
+    my ($index, $tmp, $this, $next);
+    for $index (0 .. $rule{size} ) {
+        ($this, $next) = $rule{sub_unit} (\%rule, $index);
+        unless ( $rule{fixtype} ) {
+                $tmp = { a => $this , b => $next ,
+                        open_begin => 0, open_end => 1 };
+        }
+        else {
+                $tmp = Set::Infinite::_simple_new($this,$next, $rule{type} );
+                $tmp->{open_end} = 1;
+                # TODO: 'mode' is 'DATE' specific
+                if (exists $rule{mode}) {
+                    $tmp->{a}->mode($rule{mode});
+                    $tmp->{b}->mode($rule{mode});
+                }
+        }
+        next if ( $rule{strict} and not $rule{strict}->intersects($tmp));
+        push @a, $tmp;
+    }
+
+
     $b->{list} = \@a;        # change data
-    $b->{cant_cleanup} = 1;     # quantize output is "virtual" (tied) -- can't splice, sort
+    $b->{cant_cleanup} = 1;     
     # print " [QUANT:returns:",ref($b),"] \n";
     $self->trace(title=>"quantize:end");
     return $b;
@@ -212,25 +239,272 @@ sub quantize {
 
 sub select {
     my $self = shift;
+    # $TRACE =1;
     $self->trace(title=>"select");
-    if ($self->{too_complex}) {
-        my $b = $self->new();
-        $b->{too_complex} = 1;
-        $b->{parent} = $self;  # ->copy;
-        $b->{method} = 'select';
-        $b->{param}  = \@_;
-        return $b;
-    }
-    my (@a);
+    # $TRACE=0;
+
+    # pre-process parameters
     my %param = @_;
-    my @a2;
-    # print " [INF:SELECT $tmp,",@_,",$self FROM:", $self->{list}->[0],"]\n";
-    tie @a, 'Set::Infinite::Select', $self, %param;
-    my $b = $self->new();        # $self); # clone myself
-    $b->{list} = \@a;        # change data
-    $b->{cant_cleanup} = 1;     # select output is "virtual" (tied) -- can't splice, sort
-    return $b;
+    #       freq     - default=parent size, or "1" if we have a count
+    #       by       - default=[0]
+    #       count    - default=infinite
+    my $res = $self->new();
+    my $max = 1 + $#{ $self->{list} };
+
+    my ($freq, $count);
+
+    # $param{freq}  = 1 unless exists $param{freq} or exists $param{by};
+    $param{count} = $inf if exists $param{freq} and ! exists $param{count};
+    # ($param{freq}, $param{count}) = (1,1) unless exists $param{freq} and exists $param{count};
+
+    $freq =  exists $param{freq}  ? $param{freq} :
+             exists $param{count} ? 1 : $max;
+    $freq *= $param{interval} if exists $param{interval};  # obsolete
+    my @by = exists $param{by}    ? @{ $param{by} } : (0);
+    $count = exists $param{count} ? $param{count} : $inf;
+
+    # warn "select: freq=$freq count=$count by=[@by]";
+
+    return $res if $count <= 0;
+
+    if ($self->{too_complex}) {
+        $res->{too_complex} = 1;
+        $res->{parent} = $self;  # ->copy;
+        $res->{method} = 'select';
+        $res->{param}  = \@_;
+
+        # TODO: this is an inefficient and wrong way to solve 
+        #    the min/max issue!
+        # $b->{min} = $self->min_a;
+        # $b->{max} = $self->max_a;
+
+        # conditions for "definition"/boundedness: 
+        # - freq, count, min [. . .
+        # - positive by, min [.. . 
+        # - freq, count, by, min [.. .  .. .
+        # - negative by and max   .. .]
+
+        # carp "testing select too_complex ". $self->span;
+
+        if ( defined $self->min and ($self->min != -$inf) ) {
+            # carp " testing select min...";
+            # my %param = @_;
+            # my @by = exists $param{by} ? @{ $param{by} } : (0);
+            my @by1 = sort @by;
+            if ( ($by1[0] >= 0) or (exists $param{freq} and exists $param{count}) ) {
+                # carp "select might be defineable - min = ".$self->min;
+                # my @first = $self->first;
+                # warn "select-first = $first[0]";
+
+                my $result = $self->new()->no_cleanup;
+                my $tail = $self;
+                my $index = 0;
+                my @first;
+
+                # TODO: freq / count
+                # TODO: change to for(;;)
+                for (my $pos = 0; ; $pos++) {
+                    @first = $tail->first;
+                    # warn "selecting: @first index=$index pos=$pos freq=$freq count=$count";
+                    if (($index <= $#by1) && ($by1[$index] == $pos)) {
+                        push @{ $result->{list} }, @{ $first[0]->{list} } if defined $first[0];
+                        # carp "    push $first[0] ". $first[0]->{list}[0];
+                        $index++;
+                    }
+                    if ($freq > 1 and $freq < $inf) {
+                            last if $pos >= $freq;
+                    }
+                    else {
+                            last if $index > $#by1;
+                    }
+                    $tail = $first[1];
+                    last unless defined $tail;
+                }
+                # warn "result of quantize @by1 is $result, tail is ".$tail->min."..., count is $count";
+                $param{count} --;
+                if ($param{count} > 0) {
+                    # warn "select: return union result $result and tail $tail ";
+                    # $result = $result->union( $tail->select(%param) );
+                    $res = $self->new;
+                    $res->{too_complex} = 1;
+                    $res->{parent} = $tail;
+                    $res->{method} = 'select';
+                    $res->{param}  = [ %param ];
+                    # @{ $res->{min} } = $result->max_a;   # until we get select/min working properly
+                    # warn "    param = { @{$res->{param}} }";
+                    my $union = $self->new;
+                    $union->{too_complex} = 1;
+                    $union->{parent} = [$result, $res];
+                    $union->{method} = 'union';
+                    # warn "    union = $union";
+                    return $union;
+                }
+                # warn "select: return $result and no tail";
+                return $result;
+            }
+        }
+        elsif ( defined $self->max and ($self->max != $inf) ) {
+            # carp " testing select max...";
+            my %param = @_;
+            my @by = exists $param{by} ? @{ $param{by} } : (0);
+            my @by1 = sort @by;
+            if ( ($by1[-1] < 0) and not (exists $param{freq} or exists $param{count}) ){
+                # carp "select might be defineable - max = ".$self->max." and by = @by";
+                # TODO: find out what '100' should be
+                # warn $b->intersection($self->max - 100, $self->max);
+            }
+        }
+
+        return $res;
+    }
+
+    return $res unless $max;   # empty parent
+
+    # warn " by @by count $count freq $freq";
+ 
+    my $n = 0;
+    my ($base, $pos);
+    my %selection;
+    while ( $n < $count ) {
+        $base = $n * $freq;
+        for (@by) {
+            $pos = $base + $_;
+            # carp " [$base-$max $pos] ";
+            $selection{$pos} = 1 unless ($pos < 0) or ($pos >= $max);
+        }
+        $n++;
+        last if $base >= $max;
+    }
+
+    my $tmp;
+    my @keys = sort { $a <=> $b } keys %selection;
+
+    # warn " keys @keys ";
+    # carp " SELECT: @by = { @{ $param{by} } } = @keys parent=$self";
+
+    foreach (@keys) {
+        $tmp = $self->{list}[$_];
+        # next unless defined $tmp;
+        push @{$res->{list}}, $tmp;
+    }
+    $res->{cant_cleanup} = 1; 
+    # carp " res: $res";
+    return $res;
 }
+
+# first() could also be called "car" as in Lisp
+sub car { &first }
+
+# first() is the same as: select(by=>[0])
+#     extension: first( count => 3 ) returns n subsets
+sub first {
+    my $self = shift;
+    my $count = shift || 1;
+    my $n;
+
+    $self->trace(title=>"first");
+
+    if ( $self->{too_complex} ) {
+        my @parent = $self->min_a;
+        my $method = $self->{method};
+        return undef unless defined $parent[0];
+        return $self->new($parent[0]) if ($parent[0] == $inf) or ($parent[0] == -$inf);
+        # carp "getting first from a $method";
+        if ($method eq 'intersection') {
+            die "first not defined for method '$method'";
+
+            my $min1 = $self->{parent}[0]->min;
+            my $min2 = $self->{parent}[1]->min;
+
+            # TODO: check min1/min2 for undef
+
+            my $which = ($min1 > $min2) ? 0 : 1;
+
+            my $first1 = $self->{parent}[$which]->first;
+            my $first2 = $self->{parent}[1-$which]->first;
+            warn "parents are $self->{parent}[$which] , $self->{parent}[1-$which]";
+            warn "first parents are $first1 , $first2";
+
+            if ($min1 == $min2) {
+                my $intersection = $first1->intersection( $first2 );
+                warn "first intersection is $intersection";
+                return $intersection unless wantarray;
+                return $intersection, $self->{parent}[$which]->complement( $intersection )->intersection (
+                    $self->{parent}[1-$which]->complement( $intersection ) );
+            }
+
+            return undef;
+        }
+        if ($method eq 'union') {
+            my $min1 = $self->{parent}[0]->min;
+            my $min2 = $self->{parent}[1]->min;
+
+            # TODO: check min1/min2 for undef
+
+            my $which = ($min1 < $min2) ? 0 : 1;
+            my $first = $self->{parent}[$which]->first;
+            return $first unless wantarray;
+            # find out the tail
+            my $parent1 = $self->{parent}[$which]->complement($first);
+            my $parent2 = ($min1 == $min2) ? 
+                $self->{parent}[1-$which]->complement($first) : 
+                $self->{parent}[1-$which];
+            my $tail = $parent1->$method( $parent2 );
+
+            # warn "   parent is a ".Dumper($self->{parent}[1]);
+
+            # warn " union $which ".$self->{parent}[0]."=$min1 ".$self->{parent}[1]."=$min2";
+            # warn " first=$first sample=$parent1 tail=$tail";
+            # carp "end: first from a $method";
+            return ($first, $tail);
+        }
+        if ($method eq 'quantize') {
+            # quantize min back, if parent method is quantize()
+            my $sample = { a => $parent[0],
+                     b => $parent[0] + 1 + $self->{tolerance},
+                     open_begin => $parent[1],
+                     open_end => 0 };
+            my $first = $self->new( $sample )->$method( @{$self->{param}} )->first;
+            return $first unless wantarray;
+            # find out the tail
+            $sample = $self->{parent}->complement($first);
+            # warn "tail = quantize $sample";
+            my $tail = $sample->$method( @{$self->{param}} );
+            # carp "end: first from a $method";
+            return ($first, $tail);
+        }
+
+        # if ($method eq 'select') {
+
+        # warn "first() doesn't know how to do $method-first, but maybe $method() knows";
+        my $redo = $self->{parent}->$method( @{ $self->{param} } );
+        my $new_method = exists $redo->{method} ? $redo->{method} : "[none]";
+        # warn "now we've got a ".$new_method;
+
+        return $redo->first if $method ne $new_method;  # new_method should be 'union' or '[none]'
+
+        # return undef  # carp "end: first from a select - calling $method";
+
+        # TODO:
+        # warn "    method=$method min=".$parent[0];
+        # quantize min back, if parent method is quantize()
+        # TODO: fix select-min problem
+
+        carp "first not defined for method '$method'";
+    }
+    return undef unless @{$self->{list}};
+    
+    $n = $#{$self->{list}};
+    $count = $n+1 unless $count <= ($n+1);
+    # warn "return [0 .. $count-1] , [$count .. $n]";
+    my $first = $self->new( @{$self->{list}} [0 .. $count-1] )->no_cleanup;
+    return $first if $n == ($count-1) || ! wantarray;  # FIRST
+    my $res = $self->new->no_cleanup;
+    push @{$res->{list}}, @{$self->{list}} [$count .. $n];
+    # warn "first-wantarray = ( $first , $res )";
+    return $first, $res;
+}
+
 
 # offset: offsets subsets
 sub offset {
@@ -264,7 +538,7 @@ sub offset {
             # offset == zero
             foreach $i (0 .. $#{ $self->{list} }) {
                 $interval = $self->{list}[$i];
-                next unless defined $interval;  
+                # next unless defined $interval;  
                 $ia = $interval->{a};
                 push @a, { a => $ia , b => $ia };
                         # open_begin => $open_begin , open_end => $open_end };
@@ -284,8 +558,11 @@ sub offset {
     # $param{fixtype} =     1        unless exists $param{fixtype};
     # $param{fetchsize} = $param{parts} * (1 + $#{ $self->{list} });
     my $sub_unit =    $Set::Infinite::Arithmetic::subs_offset2{$param{unit}};
-    my $sub_mode =    $Set::Infinite::Offset::_MODE{$param{mode}};
+    my $sub_mode =    $Set::Infinite::Arithmetic::_MODE{$param{mode}};
     # $param{parent_list} = $self->{list};
+
+    carp "unknown unit $param{unit} for offset()" unless defined $sub_unit;
+    carp "unknown mode $param{mode} for offset()" unless defined $sub_mode;
 
     # print " [ofs:$param{mode} $param{unit} value:", join (",", @{$param{value} }),"]\n";
 
@@ -299,21 +576,22 @@ sub offset {
 
     foreach $i (0 .. $#{ $self->{list} }) {
         $interval = $self->{list}[$i];
-        next unless defined $interval;
+        # next unless defined $interval;
         $ia =         $interval->{a};
         $ib =         $interval->{b};
         $open_begin = $interval->{open_begin};
         $open_end =   $interval->{open_end};
         # do offset
         foreach $j (0 .. $parts) {
-                # print " ..[ofs:$param{mode}=$param{sub_mode} $param{unit}=$param{sub_unit} value:", $param{value}[$j+$j], ",", $param{value}[$j+$j + 1],"]\n";
-                ($this, $next, $cmp) = &{ $sub_mode } 
+                # print " [ofs:$param{mode} $param{unit} value:", $param{value}[$j+$j], ",", $param{value}[$j+$j + 1],"]\n";
+                # print " [ofs($ia,$ib)] ";
+                ($this, $next) = &{ $sub_mode } 
                     ( $sub_unit, $ia, $ib, @{$value[$j]} );
-                next if ($cmp > 0);    # skip if a > b
-                # print " [ofs($this,$next)] ";
-                unless ($cmp) {
+                next if ($this > $next);    # skip if a > b
+                # print " [ = ofs($this,$next)] \n";
+                if ($this == $next) {
                     $open_end = $open_begin;
-                    $this = $next;  #  make sure to use the same object from cache!
+                    # $this = $next;  #  make sure to use the same object from cache!
                 }
                 # skip this if don't need to "fixtype"
                 if ($self->{fixtype}) {
@@ -428,8 +706,7 @@ sub backtrack {
         print " [bt$backtrack_depth-3-08:BEFORE:$arg;" . $my_method . ";",join(";",@param),"] \n" if $DEBUG_BT;
  
             if ($my_method eq 'complement') {
-                # TODO - this doesn't help solving the equation
-                $backtrack_arg2 = $arg->complement->span;
+                $backtrack_arg2 = $arg;  
             }
             elsif ($my_method eq 'quantize') {
                 # (TODO) ????
@@ -597,10 +874,11 @@ sub iterate {
     my ($tmp, $ia);
     my $subroutine = shift;
     foreach $ia (0 .. $#{$a->{list}}) {
+        # next unless defined $a->{list}->[$ia];
         # print " [iterate:$a->{list}->[$ia] -- $subroutine ]\n";
         $tmp = &{$subroutine} ( $a->new($a->{list}->[$ia]) );
         # print " [iterate:result:$tmp]\n";
-        $iterate = $iterate->union($tmp) if defined $tmp;  # unless Set::Infinite::Element_Inf::is_null($tmp); 
+        $iterate = $iterate->union($tmp) if defined $tmp; 
     }
     return $iterate;    
 }
@@ -652,65 +930,57 @@ sub intersection {
     }
     my ($tmp1, $tmp2, $tmp1a, $tmp2a, $tmp1b, $tmp2b, $i_beg, $i_end, $open_beg, $open_end, $cmp1);
     my $a0 = 0;
+    my @a;
 
     B: foreach $ib (0 .. $mb) {
         $tmp2 = $b1->{list}[$ib];
-        next unless defined $tmp2;
         $tmp2a = $tmp2->{a};
         $tmp2b = $tmp2->{b};
          A: foreach $ia ($a0 .. $ma) {
             $tmp1 = $a1->{list}[$ia];
-            next unless defined $tmp1;
             $tmp1b = $tmp1->{b};
 
             if ($tmp1b < $tmp2a) {
                 $a0++;
                 next A;
             }
-            # next A if $tmp1b < $tmp2a; 
 
             $tmp1a = $tmp1->{a};
-            next B if $tmp1a > $tmp2b;
+            if ($tmp1a > $tmp2b) {
+                next B;
+            }
 
-            $cmp1 = $tmp1a <=> $tmp2a;
-
-            if ($cmp1 < 0) {
-                $i_beg         = $tmp2a;
+            if ($tmp1a < $tmp2a) {
+                $tmp1a        = $tmp2a;
                 $open_beg     = $tmp2->{open_begin};
             }
-            elsif ($cmp1 == 0) {
-                $i_beg         = $tmp1a;
+            elsif ($tmp1a == $tmp2a) {
                 $open_beg     = ($tmp1->{open_begin} or $tmp2->{open_begin});
             }
             else {
-                $i_beg         = $tmp1a;
-                $open_beg    = $tmp1->{open_begin};
+                $open_beg     = $tmp1->{open_begin};
             }
 
-            $cmp1 = $tmp1b <=> $tmp2b;
-
-            if ($cmp1 > 0) {
-                $i_end         = $tmp2b;
+            if ($tmp1b > $tmp2b) {
+                $tmp1b        = $tmp2b;
                 $open_end     = $tmp2->{open_end};
             }
-            elsif ($cmp1 == 0) {
-                $i_end         = $tmp1b;
+            elsif ($tmp1b == $tmp2b) {
                 $open_end     = ($tmp1->{open_end} or $tmp2->{open_end});
             }
             else {
-                $i_end         = $tmp1b;
                 $open_end    = $tmp1->{open_end};
             }
             # print " [ simple: fastnew($i_beg, $i_end, $open_beg, $open_end ) ]\n";
-            $cmp1 = $i_beg <=> $i_end;
-            unless (( $cmp1 > 0 ) or 
-                    ( ($cmp1 == 0) and ($open_beg or $open_end) )) {
-                push @{$intersection->{list}}, 
-                    { a => $i_beg, b => $i_end, 
+            unless (( $tmp1a > $tmp1b ) or 
+                    ( ($tmp1a == $tmp1b) and ($open_beg or $open_end) )) {
+                push @a, 
+                    { a => $tmp1a, b => $tmp1b, 
                       open_begin => $open_beg, open_end => $open_end } ;
             }
         }
     }
+    $intersection->{list} = \@a;
     # print " [intersect GIVES\n    ",$intersection,"\n\n";
     return $intersection;    
 }
@@ -766,9 +1036,7 @@ sub complement {
     return $complement;    
 }
 
-# version 0.22.02 - faster union O(n*n) => O(n)
-# version 0.30 - sends tolerance
-# $a, $b renamed to $a1, $b1 to prevent clashing with 'sort' 
+
 sub union {
     my $a1 = shift;
     # my $class = ref($a1);
@@ -787,6 +1055,10 @@ sub union {
     else {
         $b1 = $a1->new(@_);  
     }
+
+    # test for union with empty set
+    return $b1 if ( $#{ $a1->{list} } < 0 and ! $a1->{too_complex} );
+    return $a1 if ( $#{ $b1->{list} } < 0 and ! $b1->{too_complex} );
 
     if (($a1->{too_complex}) or ($b1->{too_complex})) {
         print " [union:backtrack] \n" if $DEBUG_BT;
@@ -869,15 +1141,26 @@ sub union {
 
     # print "\n TEST: $test\n A:    $a\n ORIG: $a\n B:    $b\n" if $test != $a;
 
+    # $a->trace(title=>"end: union");
+
     return $a1;    
 }
 
+use Data::Dumper;
+
 sub contains {
     my $a = shift;
+    # $TRACE = 1;
     $a->trace(title=>"contains");
+
+    # print Dumper($a);
+    # print Dumper($_[0]);
+
     return undef if $a->{too_complex};
     my $b1 = $a->union(@_);
     return undef if $b1->{too_complex};
+    # warn " compare $b1 == $a ";
+    $a->trace(title=>"end: contains");
     return ($b1 == $a) ? 1 : 0;
 }
 
@@ -963,7 +1246,12 @@ sub new {
     $self;
 }
 
-sub min { ($_[0]->min_a)[0] }
+sub min { 
+    $_[0]->trace(title=>"min"); 
+    # don't! "wantarray" breaks some tests in Date::Set!
+    # wantarray ? $_[0]->min_a : ($_[0]->min_a)[0] 
+    ($_[0]->min_a)[0]
+}
 
 sub min_a { 
     my ($self) = shift;
@@ -990,6 +1278,13 @@ sub min_a {
                 return @{$self->{min}} = @parent;
             }
 
+            if ($method eq 'select') {
+                # carp " got to find min of a $method ";
+                my @min = $self->{parent}->min_a;
+                # warn " looks like it's @min ";
+                return @min;
+            }
+
             @parent = $self->{parent}->min_a;
             return @{$self->{min}} = @parent unless defined $parent[0];
             #  + 1e-10 is a fixup for open sets
@@ -1000,8 +1295,10 @@ sub min_a {
                      b => $tmp + 1 + $self->{tolerance},
                      open_begin => $parent[1],
                      open_end => 0 };
+            @{$self->{min}} = $self->new( $sample )->$method( @{$self->{param}} )->min_a;
+            # warn "get min of $method; parent min=$tmp; got @{$self->{min}}";
             # print " tol=",$self->{tolerance}," max=$tmp open=$parent[1]\n";
-            return @{$self->{min}} = $self->new( $sample )->$method( @{$self->{param}} )->min_a;
+            return @{$self->{min}};
         }
         else {
             my @p1 = $self->{parent}[0]->min_a;
@@ -1027,7 +1324,7 @@ sub min_a {
 
     for($i = 0; $i <= $#{$self->{list}}; $i++) {
         # foreach(0 .. $#{$self->{list}}) {
-        next unless defined $self->{list}[$i];
+        # next unless defined $self->{list}[$i];
         $tmp = $self->{list}[$i]->{a};
         my $tmp2 = $self->{list}[$i]{open_begin};
         if ($tmp2 and $self->{tolerance}) {
@@ -1042,7 +1339,12 @@ sub min_a {
 
 
 
-sub max { ($_[0]->max_a)[0] }
+sub max { 
+    $_[0]->trace(title=>"max"); 
+    # don't! "wantarray" breaks some tests in Date::Set!
+    # wantarray ? $_[0]->max_a : ($_[0]->max_a)[0]
+    ($_[0]->max_a)[0]
+}
 
 sub max_a { 
     my ($self) = shift;
@@ -1108,7 +1410,7 @@ sub max_a {
         ## $tmp_ptr = $self->{list}->[$i];
         ## $tmp = $tmp_ptr->{b};
 
-        next unless defined $self->{list}[$i];
+        # next unless defined $self->{list}[$i];
         $tmp = $self->{list}[$i]{b};
         my $tmp2 = $self->{list}[$i]{open_end};
         if ($tmp2 and $self->{tolerance}) {
@@ -1137,7 +1439,7 @@ sub size {
 
     my $size = 0;
     foreach(0 .. $#{$self->{list}}) {
-        next unless defined $self->{list}->[$_];
+        # next unless defined $self->{list}->[$_];
         $size += $self->{list}->[$_]->{b} - $self->{list}->[$_]->{a};
         $size -= $self->{tolerance} if $self->{list}->[$_]->{open_begin};
         $size -= $self->{tolerance} if $self->{list}->[$_]->{open_end};
@@ -1163,14 +1465,17 @@ sub spaceship {
     my ($tmp1, $tmp2, $inverted) = @_;
     carp "Can't compare unbounded sets" if $tmp1->{too_complex} or $tmp2->{too_complex};
 
-    # TODO: what happens if sets are not 'cleaned-up'
-
     if ($inverted) {
         ($tmp2, $tmp1) = ($tmp1, $tmp2);
     }
     foreach(0 .. $#{$tmp1->{list}}) {
         my $this  = $tmp1->{list}->[$_];
+        return -1 if $_ > $#{ $tmp2->{list} };
         my $other = $tmp2->{list}->[$_];
+
+        # my @caller = caller(1);
+        # print " [",$caller[1],":",$caller[2]," spaceship $tmp1 $tmp2 ]\n";
+
         my $cmp = _simple_spaceship($this, $other);
         return $cmp if $cmp;   # this != $other;
     }
@@ -1262,6 +1567,8 @@ sub as_string {
 }
 
 
+sub DESTROY {}
+
 1;
 __END__
 
@@ -1300,11 +1607,11 @@ __END__
 
     $i = $a->size;  
 
-=head2 Perl functions:
+=head2 Overloaded Perl functions:
 
-    @b = sort @a;
+    print    
 
-    print $a;
+    sort, <=> 
 
 =head2 Global functions:
 
@@ -1314,25 +1621,17 @@ __END__
 
         default are [ ] ( ) '..' ','.
 
-    null($i)        
-
-        chooses 'null' name. default is ''
-
     infinite($i)
 
         chooses 'infinite' name. default is 'inf'
 
-    infinite
+    inf
 
-        returns an 'infinite' number.
+        returns an 'Infinity' number.
 
-    minus_infinite
+    minus_inf
 
-        returns '-infinite' number.
-
-    null
-
-        returns the 'null' object.
+        returns '-Infinity' number.
 
     quantize( parameters )
 
@@ -1344,7 +1643,7 @@ __END__
         The quantization function is external to this module:
         Parameters may vary depending on implementation. 
 
-        Positions for which a subset does not exist may show as null.
+        Positions for which a subset does not exist may show as undef.
 
         Example: 
 
@@ -1357,20 +1656,22 @@ __END__
 
     select( parameters )
 
-        Selects set members based on their ordered positions.
-        Selection is more useful after quantization.
-
-        In array context: returns a tied reference to the array of selected subsets.
-        In set context: returns the set of selected subsets.
-
-        Unselected subsets may show as null.
-
-        The selection function is external to this module:
-        Parameters may vary depending on implementation. 
+        Selects set members based on their ordered positions
+        (Selection is more useful after quantization).
 
             freq     - default=1
             by       - default=[0]
-            count    - dafault=infinite
+            count    - default=Infinity
+
+ 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15    # [0..15] quantized by "1"
+
+ 0              5             10             15    # freq => 5
+
+    1     3        6     8       11    13          # freq => 5, by => [ -2, 1 ]
+
+    1     3        6     8                         # freq => 5, by => [ -2, 1 ], count => 2
+
+    1                                     14       # by => [ -2, 1 ]
 
     offset ( parameters )
 
@@ -1404,7 +1705,7 @@ __END__
 
     real            defaults to real sets (default)
 
-    integer            defaults to integer sets
+    integer         defaults to integer sets
 
 =head2 Internal functions:
 
@@ -1420,30 +1721,23 @@ __END__
 
 See module Date::Set for up-to-date information on date-sets. 
 
-Set::Infinite::Date and Set::Infinite::ICal are Date "plugins" for sets.
+Set::Infinite::Date is a Date "plug-in" for sets.
 
-use:
+usage:
 
-    type('Set::Infinite::Date');  # 2001-05-02 10:00:00   
-    # or
-    type('Set::Infinite::ICal');  # 20010502T100000Z
+    type('Set::Infinite::Date');  # allows values like '2001-05-02 10:00:00'
 
-
-Both require Time::Local.
-Set::Infinite::ICal requires Date::ICal.
-
-They change quantize function behaviour to accept time units:
+Set::Infinite::Date requires Time::Local.
 
     use Set::Infinite;
-    use Set::Infinite::Quantize_Date;
     Set::Infinite->type('Set::Infinite::Date');
     Set::Infinite::Date->date_format("year-month-day");
 
     $a = Set::Infinite->new('2001-05-02', '2001-05-13');
-    print "Weeks in $a: ", join (" ", $a->quantize(unit => 'weeks', quant => 1) );
+    print "Weeks in $a: ", $a->quantize(unit => 'weeks', quant => 1);
 
     $a = Set::Infinite->new('09:30', '10:35');
-    print "Quarters of hour in $a: ", join (" ", $a->quantize(unit => 'minutes', quant => 15) );
+    print "Quarters of hour in $a: ", $a->quantize(unit => 'minutes', quant => 15);
 
 Quantize units can be years, months, days, weeks, hours, minutes, or seconds.
 To quantize the year to first-week-of-year until last-week-of-year, use 'weekyears':
@@ -1471,6 +1765,8 @@ max and min functions will also show in date/time format.
 =head1 SEE ALSO
 
     Date::Set
+
+    the Reefknot project <http://reefknot.sf.net>
 
 =head1 AUTHOR
 

@@ -1,7 +1,81 @@
 Revision history for Perl extension Set::Infinite.
 
-0.37
+0.37_44
+    fixed a bug in <=>
 
+0.37_43
+    first/intersection code started (commented out)
+
+0.37_42
+    allows inherited methods to use first()
+
+0.37_41
+    passes tests
+
+0.37_40
+    select/first works with freq+count or count
+        (some tests fail)
+
+0.37_38
+    first works for union/select/quantize
+
+0.37_37
+    first for union()
+
+0.37_36
+    select() freq default is 1 if we have a count
+
+0.37_35
+    first/tail works for quantize(), select(by[])
+
+0.37_26
+    compact() is a no-op
+
+0.37_23
+    quantize() is no longer tied; no longer generates 'undef'
+        subset values.
+        3 tests didn't pass; removed! (expected null subset values)
+    Quantize_Date.pm removed
+    Function.pm removed
+
+0.37_19
+    removed global-cache in quantize (access was too difficult,
+        took too much time).
+
+0.37_18
+    removed cacheing in Set::Infinite::Date (problems with 'mode'
+        internal variable).
+
+0.37_16
+    quantize 'weekyears' internal indexes fixed
+        new tests added
+
+0.37_11
+    Set::Infinite::Arithmetic docs revised
+
+0.37_10
+    select() is no longer "tied"
+    lib\Set\Infinite\Select.pm removed.
+    offset doesn't use gmtime if doesn't have to.
+
+0.37_06
+    Backtracks on complement()
+    EXCLUDE_EXT string/array correction in Makefile.PL
+        (thanks Mark Veltzer for pointing this out)
+
+0.37_05
+    Offset.pm moved into Arithmetic.pm
+
+0.37_04
+    removed eg/ical.pl
+        (thanks Mike Castle for pointing these out)
+    changed obsolete 'add' method to 'union' in eg/*.pl
+    removed null() docs
+
+0.37_03
+    faster Offset.pm
+
+0.37
 0.36_50
     use warnings in Set::Infinite::_Simple
 

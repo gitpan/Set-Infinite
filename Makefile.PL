@@ -8,7 +8,7 @@ WriteMakefile(
     'AUTHOR'          => 'Flavio Soibelmann Glock - fglock@pucrs.br',
     'NAME'            => 'Set::Infinite',
     'VERSION_FROM'    => 'lib/Set/Infinite.pm',
-    'EXCLUDE_EXT'     => 'Makefile gz LOG x~~',
+    'EXCLUDE_EXT'     => [ qw(Makefile gz LOG x~~) ],
     'PREREQ_PM'       => { 'Time::Local' => 0 },
     'dist'            => { 'COMPRESS' => 'gzip' },
 );

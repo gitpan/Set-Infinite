@@ -1,7 +1,6 @@
 #! perl -w
 
 use Set::Infinite::Date;
-use Set::Infinite::Quantize_Date;
 Set::Infinite->type('Set::Infinite::Date');
 
 print "This is a test for: \n    \"This event happens from 13:00 to 14:00 every Tuesday, unless that Tuesday is the 15th of the month.\" (suggested by srl)\n\n";

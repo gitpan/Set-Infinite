@@ -11,7 +11,7 @@
 
 use strict;
 use warnings;
-
+$| = 1;
 use Set::Infinite qw(type $inf);
 
 # Just to help the warnings:
@@ -32,6 +32,7 @@ sub test {
 	$test++;
 	#print "\t# $header \n";
 	$result = eval $sub;
+        $result = '' unless defined $result;
 	if ("$expected" eq "$result") {
 		print "ok $test";
 	}
@@ -130,6 +131,7 @@ test('','$a->intersects($time4)','0');
 
 test('','$a->contains($time3,"2001-04-26 10:25:00")','1');
 
+# warn "contains $a $time4";
 test('','$a->contains($time4)','0');
 
 test('','$a->size','1800');   # "1800" or "1970-01-01 00:30:00"

@@ -4,10 +4,7 @@
 # modify it under the same terms as Perl itself.
 #
 # Tests for Set::Infinite::Quantize
-# This is work in progress
 #
-# CHANGES
-# 0.21 - change quantize(1) -> quantize( quant => 1 )
 
 
 use strict;
@@ -37,7 +34,7 @@ sub test {
 }
 
 
-print "1..8\n";
+print "1..17\n";
 
 #print "1: \n";
 $a = Set::Infinite->new([1,3]);
@@ -100,5 +97,53 @@ print "not " unless join (" ", $a->quantize(quant => 1)->quantize(quant => 1)->c
 	"[1..2) [2..3) [3..4)";
 print "ok 8\n";
 
+$test = 8;
+
+
+# open set
+$a = Set::Infinite->new(1,5);
+test ( '', ' $a->quantize ',
+	"[1..2),[2..3),[3..4),[4..5),[5..6)");
+
+$a = $a->complement(5);
+# print "open set $a\n";
+test ( '', ' $a->quantize ',
+	"[1..2),[2..3),[3..4),[4..5)");
+
+$a = $a->complement(1);
+# print "open set $a\n";
+test ( '', ' $a->quantize ',
+	"[1..2),[2..3),[3..4),[4..5)");
+
+
+# open set, real
+$a = Set::Infinite->new(1.1,5.1);
+test ( '', ' $a->quantize ',
+	"[1..2),[2..3),[3..4),[4..5),[5..6)");
+
+$a = $a->complement(5.1);
+# print "open set $a\n";
+test ( '', ' $a->quantize ',
+	"[1..2),[2..3),[3..4),[4..5),[5..6)");
+
+$a = $a->complement(1.1);
+# print "open set $a\n";
+test ( '', ' $a->quantize ',
+	"[1..2),[2..3),[3..4),[4..5),[5..6)");
+
+# open integer set
+$a = Set::Infinite->new(1,5)->integer;
+test ( '', ' $a->quantize ',
+	"[1..2),[2..3),[3..4),[4..5),[5..6)");
+
+$a = $a->complement(5);
+# print "open set $a\n";
+test ( '', ' $a->quantize ',
+	"[1..2),[2..3),[3..4),[4..5)");
+
+$a = $a->complement(1);
+# print "open set $a\n";
+test ( '', ' $a->quantize ',
+	"[2..3),[3..4),[4..5)");
 
 1;

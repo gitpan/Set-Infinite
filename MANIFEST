@@ -8,11 +8,6 @@ make_readme.pl
 lib/Set/Infinite.pm
 lib/Set/Infinite/Date.pm
 lib/Set/Infinite/_Simple.pm
-
-lib/Set/Infinite/Offset.pm
-lib/Set/Infinite/Quantize_Date.pm
-lib/Set/Infinite/Select.pm
-lib/Set/Infinite/Function.pm
 lib/Set/Infinite/Arithmetic.pm
 todo/bigfloat.t
 todo/bigint.t
@@ -32,4 +27,4 @@ eg/schedule.dat
 eg/schedule_check.pl
 eg/weekly_to_html.pl
 eg/recurring.pl
-eg/ical.pl
+

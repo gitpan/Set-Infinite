@@ -1,9 +1,26 @@
 Set::Infinite TODO 
 
-    - size() is wrong for open, "integer" sets.
+    - change iterate() to use first() ?
 
-    - create some "chunk size" estimation, to take elements
+    - use wantarray in min; return min_a
+
+    - finish first(n) for unbounded sets
+
+    - finish select/first defined "boundedness" for negative by
+      and tests for negative by
+
+    - document first()
+
+    - test min/max after select()
+
+    - give more standard names to Arithmetic.pm variables
+
+    - size() is wrong for open, "integer" sets.
+      test!
+
+    DONE: first() - create some "chunk size" estimation, to take elements
       from unbounded sets ("numerically" instead of using equations)
+      (mostly done - see first() )
 
     - find out how to correctly (inheritable) declare module global vars
 
@@ -11,13 +28,11 @@ Set::Infinite TODO
 
     - make Set::Infinite::Date inherit Set::Infinite; 
       make Set::Infinite::Date::Element a leaf-node
-      move all date arithmetic/gmtime/timegm into 
-          Set::Infinite::Date::Arithmetic (maybe)
-      remove ICal.pm
-    - move $self->{mode} to "Date" only.
-    - rename Set::Infinite::Element_Inf Set::Infinite::Infinity
 
-    - find out how to compare unbounded sets
+    - remove all references to 'mode', except in 'S::I::Date'
+    - move $self->{mode} to "Date" only.
+
+    - find out how to compare "<=>" unbounded sets
 
 BACKTRACK
 
@@ -64,38 +79,12 @@ SYNTAX
 
 	sort by[] -- 0 1 2 ... freq-3 freq-2 freq-1
 
-	ical.pl: enter data as epoch; translate on exit.
-	use DTSTART as default hour, minute, ...
-
-	extra: wrappers (like: weekday('thursday') )
-	some tough cases: yearweek(10) monthweek(2)
-	-- partly done: ICalSet.pm
-
-	check: RFC2445 support completeness
-
-	ical.pl: BYWEEKNO / WKST
-	ical.pl: test bysetpos
-	ical.pl: check behaviour when mixing rule parts (BYWEEKNO + BYYEARDAY);
-	-- see end of 4.3.10 in RFC2445
-	-- check how to integrate with DTSTART
-	ical.pl: put UNTIL inside rrule
-	ical.pl: where do DTSTART", "DTEND", "DUE", "EXDATE" and "RDATE" belong?
-	better DURATION
-	TZID
-
 	'select' switch for negative-index overflow behaviour (end of subset, or end of freq)
 	tests: add test for negative 'by'
-
-	negative values in select should count backwards from end
-	-- test! insert debug -- ical.pl 134 should show 2001-09-30
-
-	remove 'interval' option from select
 
 	old: correct syntax problems due to accepting ( [ 1 .. 10 ] ) as input - see POD.
 
 	make 'freq' work with 'days', etc.
-
-	extra: make offset accept ICal times
 
 	extra: offset option "middle"
 
@@ -116,11 +105,7 @@ TESTS
 
         tests for complement() backtracking 
 
-	make t/icalset.t
-
 	old: fix Bigfloat tests
-
-	put 't/element_inf.t' back
 
 DOCUMENTATION
 
@@ -129,7 +114,6 @@ DOCUMENTATION
 	verify, document parameter syntax everywhere
 
 	document:
-		new module 'ICalSet'
 		new method 'compact'
 		offset option 'mode=>circle'
 		new method 'list'
@@ -156,8 +140,6 @@ CACHEING
 
 	old: Create a `dirty' variable so it knows when to cleanup.
 
-	extra: caching for the filters. 
-
 OTHER
 
 	find a better (bigger span) gmtime/timegm
@@ -166,13 +148,7 @@ OTHER
 
 	remove a lot of debug #-print lines
 
-	internal: it may be good to have a pointer to the "root" object
-	in the filters. They already have a "parent" pointer.
-
-	oo: provide a general filter "install" mechanism (quantize, select, etc)
 	check: cleanup "type" hack
-
-	extra: syntax for quantize: ...->quantize('years')
 
 	old: Make a global mode for `open_*' 
 
