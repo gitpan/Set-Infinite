@@ -1,7 +1,7 @@
 # http://module-build.sourceforge.net/META-spec.html
 #XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
 name:         Set-Infinite
-version:      0.5305
+version:      0.5306
 version_from: lib/Set/Infinite.pm
 installdirs:  site
 requires:
