@@ -1,5 +1,12 @@
 Revision history for Perl extension Set::Infinite.
 
+0.41
+    'todo' directory renamed to _todo for Win* compatibility 
+    (clashes with TODO)
+
+0.40
+    LICENSE file
+
 0.39_05
     fixed 'until' test warnings (caused by malformed offset() output)
 
