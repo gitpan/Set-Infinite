@@ -58,8 +58,8 @@ print "</PRE>";
 
 # timetable
 
-($horario_mes) = Set::Infinite->new("$ano-$mes-01")->quantize('months', 1);
-@horario_dia   = $horario_mes->quantize('days', 1);
+($horario_mes) = Set::Infinite->new("$ano-$mes-01")->quantize('months', 1)->list;
+@horario_dia   = $horario_mes->quantize('days', 1)->list;
 
 print "<table border=1>";
 

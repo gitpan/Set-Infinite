@@ -64,8 +64,9 @@ String conversion functions:
 Internal functions:
 	$a->mode($b);
 		mode can be 
-		1 (beginning in 00:00:00) or 
-		2 (absolute dates like 2001-01-01 00:00:00)
+		0 - epoch
+		1 - beginning in 00:00:00 
+		2 - absolute dates like 2001-01-01 00:00:00
 
 =head1 TODO
 
@@ -80,7 +81,6 @@ Internal functions:
 
 require Exporter;
 package Set::Infinite::Date;
-$VERSION = "0.17";
 
 my $DEBUG = 1;
 # @ISA = qw(Set::Infinite::Simple); # DON'T !
@@ -91,7 +91,6 @@ my $DEBUG = 1;
 );
 
 use strict;
-# use HTTP::Date qw(str2time);
 use Time::Local;
 use Set::Infinite::Element_Inf;
 
@@ -214,7 +213,7 @@ sub sub {
 	# TODO: (since 0.21) keep format ("mode") in result (see: "Date::add")
 	my ($tmp1, $tmp2, $inverted) = @_;
 	my $result;
-	$tmp2 = Set::Infinite::Date->new($tmp2) unless ref($tmp2) and $tmp2->isa(__PACKAGE__);
+	$tmp2 = Set::Infinite::Date->new($tmp2) unless ref($tmp2) and (ref($tmp2) eq __PACKAGE__);
 	if ($inverted) {
 		return - $tmp1 if $tmp2->is_null;
 		$result = Set::Infinite::Date->new( $tmp2->{a} - $tmp1->{a} );
@@ -285,7 +284,13 @@ sub spaceship {
 sub new {
 	my ($self) = bless {}, shift;
 	my $tmp = shift;
-	if ($tmp and (exists $date_cache{$tmp})) {
+
+	if ((not defined $tmp) or ($tmp eq '')) {
+		# print " [date:new:null] ";
+		return Set::Infinite::Element_Inf->null ;
+	}
+
+	if (exists $date_cache{$tmp}) {
 		# print "*";
 		return $date_cache{$tmp};
 	}

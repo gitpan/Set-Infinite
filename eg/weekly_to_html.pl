@@ -34,7 +34,7 @@ foreach(<FILE>) {
 
 close(FILE);
 
-($horario_mes) = Set::Infinite->new("$ano-$mes-01")->quantize('months', 1);
+($horario_mes) = Set::Infinite->new("$ano-$mes-01")->quantize('months', 1)->list;
 
 print "<table border=1>";
 print "<tr>";
@@ -47,10 +47,10 @@ print "</tr>\n";
 
 Set::Infinite::Date::date_format("day");
 
-foreach $week ( $horario_mes->quantize('weeks', 1) ) {
+foreach $week ( $horario_mes->quantize('weeks', 1)->list ) {
 	if ($week) {
 		print "<tr>";
-		foreach $dia ( $week->quantize('days', 1) ) {
+		foreach $dia ( $week->quantize('days', 1)->list ) {
 			if ($dia) {
 				print "<td valign=top><b>",$dia->{a},"</b><br>";
 				foreach $curso (0 .. $n) {

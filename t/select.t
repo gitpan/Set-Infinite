@@ -10,9 +10,9 @@
 use strict;
 use warnings;
 
-#use Set::Infinite;
-use Set::Infinite::Quantize;
-use Set::Infinite::Select;
+use Set::Infinite;
+# use Set::Infinite::Quantize;
+# use Set::Infinite::Select;
 
 my $test = 0;
 my ($result, $errors);

@@ -44,8 +44,8 @@ sub stats {
 }
 
 
-#use Set::Infinite;
-use Set::Infinite::Quantize_Date;
+use Set::Infinite;
+# use Set::Infinite::Quantize_Date;
 
 Set::Infinite->type('Set::Infinite::Date');
 

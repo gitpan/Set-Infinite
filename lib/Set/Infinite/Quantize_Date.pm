@@ -169,6 +169,7 @@ sub new {
 	$self->{parent} = $parent; 
 	$self->{cache} = {};   # empty hash
 	$self->{strict} = $parent unless exists $self->{strict};
+	$self->{type} = $parent->{type};
 
 	my $min = $self->{parent}->min;
 	# print " [MIN:$min] \n";
@@ -253,7 +254,7 @@ sub FETCH {
 		return $self->{cache}->{$index};
 	}
 	# print " [QD:fetch:new($this,$next)] ";
-	my $tmp = Set::Infinite::Simple->new($this,$next)->open_end(1);
+	my $tmp = Set::Infinite::Simple->new($this,$next, $self->{type} )->open_end(1);
 	# my $tmp = Set::Infinite::Simple->fastnew($this,$next)->open_end(1);
 
 	# if ((ref($tmp->{a})) and ($tmp->{a}->can('mode'))) {   

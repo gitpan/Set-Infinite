@@ -12,7 +12,7 @@ use Set::Infinite qw(inf);
 my $errors = 0;
 my $test = 0;
 
-print "1..81\n";
+print "1..80\n";
 
 sub test {
 	my ($header, $sub, $expected) = @_;
@@ -216,8 +216,8 @@ test ("intersection $a with $b", '$a->intersection($b)', "[1.1..2],[4.1..5]");
 test ("size of $b is : ", '$b->size', "2");
 test ("span of $b is : ", '$b->span', "[1.1..5.1]");
 
-tie $a, 'Set::Infinite', [1,2], [9,10];
-test ("tied: ",'$a',"[1..2],[9..10]");
+# tie $a, 'Set::Infinite', [1,2], [9,10];
+# test ("tied: ",'$a',"[1..2],[9..10]");
 
 stats;
 1;

@@ -35,11 +35,7 @@ Default function is f(x) = x;
 
 Derived functions should register themselves automatically with Set::Infinite
 
-Apply this module to Quantize.pm, Select.pm, Select.pm.
-
 =head2 CHANGES
-
-version 0.01 - module started
 
 =head2 AUTHOR
 

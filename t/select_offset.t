@@ -38,9 +38,8 @@ sub stats {
 	}
 }
 
-
-# use Set::Infinite;
-use Set::Infinite::Quantize;
+use Set::Infinite;
+# use Set::Infinite::Quantize;
 
 
 print "1..10\n";

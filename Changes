@@ -1,5 +1,13 @@
 Revision history for Perl extension Set::Infinite.
 
+0.30
+	optimized 'is_null' - avoids converting data to string
+	fixed examples - foreach needs ->list
+	fixed tests - thanks CPAN testers!
+	move 'type', 'tolerance', 'real', 'integer' from Simple.pm to Set::Infinite.pm
+	simpler 'contains'
+	removed tie code from Infinite.pm and Infinite::Simple.pm
+
 0.29
 	new method 'compact'
 	offset option 'mode=>circle'

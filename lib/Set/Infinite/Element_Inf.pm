@@ -97,8 +97,10 @@ our %null = (
 
 sub is_null {
 	my $self = pop;
-	return 1 unless defined($self);
-	return $null{$self} ? 1 : 0;
+	my $class = ref($self);
+	return 0 if $class and ($class ne __PACKAGE__);
+	return 1 unless (defined($self));
+	return $null{$self};
 }
 
 our %add = (

@@ -13,7 +13,7 @@
 use strict;
 use warnings;
 
-use Set::Infinite::Quantize;
+use Set::Infinite; 
 
 
 my $test = 0;

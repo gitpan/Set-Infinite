@@ -1,74 +1,15 @@
-TODO - version 0.29
+TODO - version 0.30
 
-	make corrections in examples: eg/weekly_to_html.pl and eg/month_to_html.pl 
+BACKTRACK
 
-	remove iterate ?
-
-	make t/icalset.t
+	make backtrack_result method
 
 	test backtrack on:
 		iterate
 		compact
 		no_cleanup
 
-	document:
-		new module 'ICalSet'
-		new method 'compact'
-		offset option 'mode=>circle'
-		new method 'list'
-		iterate
-		no_cleanup
-
 	change $backtrack_arg2 = $arg->quantize(@param)->union(); to span()
-
-	cache quantize by month/day/...
-	-- doesn't work if 'quant' is changed
-	-- doesn't check 'intersects'
-
-	ical.pl: enter data as epoch; translate on exit.
-	use DTSTART as default hour, minute, ...
-
-	sort by[] -- 0 1 2 ... freq-3 freq-2 freq-1
-
-	ical.pl: BYWEEKNO WKST
-	ical.pl: test bysetpos
-	ical.pl: check behaviour when mixing rule parts (BYWEEKNO + BYYEARDAY);
-	-- rule order matters:
-	   If multiple BYxxx rule parts are specified, then after evaluating the
-	   specified FREQ and INTERVAL rule parts, the BYxxx rule parts are
-	   applied to the current set of evaluated occurrences in the following
-	   order: BYMONTH, BYWEEKNO, BYYEARDAY, BYMONTHDAY, BYDAY, BYHOUR,
-	   BYMINUTE, BYSECOND and BYSETPOS; then COUNT and UNTIL are evaluated.
-	-- see end of 4.3.10 in RFC2445
-	-- check how to integrate with DTSTART
-	ical.pl: put UNTIL inside rrule
-	ical.pl: where do DTSTART", "DTEND", "DUE", "EXDATE" and "RDATE" belong?
-	better DURATION
-	TZID
-
-	This looks wrong - is it?
-	   "FREQ=YEARLY;BYMONTH=1,2" increases the number of days within the
-	   yearly recurrence set from 1 (if BYMONTH tag is not present) to 2.
-
-	'select' switch for negative-index overflow behaviour (end of subset, or end of freq)
-	tests: add test for negative 'by'
-
-	negative values in select should count backwards from end
-	-- test! insert debug -- ical.pl 134 should show 2001-09-30
-
-	remove 'interval' option from select
-
-	make a 'flush'-cache method. Make a 'cache-registry'.
-
-	document '->trace({options})->' method
-
-	find a better (bigger span) gmtime/timegm
-
-	'iterate' options 'no-sort', 'no-merge', 'keep-null' ...
-
-	check for negative-epoch errors (quantize, select, offset).
-
-	document: quantize extensibility through hash-subs
 
 	backtracking select - see '	# (TODO) ???? ' in Infinite.pm, backtrack.t
 
@@ -90,12 +31,47 @@ TODO - version 0.29
 
 	backtracking: document backtracking resolution; document internal object data (partially done)
 
-	remove a lot of debug #-print lines
+SYNTAX
 
-	verify, document parameter syntax everywhere
+	remove iterate ?
+	'iterate' options 'no-sort', 'no-merge', 'keep-null' ...
+
+	sort by[] -- 0 1 2 ... freq-3 freq-2 freq-1
+
+	ical.pl: enter data as epoch; translate on exit.
+	use DTSTART as default hour, minute, ...
+
+	extra: wrappers (like: weekday('thursday') )
+	some tough cases: yearweek(10) monthweek(2)
+	-- partly done: ICalSet.pm
+
+	check: RFC2445 support completeness
+
+	ical.pl: BYWEEKNO / WKST
+	ical.pl: test bysetpos
+	ical.pl: check behaviour when mixing rule parts (BYWEEKNO + BYYEARDAY);
+	-- see end of 4.3.10 in RFC2445
+	-- check how to integrate with DTSTART
+	ical.pl: put UNTIL inside rrule
+	ical.pl: where do DTSTART", "DTEND", "DUE", "EXDATE" and "RDATE" belong?
+	better DURATION
+	TZID
+
+	This looks wrong - is it?
+	   "FREQ=YEARLY;BYMONTH=1,2" increases the number of days within the
+	   yearly recurrence set from 1 (if BYMONTH tag is not present) to 2.
+
+	'select' switch for negative-index overflow behaviour (end of subset, or end of freq)
+	tests: add test for negative 'by'
+
+	negative values in select should count backwards from end
+	-- test! insert debug -- ical.pl 134 should show 2001-09-30
+
+	remove 'interval' option from select
+
+	old: correct syntax problems due to accepting ( [ 1 .. 10 ] ) as input - see POD.
+
 	make 'freq' work with 'days', etc.
-
-	make unit 'years' and 'months' work in 'offset'
 
 	extra: make offset accept ICal times
 
@@ -104,36 +80,6 @@ TODO - version 0.29
 	extra: "indexes" filter to help dealing with sparse lists:
 	(,,10,,12,,14,,,)->indexes gives (2,4,6)
 
-	extra: caching for the filters. 
-
-	internal: it may be good to have a pointer to the "root" object
-	in the filters. Thay already have a "parent" pointer.
-
-	think about: caching for union, etc  
-
-	think about: "push-pop", "dup", "drop" mechanism
-
-	think about: some "if-else" mechanism
-
-	extra: wrappers (like: weekday('thursday') )
-	some tough cases: yearweek(10) monthweek(2)
-
-	extra: multiple offset (like: two days in month) 
-
-	oo: provide a general filter "install" mechanism (quantize, select, etc)
-	check: cleanup "type" hack
-
-	extra: syntax for quantize: ...->quantize('years')
-
-	check: POD formatting 
-
-	check: RFC2445 support completeness
-
-	extra: Keep a pointer to object in "quantize", such that, if the object is changed,
-	"quantize" will re-initialize. 
-	Make a "object_modified" flag in "quantize",
-	that the object should point back to. Sort of a signal handler.
-
 	extra: Make a 'strict' option for "quantize" and other filters, 
 	that will intersect
 	each unit back to the object, that is:
@@ -141,12 +87,74 @@ TODO - version 0.29
 	Quantized:                [*********)[*********)[*********)
 	Quantized->Stricted:          [*****)[*********)[******]
 
-	old: Make a global mode for `open_*' 
+	think about: "push-pop", "dup", "drop" mechanism
 
-	old: Create a `dirty' variable so it knows when to cleanup.
+	think about: some "if-else" mechanism
 
-	old: correct syntax problems due to accepting ( [ 1 .. 10 ] ) as input - see POD.
+TESTS
+
+	make t/icalset.t
 
 	old: fix Bigfloat tests
 
+	put 't/element_inf.t' back
+
+DOCUMENTATION
+
+	check: POD formatting 
+
+	verify, document parameter syntax everywhere
+
+	document:
+		new module 'ICalSet'
+		new method 'compact'
+		offset option 'mode=>circle'
+		new method 'list'
+		iterate
+		no_cleanup
+
+	document '->trace({options})->' method
+
+	document: quantize extensibility through hash-subs
+
+CACHEING
+
+	cache quantize by month/day/...
+	-- doesn't work if 'quant' is changed
+	-- doesn't check 'intersects'
+
+	make a 'flush'-cache method. Make a 'cache-registry'.
+
+	think about: caching for union, etc  
+
+	old: Create a `dirty' variable so it knows when to cleanup.
+
+	extra: caching for the filters. 
+
+OTHER
+
+	find a better (bigger span) gmtime/timegm
+
+	check for negative-epoch errors (quantize, select, offset).
+
+	remove a lot of debug #-print lines
+
+	internal: it may be good to have a pointer to the "root" object
+	in the filters. They already have a "parent" pointer.
+
+	oo: provide a general filter "install" mechanism (quantize, select, etc)
+	check: cleanup "type" hack
+
+	extra: syntax for quantize: ...->quantize('years')
+
+	old: Make a global mode for `open_*' 
+
 	old: Quantize_Date should care of daylight savings time
+
+NOT-TODO
+
+	Keep a pointer to object in "quantize", such that, if the object is changed,
+	"quantize" will re-initialize. 
+	Make a "object_modified" flag in "quantize",
+	that the object should point back to. Sort of a signal handler.
+

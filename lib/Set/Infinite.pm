@@ -19,7 +19,7 @@ our %EXPORT_TAGS = ( 'all' => [ qw(type inf new ) ] );
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(type inf new ) );
 our @EXPORT = qw();
 
-our $VERSION = '0.29';
+our $VERSION = '0.30';
 
 our $TRACE = 0;  	# basic trace method execution
 our $DEBUG_BT = 0; 	# backtrack tracer
@@ -27,9 +27,11 @@ our $DEBUG_BT = 0; 	# backtrack tracer
 # Preloaded methods go here.
 
 use Set::Infinite::Simple qw(
-	infinite minus_infinite separators null type inf
+	infinite minus_infinite separators null inf
 ); 
-# ... tolerance integer real
+
+our $type = '';
+our $tolerance = 0;
 
 sub inf();
 sub infinite();
@@ -51,6 +53,28 @@ use overload
 	'<=>' => \&spaceship,
 	qw("" as_string),
 ;
+
+sub type {
+	# this is still a hack - waiting for better ideas
+	my $tmp_type = pop;
+	my $self = shift || __PACKAGE__;
+
+	# print " [TYPE:$tmp_type -- $self] \n";
+
+	if (defined($tmp_type) and ($tmp_type ne '')) {
+		if (ref($self)) {
+			# local
+			$self->{type} = $tmp_type;
+		}
+		else {
+			# global
+			$type = $tmp_type;
+		}
+		eval "use " . $tmp_type; 
+		carp "Warning: can't start $tmp_type : $@" if $@;
+ 	}
+	return $self;
+}
 
 sub list {
 	my $self = shift;
@@ -475,6 +499,7 @@ sub intersects {
 	}
 
 	$a->trace(title=>"intersects");
+	# print "-";
 
 	if ($a->{too_complex}) {
 		print " [inter:complex:a] \n" if $DEBUG_BT;
@@ -635,7 +660,7 @@ sub complement {
 		} 
 		else {
 			$a = $class->new(@_);  
-			$a->tolerance($self->{tolerance});
+			$a->tolerance($self->{tolerance}) if $self->{tolerance};
 		}
 
 		$a = $a->complement;
@@ -676,6 +701,7 @@ sub complement {
 }
 
 # version 0.22.02 - faster union O(n*n) => O(n)
+# version 0.30 - sends tolerance
 sub union {
 	my $a = shift;
 	my $class = ref($a);
@@ -714,7 +740,7 @@ sub union {
 			# $self->{list}->[$_ - 1] = $tmp[0];
 			# splice (@{$self->{list}}, $_, 1);
 
-			my @tmp = $a->{list}->[$ia]->union($b_list->[$ib]);
+			my @tmp = $a->{list}->[$ia]->union($b_list->[$ib], $a->{tolerance});
 			# print " [+union: $tmp[0] ; $tmp[1] ] \n";
 
 			if ($#tmp == 0) {
@@ -760,23 +786,8 @@ sub union {
 
 sub contains {
 	my $a = shift;
-	my $class = ref($a);
-	my $b;
-
 	$a->trace(title=>"contains");
-
-	# do we have a parameter?
-	return 1 unless @_;
-
-	if (ref ($_[0]) eq $class) {
-		$b = shift;
-	} 
-	else {
-		$b = $class->new(@_);  
-		$b->tolerance($a->{tolerance});
-	}
-
-	return ($a->union($b) == $a) ? 1 : 0;
+	return ($a->union(@_) == $a) ? 1 : 0;
 }
 
 sub add {
@@ -802,11 +813,6 @@ LOOP:
 			foreach (@{$tmp->{list}}) {
 				push @{ $self->{list} }, Set::Infinite::Simple->new($_) ;
 			}
-
-
-			#$tmp = Set::Infinite::Simple->new(@tmp) ;
-			#push @{ $self->{list} }, $tmp ;
-
 			goto LOOP;
 		}
 		# does it have a "{list}"?
@@ -829,8 +835,8 @@ LOOP:
 		# else {
 			my $tmp2 = shift @param;
 			#print " [NEW] " ;
-			$tmp = Set::Infinite::Simple->new($tmp,$tmp2);
-			$tmp->tolerance($self->{tolerance});
+
+			$tmp = Set::Infinite::Simple->new($tmp,$tmp2, $self->{type} );
 			push @{ $self->{list} }, $tmp;
 
 			goto LOOP;
@@ -940,7 +946,7 @@ sub cleanup {
 
 	$_ = 1;
 	while ( $_ <= $#{$self->{list}} ) {
-		my @tmp = $self->{list}->[$_]->union($self->{list}->[$_ - 1]);
+		my @tmp = $self->{list}->[$_]->union($self->{list}->[$_ - 1], $self->{tolerance});
 		if ($#tmp == 0) {
 			$self->{list}->[$_ - 1] = $tmp[0];
 			splice (@{$self->{list}}, $_, 1);
@@ -957,23 +963,20 @@ sub cleanup {
 	return $self;
 }
 
+
+#-------- tolerance, integer, real
+
 sub tolerance {
-	my $class = shift;
-	my $tmp = shift;
-
-	$class->trace(title=>"tolerance");
-
-	if ($class->isa(__PACKAGE__)) {
-		my ($self) = $class;
-		if ($tmp ne '') {
-			$self->{tolerance} = $tmp;
-			foreach (0 .. $#{$self->{list}}) {
-				$self->{list}->[$_]->tolerance($self->{tolerance});
-			}
-		}
+	my $tmp = pop;
+	my $self = shift;
+	if (ref($self)) {  
+		# local
+		$self->{tolerance} = $tmp if ($tmp ne '');
 		return $self;
 	}
-	return Set::Infinite::Simple->tolerance($tmp);
+	# global
+	$tolerance = $tmp if defined($tmp) and ($tmp ne '');
+	return $tolerance;
 }
 
 sub integer {
@@ -982,7 +985,7 @@ sub integer {
 		$self->tolerance (1);
 		return $self;
 	}
-	return Set::Infinite::Simple->tolerance(1);
+	return tolerance(1);
 }
 
 sub real {
@@ -991,17 +994,21 @@ sub real {
 		$self->tolerance (0);
 		return $self;
 	}
-	return Set::Infinite::Simple->tolerance(0);
+	return tolerance(0);
 }
 
+
 sub new {
-	my ($self) = bless {}, shift;
+	my $class = shift;
+	my ($self) = bless {}, $class;
 	@{ $self->{list} } = ();
 
 	$self->trace(title=>"new");
 
 	# print " [INF:new:", ref($self)," - ", join(' - ', caller), " ]\n"; # if $TRACE;
-	$self->tolerance( Set::Infinite::Simple->tolerance );
+	$self->{tolerance} = $tolerance if $tolerance;
+	$self->{type} = $type if $type;
+	# print " [INF:new:$class ", $tolerance, " ",$type," ",$self->{tolerance}," ",$self->{type}," ]\n"; 
 	$self->add(@_);
 	return $self;
 }
@@ -1015,69 +1022,6 @@ sub as_string {
 	# print " [s] ";
 	return null unless $#{$self->{list}} >= 0;
 	return join(separators(5), @{ $self->{list} } );
-}
-
-# TIE
-
-sub TIEARRAY {
-	my $class = shift;
-	my $self = $class->new(@_);
-	$self->{type} = 2;
-	return $self;
-}
-
-sub FETCHSIZE {
-	my ($self) = shift;
-	# print " FETCHSIZE \n";
-	return 1 + $#{$self->{list}}; 
-}
-
-sub STORESIZE {
-	return @_;
-}
-
-sub CLEAR {
-	my ($self) = shift;
-	undef $self->{list};
-}
-
-sub EXTEND {
-	return @_;
-}
-
-sub TIESCALAR {
-	my $class = shift;
-	my $self = $class->new(@_);
-	return $self;
-}
-
-sub FETCH {
-	my ($self) = shift;
-	if (@_) {
-		# we have an index, so we are an array
-		# print " FETCH \n";
-		my $index = shift;
-		return $self->{list}->[$index];
-	}
-	return $self->as_string;
-}
-
-sub STORE {
-	my ($self) = shift;
-	my $data = shift;
-	if (($self->{type} == 2) and @_) {
-		# we have a valid index and data, so we are an array
-		my $index = $data;
-		$data = shift;
-		$self->{list}->[$index] = $data if $index == 0;
-		$self->cleanup;
-		return ($data, @_);
-	}
-	$self = new($data, @_);
-	return @_;
-}
-
-sub DESTROY {
 }
 
 1;
