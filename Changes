@@ -1,5 +1,14 @@
 Revision history for Perl extension Set::Infinite.
 
+0.34
+    added 'weekdays' option to 'offset'
+
+0.31-0.33
+    some optimizations
+    offset is no longer 'tied' in order to try to make it faster
+    offset now *always* return an ordered set
+    quantize has better memoization control
+
 0.30
 	optimized 'is_null' - avoids converting data to string
 	fixed examples - foreach needs ->list

@@ -50,7 +50,7 @@ use Set::Infinite;
 Set::Infinite->type('Set::Infinite::Date');
 
 
-print "1..12\n";
+print "1..13\n";
 
 
 $a = Set::Infinite->new(['2001-01-01','2001-01-23'],['2001-02-01','2001-02-03']);
@@ -66,6 +66,9 @@ test ( "Month offset: ", ' $a->offset(unit => "months", mode=>"offset", value=>[
 
 test ( "Year offset: ", ' $a->offset(unit => "years", mode=>"offset", value=>[1,1]) ',
  "[2002-01-01 00:00:00..2002-01-23 00:00:00],[2002-02-01 00:00:00..2002-02-03 00:00:00]");
+
+test ( "Weekday offset: ", ' $a->offset(unit => "weekdays", mode=>"offset", value=>[1,1]) ',
+  "[2001-01-01 00:00:00..2001-01-29 00:00:00],2001-02-05 00:00:00");
 
 test ( "Joined array: ", ' $a->quantize( unit => "weeks")->compact ',
  "[2000-12-31 00:00:00..2001-01-07 00:00:00),[2001-01-07 00:00:00..2001-01-14 00:00:00),[2001-01-14 00:00:00..2001-01-21 00:00:00),[2001-01-21 00:00:00..2001-01-28 00:00:00),[2001-01-28 00:00:00..2001-02-04 00:00:00)");

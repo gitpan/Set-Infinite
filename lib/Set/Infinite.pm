@@ -19,7 +19,7 @@ our %EXPORT_TAGS = ( 'all' => [ qw(type inf new ) ] );
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(type inf new ) );
 our @EXPORT = qw();
 
-our $VERSION = '0.34';
+our $VERSION = '0.35';
 
 our $TRACE = 0;  	# basic trace method execution
 our $DEBUG_BT = 0; 	# backtrack tracer

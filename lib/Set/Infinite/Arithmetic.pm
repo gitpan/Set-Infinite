@@ -54,10 +54,50 @@ Returned $object+$offset1, $object+$offset2 may be scalars or objects.
 =cut
 
 our %subs_offset2 = (
+	weekdays =>	sub {
+		# offsets to week-day specified
+		# 0 = first sunday from today (or today if today is sunday)
+		# 1 = first monday from today (or today if today is monday)
+		# 6 = first friday from today (or today if today is friday)
+		# 13 = second friday from today 
+		# -1 = last saturday from today (not today, even if today were saturday)
+		# -2 = last friday
+		my ($self, $index1, $index2) = @_;
+		return ($self, $self, 0) if $self == &inf;
+		# my $class = ref($self);
+		my @date = gmtime( $self ); 
+		my $wday = $date[6];
+		my ($tmp1, $tmp2);
+
+		$tmp1 = $index1 - $wday;
+		if ($index1 >= 0) { 
+			$tmp1 += 7 if $tmp1 < 0; # it will only happen next week 
+		}
+		else {
+			$tmp1 += 7 if $tmp1 < -7; # if will happen this week
+		} 
+
+		$tmp2 = $index2 - $wday;
+		if ($index2 >= 0) { 
+			$tmp2 += 7 if $tmp2 < 0; # it will only happen next week 
+		}
+		else {
+			$tmp2 += 7 if $tmp2 < -7; # if will happen this week
+		} 
+
+		# print " [ OFS:weekday $self $tmp1 $tmp2 ] \n";
+		# $date[3] += $tmp1;
+		$tmp1 = $self + $tmp1 * $day_size;
+		# $date[3] += $tmp2 - $tmp1;
+		$tmp2 = $self + $tmp2 * $day_size;
+
+		my $cmp = $tmp1 <=> $tmp2;
+		($tmp1, $tmp2, $cmp);
+	},
 	years => 	sub {
 		my ($self, $index, $index2) = @_;
 		return ($self, $self, 0) if $self == &inf;
-		my $class = ref($self);
+		# my $class = ref($self);
 		# print " [ofs:year:$self -- $index]\n";
 		my @date = gmtime( $self ); 
 		$date[5] +=	1900 + $index;
@@ -74,7 +114,7 @@ our %subs_offset2 = (
 		my ($self, $index, $index2) = @_;
 		# print " [ofs:month:$self -- $index]\n";
 		return ($self, $self, 0) if $self == &inf;
-		my $class = ref($self);
+		# my $class = ref($self);
 		my @date = gmtime( $self );
 
 		my $mon = 	$date[4] + $index; 
