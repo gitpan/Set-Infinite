@@ -24,7 +24,7 @@ use vars qw( @ISA %EXPORT_TAGS @EXPORT_OK @EXPORT $VERSION
 @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(inf new $inf trace_open trace_close) );
 @EXPORT = qw();
 
-$VERSION = '0.45';
+$VERSION = '0.46';
 
 use Set::Infinite::Arithmetic;
 
@@ -66,14 +66,10 @@ Set::Infinite - Sets of intervals
 
 Set::Infinite is a Set Theory module for infinite sets. 
 
-It works on reals or integers.
-You can provide your own objects or let it make them for you
-using the `type'.
+It works with reals, integers, and objects.
 
-It works with dates too, providing schedule checks (intersections),
+When it is used dates, this module provides schedule checks (intersections),
 unions, and infinite recurrences.
-
-=head1 METHODS
 
 =cut
 
@@ -83,18 +79,9 @@ use overload
     qw("" as_string),
 ;
 
-# These methods are inherited from Set::Infinite::Basic
-# type 
-# list 
-# fixtype 
-# numeric 
-# min
-# max
-# integer
-# real
-# new
-# span
-# copy
+# These methods are inherited from Set::Infinite::Basic "as-is":
+#   type  list  fixtype  numeric  min  max
+#   integer  real  new  span  copy
  
 # obsolete!
 sub compact {
@@ -1110,13 +1097,6 @@ sub is_null {
     return $self->SUPER::is_null;
 }
 
-=head2 is_too_complex
-
-Sometimes a set might be too complex to print. 
-It will happen when you ask for a quantization on a 
-set bounded by -inf or inf.
-
-=cut
 
 sub is_too_complex {
     my $self = shift;
@@ -1445,19 +1425,6 @@ sub complement {
     return $self->SUPER::complement;
 }
 
-=head2 until
-
-Extends a set until another:
-
-    0,5,7 -> until 2,6,10
-
-gives
-
-    [0..2), [5..6), [7..10)
-
-Note: this function is still experimental.
-
-=cut
 
 sub until {
     my $a1 = shift;
@@ -1868,52 +1835,130 @@ sub DESTROY {}
 1;
 __END__
 
-=head2 Mode functions:    
+=head1 SET FUNCTIONS
+
+=head2 union
+
+    $set = $a->union($b);
+
+Returns the set of all elements from both sets.
+
+This function behaves like a "or" operation.
+
+    $set1 = new Set::Infinite( [ 1, 4 ], [ 8, 12 ] );
+    $set2 = new Set::Infinite( [ 7, 20 ] );
+    print $set1->union( $set2 );
+    # output: [1..4],[7..20]
+
+=head2 intersection
+
+    $set = $a->intersection($b);
+
+Returns the set of elements common to both sets.
+
+This function behaves like a "and" operation.
+
+    $set1 = new Set::Infinite( [ 1, 4 ], [ 8, 12 ] );
+    $set2 = new Set::Infinite( [ 7, 20 ] );
+    print $set1->intersection( $set2 );
+    # output: [8..12]
+
+=head2 complement
+
+    $set = $a->complement;
+
+Returns the set of all elements that don't belong to the set.
+
+    $set1 = new Set::Infinite( [ 1, 4 ], [ 8, 12 ] );
+    print $set1->complement;
+    # output: (-inf..1),(4..8),(12..inf)
+
+The complement function might take a parameter:
+
+    $set = $a->complement($b);
+
+Returns the set-difference, that is, the elements that don't
+belong to the given set.
+
+    $set1 = new Set::Infinite( [ 1, 4 ], [ 8, 12 ] );
+    $set2 = new Set::Infinite( [ 7, 20 ] );
+    print $set1->complement( $set2 );
+    # output: [1..4]
+
+
+=head1 DENSITY FUNCTIONS    
+
+=head2 real
 
     $a->real;
 
+Returns a set with density "0".
+
+=head2 integer
+
     $a->integer;
 
-=head2 Logic functions:
+Returns a set with density "1".
+
+=head1 LOGIC FUNCTIONS
+
+=head2 intersects
 
     $logic = $a->intersects($b);
 
+=head2 contains
+
     $logic = $a->contains($b);
+
+=head2 is_null
 
     $logic = $a->is_null;
 
-=head2 Set functions:
+=head2 is_too_complex
 
-    $i = $a->union($b);    
+Sometimes a set might be too complex to enumerate or print.
 
-    $i = $a->intersection($b);
+This happens with sets that represent infinite recurrences, such as
+when you ask for a quantization on a
+set bounded by -inf or inf.
 
-    $i = $a->complement;
-    $i = $a->complement($b);
+=head1 SCALAR FUNCTIONS
 
-    $i = $a->span;   
-
-        result is INTERVAL, (min .. max)
-
-=head2 Scalar functions:
+=head2 min
 
     $i = $a->min;
 
+=head2 max
+
     $i = $a->max;
+
+=head2 size
 
     $i = $a->size;  
 
-=head2 Overloaded Perl functions:
+=head1 OVERLOADED LANGUAGE OPERATORS
 
-    print    
+=head2 stringification
 
-    sort, <=> 
+    print $set;
 
-=head2 Global functions:
+    $str = "$set";
+
+See also: C<as_string>.
+
+=head2 comparison
+
+    sort
+
+    > < == >= <= <=> 
+
+See also: C<spaceship>.
+
+=head1 CLASS METHODS
 
     separators(@i)
 
-        chooses the interval separators. 
+        chooses the interval separators for stringification. 
 
         default are [ ] ( ) '..' ','.
 
@@ -1925,7 +1970,41 @@ __END__
 
         returns '-Infinity' number.
 
-=head2 Special set functions
+=head2 type
+
+    type($i)
+
+Chooses a default object data type.
+
+default is none (a normal perl SCALAR).
+
+    type('Math::BigFloat');
+    type('Math::BigInt');
+    type('Set::Infinite::Date');
+
+See notes on Set::Infinite::Date below.
+
+=head1 SPECIAL SET FUNCTIONS (WIDGETS)
+
+=head2 span
+
+    $i = $a->span;
+
+        result is INTERVAL, (min .. max)
+
+=head2 until
+
+Extends a set until another:
+
+    0,5,7 -> until 2,6,10
+
+gives
+
+    [0..2), [5..6), [7..10)
+
+Note: this function is still experimental.
+
+=head2 quantize
 
     quantize( parameters )
 
@@ -1948,6 +2027,8 @@ __END__
 
             [1..2) [2..3) [3..4)
 
+=head2 select
+
     select( parameters )
 
         Selects set members based on their ordered positions
@@ -1967,6 +2048,8 @@ __END__
 
     1                                     14       # by => [ -2, 1 ]
 
+=head2 offset
+
     offset ( parameters )
 
         Offsets the subsets. Parameters: 
@@ -1974,6 +2057,8 @@ __END__
             value   - default=[0,0]
             mode    - default='offset'. Possible values are: 'offset', 'begin', 'end'.
             unit    - type of value. Can be 'days', 'weeks', 'hours', 'minutes', 'seconds'.
+
+=head2 iterate
 
     iterate ( sub { } , @args )
 
@@ -1984,6 +2069,8 @@ The callback argument C<$_[0]> is a span. If there are additional arguments they
 
 The callback can return a span, a hashref (see C<Set::Infinite::Basic>), a scalar, an object, or C<undef>.
 
+=head2 first / last
+
     first / last
 
 In scalar context returns the first interval of a set.
@@ -1991,6 +2078,8 @@ In scalar context returns the first interval of a set.
 In list context returns the first interval of a set, and the 'tail'.
 
 Works even in unbounded sets
+
+=head2 type
 
     type($i)
 
@@ -2005,24 +2094,69 @@ examples:
         type('Set::Infinite::Date');
             See notes on Set::Infinite::Date below.
 
-    tolerance(0)    defaults to real sets (default)
-    tolerance(1)    defaults to integer sets
+=head1 INTERNAL FUNCTIONS
 
-    real            defaults to real sets (default)
-
-    integer         defaults to integer sets
-
-=head2 Internal functions:
+=head2 cleanup
 
     $a->cleanup;
 
-    $a->backtrack($b);
+Internal function to fix the internal set representation.
+This is used after operations that might return invalid
+values.
 
-    $a->fixtype; 
+=head2 backtrack
+
+    $a->backtrack( 'intersection', $b );
+
+Internal function to evaluate recurrences.
+
+=head2 numeric
 
     $a->numeric;
 
-=head1 Notes on Dates
+Internal function to ignore the set "type".
+It is used in some internal optimizations, when it is
+possible to use scalar values instead of objects.
+
+=head2 fixtype
+
+    $a->fixtype;
+
+Internal function to fix the result of operations
+that use the numeric() function.
+
+=head2 tolerance
+
+    $a->tolerance(0)    # defaults to real sets (default)
+    $a->tolerance(1)    # defaults to integer sets
+
+Internal function for changing the set "density".
+
+=head2 min_a
+
+    ($min, $min_is_open) = $set->min_a;
+
+=head2 max_a
+
+    ($max, $max_is_open) = $set->max_a;
+
+
+=head2 as_string
+
+Implements the "stringification" operator.
+
+Stringification of unbounded recurrences is not implemented.
+
+Unbounded recurrences are stringified as "function descriptions",
+if the class variable $PRETTY_PRINT is set.
+
+=head2 spaceship
+
+Implements the "comparison" operator.
+
+Comparison of unbounded recurrences is not implemented.
+
+=head1 NOTES ON DATES
 
 See modules DateTime::Set and Date::Set for up-to-date information on date-sets. 
 
@@ -2055,17 +2189,30 @@ max and min functions will also show in date/time format.
 
 =head1 CAVEATS
 
+=over 4
+
+=item * "span" notation
+
     $a = Set::Infinite->new(10,1);
-        Will be interpreted as [1..10]
+
+Will be interpreted as [1..10]
+
+=item * "multiple-span" notation
 
     $a = Set::Infinite->new(1,2,3,4);
-        Will be interpreted as [1..2],[3..4] instead of [1,2,3,4].
-        You probably want ->new([1],[2],[3],[4]) instead,
-        or maybe ->new(1,4) 
+
+Will be interpreted as [1..2],[3..4] instead of [1,2,3,4].
+You probably want ->new([1],[2],[3],[4]) instead,
+or maybe ->new(1,4) 
+
+=item * "range operator"
 
     $a = Set::Infinite->new(1..3);
-        Will be interpreted as [1..2],3 instead of [1,2,3].
-        You probably want ->new(1,3) instead.
+
+Will be interpreted as [1..2],3 instead of [1,2,3].
+You probably want ->new(1,3) instead.
+
+=back
 
 =head1 INTERNALS
 
@@ -2073,14 +2220,28 @@ The base I<set> object, without recurrences, is a C<Set::Infinite::Basic>.
 
 A I<recurrence-set> is represented by a I<method name>, 
 one or two I<parent objects>, and extra arguments.
-The C<list> key is a reference to an empty array, and the
+The C<list> key is set to an empty array, and the
 C<too_complex> key is set to C<1>.
 
-    too_complex => 1,   # "this is a recurrence"
-    list   => [ ],      # not used
-    method => 'union',  # function name
-    parent => [ $set1, $set2 ],   # leaves in syntax-tree
-    param  => [ ]       # optional arguments for the function
+This is a structure that holds a union of two "complex sets":
+
+  {
+    too_complex => 1,             # "this is a recurrence"
+    list   => [ ],                # not used
+    method => 'union',            # function name
+    parent => [ $set1, $set2 ],   # "leaves" in the syntax-tree
+    param  => [ ]                 # optional arguments for the function
+  }
+
+This is a structure that holds the complement of a "complex set":
+
+  {
+    too_complex => 1,             # "this is a recurrence"
+    list   => [ ],                # not used
+    method => 'complement',       # function name
+    parent => $set,               # "leaf" in the syntax-tree
+    param  => [ ]                 # optional arguments for the function
+  }
 
 =head1 SEE ALSO
 

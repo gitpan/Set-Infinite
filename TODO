@@ -1,5 +1,7 @@
 Set::Infinite TODO 
 
+    - a set with min == inf or max = -inf is an error!
+
     - implement last of select, quantize; enable tests!
 
     - tests for iterate min/max/first
