@@ -3,10 +3,6 @@
 use Set::Infinite::Date;
 use Set::Infinite::Quantize_Date;
 Set::Infinite->type('Set::Infinite::Date');
-my $day_size = Set::Infinite::Date::day_size();
-my $hour_size = $day_size / 24;
-
-
 
 print "This is a test for: \n    \"This event happens from 13:00 to 14:00 every Tuesday, unless that Tuesday is the 15th of the month.\" (suggested by srl)\n\n";
 

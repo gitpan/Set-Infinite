@@ -39,7 +39,7 @@ $VERSION = "0.17";
 
 @ISA = qw(Exporter);
 @EXPORT = qw();
-@EXPORT_OK = qw(infinite minus_infinite null is_null elem_undef inf);
+@EXPORT_OK = qw(infinite minus_infinite minus_inf null is_null elem_undef inf);
 
 use strict;
 use Carp;
@@ -71,6 +71,10 @@ sub inf () {
 }
 
 sub minus_infinite () {
+	return $o_minus_infinite;
+}
+
+sub minus_inf () {
 	return $o_minus_infinite;
 }
 

@@ -23,7 +23,7 @@ sub test {
 	}
 	else {
 		print "not ok $test"; # \n\t# expected \"$expected\" got \"$result\"";
-		print "\n\t# $sub expected \"$expected\" got \"$result\"";
+		print "\n\t# $sub \n\t# expected \"$expected\" \n\t#      got \"$result\"";
 		$errors++;
 	}
 	print " \n";
@@ -43,12 +43,12 @@ sub stats {
 use Set::Infinite::Quantize;
 
 
-print "1..7\n";
+print "1..10\n";
 
 #print "1: \n";
 $a = Set::Infinite->new([1,3],[30,40]);
-test ( "Joined array: ", ' join ("", $a->quantize() ) ',
- "[1..2)[2..3)[3..4)[30..31)[31..32)[32..33)[33..34)[34..35)[35..36)[36..37)[37..38)[38..39)[39..40)[40..41)");
+test ( "Joined array: ", ' join ("", $a->quantize->compact ) ',
+ "[1..2),[2..3),[3..4),[30..31),[31..32),[32..33),[33..34),[34..35),[35..36),[36..37),[37..38),[38..39),[39..40),[40..41)");
 test ( "Union with object: ", ' $a->quantize( quant => 2 )->union(9,10) ',
  "[0..4),[9..10],[30..42)");
 
@@ -66,8 +66,20 @@ test (  "offset: ", '$a->offset( mode => "offset", value => [4,-4] )->union',
   "5");
 test (  "begin:  ", '$a->offset( mode => "begin", value => [-1,1] )',
   "[0..2],[19..21]");
+test (  "begin:  ", '$a->offset( mode => "circle", value => [0,1,-1,0] )',
+  "[1..2],[8..9],[20..21],[24..25]");
 test (  "end:    ", '$a->offset( mode => "end", value => [-1,1] )',
   "[8..10],[24..26]");
+test (  "end:    ", '$a->offset( mode => "end", value => [-1,1, 2,3] )',
+  "[8..10],[11..12],[24..26],[27..28]");
+
+$a = Set::Infinite->new([20,100]);
+# print "a = $a\n";
+# $a->quantize(10)->iterate( sub { my $x = shift; print $x," & "; } );
+# print "\n";
+test ( "iterate", 
+	'$a->quantize(quant=>10)->iterate( sub { my $x = shift; return $x; } )',
+	'[20..110)');
 
 
 # "This event happens from 13:00 to 14:00 every Tuesday, unless that Tuesday is the 15th of the month."

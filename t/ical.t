@@ -65,7 +65,7 @@ test('','$a->complement','(-inf..19971024T120000Z),(19971024T130000Z..inf)');
 
 test('','$a->complement("19971024T122000Z","19971024T124000Z")','[19971024T120000Z..19971024T122000Z),(19971024T124000Z..19971024T130000Z]');
 
-test ('', ' join (" ", $a->quantize(unit=>"weeks") ) ',
+test ('', ' join (" ", $a->quantize(unit=>"weeks")->compact ) ',
 	"[19971019Z..19971026Z)");
 
 

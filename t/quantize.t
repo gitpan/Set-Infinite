@@ -41,13 +41,13 @@ print "1..8\n";
 #print "1: \n";
 $a = Set::Infinite->new([1,3]);
 #print join (" ",@{$a->quantize(quant => 1)}),"\n";
-test ( '', ' join (" ", $a->quantize(quant => 1) ) ',
+test ( '', ' join (" ", $a->quantize(quant => 1)->compact->list ) ',
 	"[1..2) [2..3) [3..4)");
 
 #print "25: \n";
 $a = Set::Infinite->new([315,434], [530,600]);
 #print join (" ",@{$a->quantize(quant => 25)}),"\n";
-test ( '', ' join (" ", $a->quantize(quant => 25) ) ',
+test ( '', ' join (" ", $a->quantize(quant => 25)->compact->list ) ',
 	"[300..325) [325..350) [350..375) [375..400) [400..425) [425..450) [525..550) [550..575) [575..600) [600..625)");
 
 
@@ -55,7 +55,7 @@ test ( '', ' join (" ", $a->quantize(quant => 25) ) ',
 my (@a);
 
 #print "25: \n";
-@a = Set::Infinite->new([315,434], [530,600])->quantize(quant=>25);
+@a = Set::Infinite->new([315,434], [530,600])->quantize(quant=>25)->compact->list;
 # tie @a, 'Set::Infinite::Quantize', 25, [315,434], [530,600];
 #print join (" ",@a),"\n";
 print "not " unless join (" ",@a) eq "[300..325) [325..350) [350..375) [375..400) [400..425) [425..450) [525..550) [550..575) [575..600) [600..625)";
@@ -63,25 +63,25 @@ print "ok 3\n";
 
 #print "25: \n";
 # tie @a, 'Set::Infinite::Quantize', 25, 315,434;
-@a = Set::Infinite->new([315,434])->quantize(quant=>25);
+@a = Set::Infinite->new([315,434])->quantize(quant=>25)->compact->list;
 #print join (" ",@a),"\n";
 print "not " unless join (" ",@a) eq "[300..325) [325..350) [350..375) [375..400) [400..425) [425..450)";
 print "ok 4\n";
 
 # tie @a, 'Set::Infinite::Quantize', 25, 300,434;
-@a = Set::Infinite->new([300,434])->quantize(quant=>25);
+@a = Set::Infinite->new([300,434])->quantize(quant=>25)->compact->list;
 #print join (" ",@a),"\n";
 print "not " unless join (" ",@a) eq "[300..325) [325..350) [350..375) [375..400) [400..425) [425..450)";
 print "ok 5\n";
 
 # tie @a, 'Set::Infinite::Quantize', 25, 315,450;
-@a = Set::Infinite->new([315,450])->quantize(quant=>25);
+@a = Set::Infinite->new([315,450])->quantize(quant=>25)->compact->list;
 #print join (" ",@a),"\n";
 print "not " unless join (" ",@a) eq "[300..325) [325..350) [350..375) [375..400) [400..425) [425..450) [450..475)";
 print "ok 6\n";
 
 # tie @a, 'Set::Infinite::Quantize', 25, 300,450;
-@a = Set::Infinite->new([300,450])->quantize(quant=>25);
+@a = Set::Infinite->new([300,450])->quantize(quant=>25)->compact->list;
 #print join (" ",@a),"\n";
 print "not " unless join (" ",@a) eq "[300..325) [325..350) [350..375) [375..400) [400..425) [425..450) [450..475)";
 print "ok 7\n";
@@ -89,7 +89,7 @@ print "ok 7\n";
 # recursive test
 $a = Set::Infinite->new([1,3]);
 # print "r: ", $a->quantize(quant => 1)->quantize(quant => 1), "\n";
-print "not " unless join (" ", $a->quantize(quant => 1)->quantize(quant => 1) ) eq 
+print "not " unless join (" ", $a->quantize(quant => 1)->quantize(quant => 1)->compact->list ) eq 
 	"[1..2) [2..3) [3..4)";
 print "ok 8\n";
 

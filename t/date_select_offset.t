@@ -28,7 +28,7 @@ sub test {
 	}
 	else {
 		print "not ok $test"; # \n\t# expected \"$expected\" got \"$result\"";
-		print "\n\t# $sub \n\t# expected \"$expected\" \n\t# got \"$result\"";
+		print "\n\t# $sub \n\t# expected \"$expected\" \n\t#      got \"$result\"";
 		$errors++;
 	}
 	print " \n";
@@ -50,7 +50,7 @@ use Set::Infinite::Quantize_Date;
 Set::Infinite->type('Set::Infinite::Date');
 
 
-print "1..10\n";
+print "1..12\n";
 
 
 $a = Set::Infinite->new(['2001-01-01','2001-01-23'],['2001-02-01','2001-02-03']);
@@ -61,11 +61,17 @@ $a = Set::Infinite->new(['2001-01-01','2001-01-23'],['2001-02-01','2001-02-03'])
 # $b = $a->quantize( unit => "weeks" );
 # print "b-select ",$b->select( freq => 2, by => [1] ),"\n";
 
-test ( "Joined array: ", ' join ("", $a->quantize( unit => "weeks" ) ) ',
- "[2000-12-31 00:00:00..2001-01-07 00:00:00)[2001-01-07 00:00:00..2001-01-14 00:00:00)[2001-01-14 00:00:00..2001-01-21 00:00:00)[2001-01-21 00:00:00..2001-01-28 00:00:00)[2001-01-28 00:00:00..2001-02-04 00:00:00)");
+test ( "Month offset: ", ' $a->offset(unit => "months", mode=>"offset", value=>[1,1]) ',
+ "[2001-02-01 00:00:00..2001-02-23 00:00:00],[2001-03-01 00:00:00..2001-03-03 00:00:00]");
 
-test ( "Joined array: ", ' join ("", $a->quantize( unit => "weeks" )->select( freq => 2, by => [1] ) ) ',
- "[2001-01-07 00:00:00..2001-01-14 00:00:00)[2001-01-21 00:00:00..2001-01-28 00:00:00)");
+test ( "Year offset: ", ' $a->offset(unit => "years", mode=>"offset", value=>[1,1]) ',
+ "[2002-01-01 00:00:00..2002-01-23 00:00:00],[2002-02-01 00:00:00..2002-02-03 00:00:00]");
+
+test ( "Joined array: ", ' $a->quantize( unit => "weeks")->compact ',
+ "[2000-12-31 00:00:00..2001-01-07 00:00:00),[2001-01-07 00:00:00..2001-01-14 00:00:00),[2001-01-14 00:00:00..2001-01-21 00:00:00),[2001-01-21 00:00:00..2001-01-28 00:00:00),[2001-01-28 00:00:00..2001-02-04 00:00:00)");
+
+test ( "Joined array: ", ' join ("", $a->quantize( unit => "weeks" )->select( freq => 2, by => [1])->compact ) ',
+ "[2001-01-07 00:00:00..2001-01-14 00:00:00),[2001-01-21 00:00:00..2001-01-28 00:00:00)");
 
 $b = Set::Infinite->new(["2001-09-09","2001-09-10"]);
 #print "b=",$b,"\n";
@@ -87,11 +93,11 @@ test ( '', ' $a->select( freq => 2 )->union() ',
   "2001-01-01 00:00:00,2006-06-06 00:00:00");
 
 $a = Set::Infinite->new(['2001-01-01','2004-01-01'],['2007-01-01','2008-01-01']);
-print "\nTEST1: ", $a;
-print "\nTEST2: ", $a->quantize( unit => "years", quant => 1 );
-print "\nTEST3: ", $a->quantize( unit => "years", quant => 1 )->select( freq => 2, by => [1] );
-print "\nTEST4: ", $a->quantize( unit => "years", quant => 1 )->select( freq => 2, by => [1] )->union();
-print "\n";
+# print "\nTEST1: ", $a;
+# print "\nTEST2: ", $a->quantize( unit => "years", quant => 1 );
+# print "\nTEST3: ", $a->quantize( unit => "years", quant => 1 )->select( freq => 2, by => [1] );
+# print "\nTEST4: ", $a->quantize( unit => "years", quant => 1 )->select( freq => 2, by => [1] )->union();
+# print "\n";
 test ( '', ' $a->quantize( unit => "years", quant => 1 )->select( freq => 2, by => [1] )->union() ',
   "[2002-01-01 00:00:00..2003-01-01 00:00:00),[2004-01-01 00:00:00..2005-01-01 00:00:00),[2008-01-01 00:00:00..2009-01-01 00:00:00)");
 

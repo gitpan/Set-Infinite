@@ -33,6 +33,8 @@ Set::Infinite::Quantize_Date - arrays of date intervals to make calendars
 
 =head2 CHANGES
 
+	- option 'strict' will return intersection($a,quantize). Default: parent set.
+
 	- add a parameter like 'minutes' 15 for 15min intervals.
 	- round minute values to 00, 15, 30, 45
 	- `foreach' work (find out `$#' in advance)
@@ -162,9 +164,11 @@ sub new {
 	$self->{unit} = 'one' unless $self->{unit};
 	$self->{quant} = 1 unless $self->{quant};
 
-	# may be "simple"!
+	# parent may be "simple"!
 	$parent = Set::Infinite->new($parent) unless $parent->isa('Set::Infinite');
 	$self->{parent} = $parent; 
+	$self->{cache} = {};   # empty hash
+	$self->{strict} = $parent unless exists $self->{strict};
 
 	my $min = $self->{parent}->min;
 	# print " [MIN:$min] \n";
@@ -198,7 +202,7 @@ sub new {
 	# $self->{first} = timegm( @{$self->{date_begin}} );
 	# $self->{mult} = 1;
 
-	#print " [QD:1] ";
+	# print " [QD:1:unit:$self->{unit}] ";
 
 	&{ $init{$self->{unit}} } ($self);
 
@@ -221,6 +225,11 @@ sub FETCH {
 	my ($self) = shift;
 	my $index = shift;
 
+	if ($index and (exists $self->{cache}->{$index})) {
+		# print "*";
+		return $self->{cache}->{$index};
+	}
+
 	my ($this, $next);
 
 	# print " [QD:fetch:$index] ";
@@ -240,7 +249,8 @@ sub FETCH {
 
 	if ($this > $self->{time2_end}) {
 		$self->{size} = $index if $self->{size} > $index;
-		return Set::Infinite::Simple->simple_null;
+		$self->{cache}->{$index} = Set::Infinite::Simple->simple_null;
+		return $self->{cache}->{$index};
 	}
 	# print " [QD:fetch:new($this,$next)] ";
 	my $tmp = Set::Infinite::Simple->new($this,$next)->open_end(1);
@@ -256,11 +266,18 @@ sub FETCH {
 	# $tmp = Set::Infinite::Simple->new($tmp);  # 0.25 ???
 
 	# slower but necessary:
-	if ($self->{parent}->intersects($tmp)) {
-		# print " [QD:INTER:",$self->{parent}->intersects($tmp),"=",	$self->{parent}->intersection($tmp),"]\n";
+	# print " <qd: ";
+
+	# if ($self->{parent}->intersects($tmp)) {
+	if (not $self->{strict} or ($self->{strict}->intersects($tmp))) {
+		# print " [QD:INTER:",$self->{parent}->intersects($tmp),"=", $self->{parent}->intersection($tmp),"]\n";
+		# print " :ok /qd> ";
+		$self->{cache}->{$index} = $tmp;
 		return $tmp;
 	}
-	return Set::Infinite::Simple->simple_null;
+	# print " :null /qd> ";
+	$self->{cache}->{$index} = Set::Infinite::Simple->simple_null;
+	return $self->{cache}->{$index};
 }
 
 # TIE

@@ -140,40 +140,54 @@ our %new_cache = ();
 sub new {
 	my ($self) = shift;
 
+	my $data = shift;
+
+	my $string;
+	if (ref($data)) {
+		if ($data->isa(__PACKAGE__)) {
+			$string = "$data";
+		}
+		elsif ($data->isa('Date::ICal')) {
+			$string = $data->ical;
+		}
+		elsif ($data->isa('Set::Infinite::Element_Inf')) {
+			# print " [ical:new:inf] ";
+			return $data;
+		}
+		else {
+			$string = "$data";
+		}
+	}
+	else {
+		$string = $data;
+	}
+
 	# print "N";
 	# print " [ical:new:", join(';', @_) , "] ";
 
-	if ( ($#_ < 0) or Set::Infinite::Element_Inf->is_null($_[0]) ) {
+	if ((not defined $string) or ($string eq '')) {
 		# print " [ical:new:null] ";
 		return Set::Infinite::Element_Inf->null ;
 	}
-	elsif (ref($_[0])) {
-		if ($_[0]->isa('Set::Infinite::Element_Inf')) {
-			# print " [ical:new:inf] ";
-			return $_[0];
-		}
-		else {
 
-		}
-	}
 	# get it from " $new_cache "
-	elsif (exists $new_cache{$_[0]}) {
+	elsif (exists $new_cache{$string}) {
 		# print "V";
-		$self = $new_cache{$_[0]};
+		$self = $new_cache{$string};
 		return $self;
 	}
 
-	elsif ($#_ == 0) {
+	elsif ($#_ == -1) {
 		# epoch or ical mode?
-		my $value = $_[0];
-		if ($value =~ /^[12]\d{7}/) {
+
+		if ($string =~ /^[12]\d{7}([^\d]|$)/) {
 			# print "1";
 			# must be ical format
-			$self = Date::ICal->new( ical => $_[0] );
+			$self = Date::ICal->new( ical => $string );
 			bless $self, __PACKAGE__;
-			$self->{string} = $_[0];    # cache string
+			$self->{string} = $string;    # cache string
 			$self->{epoch} = $self->epoch;  # cache epoch
-			$new_cache{$_[0]} = $self;  # cache object
+			$new_cache{$string} = $self;  # cache object
 			return $self;
 		}
 		else {
@@ -181,16 +195,16 @@ sub new {
 			# print "2";
 			# most frequent case: use " $new_cache " to optimize
 
-			$self = Date::ICal->new( epoch => $_[0] );
+			$self = Date::ICal->new( epoch => $string );
 			bless $self, __PACKAGE__;
-			$self->{epoch} = $_[0];     # cache epoch
-			$new_cache{$_[0]} = $self;  # cache object
+			$self->{epoch} = $string;     # cache epoch
+			$new_cache{$string} = $self;  # cache object
 			return $self;
 		}
 	}
 	else {
 		# print "3";
-		$self = Date::ICal->new( @_ );
+		$self = Date::ICal->new( $data, @_ );
 	}
 	bless $self, __PACKAGE__;
 	$self->{epoch} = $self->epoch;      # cache epoch

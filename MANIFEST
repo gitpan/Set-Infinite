@@ -4,10 +4,12 @@ eg/schedule.dat
 eg/schedule_check.pl
 eg/weekly_to_html.pl
 eg/recurring.pl
+eg/ical.pl
 lib/Set/Infinite.pm
 lib/Set/Infinite/Date.pm
 lib/Set/Infinite/Simple.pm
 lib/Set/Infinite/ICal.pm
+lib/Set/Infinite/ICalSet.pm
 MANIFEST
 README
 Todo.txt

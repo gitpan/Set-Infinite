@@ -1,4 +1,70 @@
-TODO - version 0.25
+TODO - version 0.29
+
+	make corrections in examples: eg/weekly_to_html.pl and eg/month_to_html.pl 
+
+	remove iterate ?
+
+	make t/icalset.t
+
+	test backtrack on:
+		iterate
+		compact
+		no_cleanup
+
+	document:
+		new module 'ICalSet'
+		new method 'compact'
+		offset option 'mode=>circle'
+		new method 'list'
+		iterate
+		no_cleanup
+
+	change $backtrack_arg2 = $arg->quantize(@param)->union(); to span()
+
+	cache quantize by month/day/...
+	-- doesn't work if 'quant' is changed
+	-- doesn't check 'intersects'
+
+	ical.pl: enter data as epoch; translate on exit.
+	use DTSTART as default hour, minute, ...
+
+	sort by[] -- 0 1 2 ... freq-3 freq-2 freq-1
+
+	ical.pl: BYWEEKNO WKST
+	ical.pl: test bysetpos
+	ical.pl: check behaviour when mixing rule parts (BYWEEKNO + BYYEARDAY);
+	-- rule order matters:
+	   If multiple BYxxx rule parts are specified, then after evaluating the
+	   specified FREQ and INTERVAL rule parts, the BYxxx rule parts are
+	   applied to the current set of evaluated occurrences in the following
+	   order: BYMONTH, BYWEEKNO, BYYEARDAY, BYMONTHDAY, BYDAY, BYHOUR,
+	   BYMINUTE, BYSECOND and BYSETPOS; then COUNT and UNTIL are evaluated.
+	-- see end of 4.3.10 in RFC2445
+	-- check how to integrate with DTSTART
+	ical.pl: put UNTIL inside rrule
+	ical.pl: where do DTSTART", "DTEND", "DUE", "EXDATE" and "RDATE" belong?
+	better DURATION
+	TZID
+
+	This looks wrong - is it?
+	   "FREQ=YEARLY;BYMONTH=1,2" increases the number of days within the
+	   yearly recurrence set from 1 (if BYMONTH tag is not present) to 2.
+
+	'select' switch for negative-index overflow behaviour (end of subset, or end of freq)
+	tests: add test for negative 'by'
+
+	negative values in select should count backwards from end
+	-- test! insert debug -- ical.pl 134 should show 2001-09-30
+
+	remove 'interval' option from select
+
+	make a 'flush'-cache method. Make a 'cache-registry'.
+
+	document '->trace({options})->' method
+
+	find a better (bigger span) gmtime/timegm
+
+	'iterate' options 'no-sort', 'no-merge', 'keep-null' ...
 
 	check for negative-epoch errors (quantize, select, offset).
 
@@ -14,19 +80,17 @@ TODO - version 0.25
 
 	backtracking: implement remaining tests in backtrack.t
 	verify results in backtrack.t
-	ok - change backtrack.t to real tests
 
 	ok - backtracking quantize should round up and down values, according to unit, quant.
 		-- check if this is really necessary!
 		-- try using span, or create result directly (faster)
 		-- or: use 'offset' instead
-	ok - backtracking offset should move up and down values, according to value, mode.
 	backtracking select should move up and down values, according to 'by' limits.
 	See: backtrack.t in 'partially null "date"'
 
 	backtracking: document backtracking resolution; document internal object data (partially done)
 
-	remove a lot of debug "print" lines
+	remove a lot of debug #-print lines
 
 	verify, document parameter syntax everywhere
 	make 'freq' work with 'days', etc.
@@ -35,21 +99,17 @@ TODO - version 0.25
 
 	extra: make offset accept ICal times
 
-	change recurring.pl because offset supports 'Date' hours
-
 	extra: offset option "middle"
 
 	extra: "indexes" filter to help dealing with sparse lists:
 	(,,10,,12,,14,,,)->indexes gives (2,4,6)
 
-	extra: caching for the filters. Try "Memoize".
+	extra: caching for the filters. 
 
 	internal: it may be good to have a pointer to the "root" object
 	in the filters. Thay already have a "parent" pointer.
 
 	think about: caching for union, etc  
-
-	check: english: "infinite" x "infinity"
 
 	think about: "push-pop", "dup", "drop" mechanism
 
@@ -63,54 +123,11 @@ TODO - version 0.25
 	oo: provide a general filter "install" mechanism (quantize, select, etc)
 	check: cleanup "type" hack
 
-	tie: make "virtual" union, etc ? -- would be new filters
-
-	oo-date: check for extensibility
-
-	extra: make work with -inf, inf : quantize, select, offset 
-
 	extra: syntax for quantize: ...->quantize('years')
-
-	correction: Date::sub -> propagate "mode"
 
 	check: POD formatting 
 
 	check: RFC2445 support completeness
-
-	doc: "select" options: 
-	  "quantize" output processors, for RFC2445 processing:
-	FREQ=YEARLY
-		->quantize( unit=>'years' )
-
-		Interval(-inf .. inf) ->quantize( unit=>'years')
-		- would be a runtime error because 
-		Quantize->new needs a "base", and -inf does not work.
-		- unless we don't instantiate ?
-
-	INTERVAL=4
-		...->quantize('years',1)->select(freq => 4)
-		"Each four years, starting in the first year"
-		...->quantize('years',1)->select(freq=>4,by=>[3])
-		"Each four years, starting in the third year"
-	BYMONTH=11;BYDAY=TU;BYMONTHDAY=2,3,4
-		$tmp = $a->quantize('years',1)->offset( .. 'begin', 11 months ... );
-		$thursdays = ...weeks .. offset ..;
-		$days = ...->select( .. by=>[1,2,3] ...);
-		$result = $thursdays->intersection($days);
-
-	FREQ=MONTHLY;COUNT=3
-		rewrite this: 
-		  ...->freq('months',3)
-	FREQ=MINUTELY;INTERVAL=15;COUNT=6
-		rewrite this: 
-		  ...->freq('minutes',15 * 6)->freq('minutes',1)->interval(0,15)->
-		  Needs a lot of pre-processing to generate "freq('minutes',15 * 6)"!
-	BYSETPOS=-2
-		write about this
-	WKST
-		write about this	
-	UNTIL=19970902T170000Z
-		->intersect( -inf .. "19970902T170000Z" )
 
 	extra: Keep a pointer to object in "quantize", such that, if the object is changed,
 	"quantize" will re-initialize. 
@@ -128,12 +145,8 @@ TODO - version 0.25
 
 	old: Create a `dirty' variable so it knows when to cleanup.
 
-	old: use `isa' to test parameter types
-	old, oo: use __PACKAGE__ everywhere
-
 	old: correct syntax problems due to accepting ( [ 1 .. 10 ] ) as input - see POD.
 
 	old: fix Bigfloat tests
 
 	old: Quantize_Date should care of daylight savings time
-

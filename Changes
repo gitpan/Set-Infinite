@@ -1,5 +1,53 @@
 Revision history for Perl extension Set::Infinite.
 
+0.29
+	new method 'compact'
+	offset option 'mode=>circle'
+	new method 'list'
+	new method 'no_cleanup'
+
+	offset can handle months, years
+	offset value must be array with even number of elements
+
+	select 'freq' default is set-size instead of 1.
+
+	removed internal 'compact_array' 
+
+	join (" ", $a) no longer works. use join (" ", $a->list) instead.
+
+	quantize(10) no longer works. use quantize(quant=>10) instead.
+	ical_2: BYMONTHDAY did not instantiate in ical_2 unless 'print'
+	  -- offset can't return array.
+
+0.28
+	'strict' option in offset, select.
+	'strict=>0' option in quantize.
+
+	offset can handle 'negative counts from end'
+
+0.27
+	offset 'value' can handle multiple value-pairs
+	optimized $class->new() instead of $class->new($self) in select, offset, quantize.
+
+0.26
+	lots of problems due to $a->{list}->[$ia]->{a} 
+	-- used a temp variable to split in smaller parts
+
+	new eg/ical.pl oo demo
+
+	marked 'select{interval}' option to be deleted in next release
+	select now properly handles negative by[]; checks parent index boundaries
+	masked errors in select by using a dummy variable.
+ 
+	cache Quantize_Date::FETCH (local to object)
+	user can 'push' new methods into 'quantize'
+
+	new 'iterate' method
+
+	better oo in Infinite.pm - most methods can now be overriden
+	array syntax corrected in Infinite.pm
+	new TRACE/trace and DEBUG_BT to help debug
+
 0.25
 	backtracking fully implemented in: intersection, intersects, union, offset. 
 	backtracking partially implemented in: quantize, select

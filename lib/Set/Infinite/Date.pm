@@ -230,7 +230,7 @@ sub add {
 	my ($tmp1, $tmp2, $inverted) = @_;
 	return $tmp1 unless defined($tmp2);
 	# print " [DATE::ADD $tmp1 $tmp2] ";
-	$tmp2 = Set::Infinite::Date->new($tmp2) unless ref($tmp2) and $tmp2->isa(__PACKAGE__);
+	$tmp2 = Set::Infinite::Date->new($tmp2) unless ref($tmp2) eq __PACKAGE__;
 	my $result = Set::Infinite::Date->new( $tmp1->{a} + $tmp2->{a} );
 	if ($inverted) {
 		$result->{mode} = $tmp2->{mode};
@@ -263,17 +263,19 @@ sub spaceship {
 
 	# $tmp2 = Set::Infinite::Date->new($tmp2) unless ref($tmp2) and $tmp2->isa(__PACKAGE__);
 
-	unless ( ref($tmp2) and $tmp2->isa(__PACKAGE__) ) {
+	# print " ",ref($tmp2);
+
+	if ( ref($tmp2) eq __PACKAGE__ ) {
 		if ($inverted) {
-			return ( $tmp2 <=> $tmp1->{a} );
+			return ( $tmp2->{a} <=> $tmp1->{a} );
 		}
-		return ( $tmp1->{a} <=> $tmp2 );
+		return ( $tmp1->{a} <=> $tmp2->{a} );
 	}
 
 	if ($inverted) {
-		return ( $tmp2->{a} <=> $tmp1->{a} );
+		return ( $tmp2 <=> $tmp1->{a} );
 	}
-	return ( $tmp1->{a} <=> $tmp2->{a} );
+	return ( $tmp1->{a} <=> $tmp2 );
 }
 
 # sub cmp {
