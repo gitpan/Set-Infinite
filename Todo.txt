@@ -1,4 +1,85 @@
-TODO
+TODO - version 0.21
+
+	ok - select and offset -> return simple_null instead of ''
+	Date::sub -> propagate "mode"
+
+TODO - version 0.20
+
+Test examples:
+	example in Set::Infinite::Quantize_Date doesn't work
+
+"quantize" output processors, for RFC2445 processing:
+	FREQ=YEARLY
+		...->freq('years',1)
+		re-instantiate the Interval, then "quantize" again.
+		"freq" should accept both Intervals and Arrays of Intervals ("quantize" output).
+
+		Interval(-inf .. inf) ->freq('years',1)
+		- would be a runtime error, unless we don't instantiate. See below.
+
+	INTERVAL=4
+		...->freq('years',1)->interval(0,4)
+		"Each four years, starting in the first year"
+		...->freq('years',1)->interval(3,4)
+		"Each four years, starting in the third year"
+	BYMONTH=11;BYDAY=TU;BYMONTHDAY=2,3,4
+		...->freq('years',1)->freq('months')->interval(11,12)->commit 
+
+		- unit list will be processed as Set unions:
+		...->freq('years',1)->freq('months')->interval(2,31)->commit 
+		...->freq('years',1)->freq('months')->interval(3,31)->commit 
+		...->freq('years',1)->freq('months')->interval(4,31)->commit 
+		- "31" is a problem, unless it doesn't instantiate
+
+
+	FREQ=MONTHLY;COUNT=3
+		...->freq('months',3)
+	FREQ=MINUTELY;INTERVAL=15;COUNT=6
+		...->freq('minutes',15 * 6)->freq('minutes',1)->interval(0,15)->
+		Needs a lot of pre-processing to generate "freq('minutes',15 * 6)"!
+	BYSETPOS=-2
+
+	WKST
+
+	UNTIL=19970902T170000Z
+		->commit->intersect( -inf .. "19970902T170000Z" )
+
+		...->commit
+		Intersects the input back to the original Interval. Returns an Interval
+	
+"quantize" must accept "quantize" output.
+	simplest workaround is to make a quantize_as_interval output, that is,
+	an "instantiated" output instead of "tied".
+
+	my @days = Set::Infinite->new("2001-04-01 00:00:00")->quantize('months', 1)->quantize('days', 1) ;
+
+	worst cases:
+	my @days = Set::Infinite->new("2001-04-01 00:00:00")->quantize('months', 1)->quantize('weeks', 1) ;
+	my @days = Set::Infinite->new("2001-04-01 00:00:00")->quantize('weeks', 1)->quantize('years', 1) ;
+
+	It may be necessary to change this:
+	|sub new {
+	|	...
+	|	$self->{dates} = Set::Infinite->new(@_); # date
+	because it would instantiate the tied array.
+
+	Maybe "Set::Infinite" should accept "quantize" output too. 
+	However it will be hard to make it not instantiate the array.
+
+Keep a pointer to object in "quantize", such that, if the object is changed,
+	"quantize" will re-initialize. 
+
+	Make a "object_modified" flag in "quantize",
+	that the object should point back to. Sort of a signal handler.
+
+Make a 'strict' filter for "quantize", that will intersect
+	each unit back to the object, that is:
+	Interval:                     [************************]
+	Quantized:                [*********)[*********)[*********)
+	Quantized->Stricted:          [*****)[*********)[******]
+
+-------------------------
+TODO - until version 0.20:
 
 Make a private mode for `type'
 
@@ -8,7 +89,7 @@ Create a `dirty' variable so it knows when to cleanup.
 
 Find out how to accelerate `type' mode.
 
-use `isa' to test paramenter types
+use `isa' to test parameter types
 
 correct syntax problems due to accepting ( [ 1 .. 10 ] ) as input - see POD.
 

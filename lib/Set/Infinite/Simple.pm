@@ -23,7 +23,8 @@
 
 	$a = Set::Infinite::Simple->new();
 	$a = Set::Infinite::Simple->new(1);
-	$a = Set::Infinite::Simple->new(1,2);
+	$a = Set::Infinite::Simple->new(1,2);
+
 	$a = Set::Infinite::Simple->new(@b);	
 	$a = Set::Infinite::Simple->new($b);	
 		parameters can be:
@@ -66,7 +67,8 @@
 Global:
 	separators(@i)	chooses the separators. 
 		default are [ ] ( ) '..' ','.
-
+
+
 	infinite		returns an 'infinite' number.
 	minus_infinite	returns '- infinite' number.
 	null			returns 'null'.
@@ -100,12 +102,14 @@ require Exporter;
 
 package Set::Infinite::Simple;
 $VERSION = "0.19";
-
+
+
 @ISA = qw(Exporter);
 @EXPORT = qw();
 @EXPORT_OK = qw(
-	infinite minus_infinite separators null typeinf
-	tolerance integer real quantizer
+	infinite minus_infinite separators null type inf
+	tolerance integer real quantizer selector offsetter
+	simple_null
 );
 
 use strict;
@@ -122,6 +126,8 @@ our $type = '';
 our $infinite  = Set::Infinite::Element_Inf::infinite;
 our $null      = Set::Infinite::Element_Inf::null;
 our $quantizer = 'Set::Infinite::Quantize';
+our $selector  = 'Set::Infinite::Select';
+our $offsetter = 'Set::Infinite::Offset';
 
 sub type {
 	my ($self, $tmp_type) = @_;
@@ -163,6 +169,36 @@ sub type {
 			# print " [ELEM:quantizer $tmp_type $tmp_quantizer]\n";
 		}
 
+		my $tmp_selector = eval '&' . $tmp_type . '::selector';
+		if ($tmp_selector) {
+			if (ref($self)) {
+				# local
+				$self->{selector} = $tmp_selector;
+			}
+			else {
+				# global
+				$selector = $tmp_selector;
+			}
+			eval "use " . $tmp_selector; 
+				carp "Warning: can't start $tmp_type  $tmp_selector package: $@" if $@;
+			# print " [ELEM:selector $tmp_type $tmp_selector]\n";
+		}
+
+		my $tmp_offsetter = eval '&' . $tmp_type . '::offsetter';
+		if ($tmp_offsetter) {
+			if (ref($self)) {
+				# local
+				$self->{offsetter} = $tmp_offsetter;
+			}
+			else {
+				# global
+				$offsetter = $tmp_offsetter;
+			}
+			eval "use " . $tmp_offsetter; 
+				carp "Warning: can't start $tmp_type  $tmp_offsetter package: $@" if $@;
+			# print " [ELEM:offsetter $tmp_type $tmp_offsetter]\n";
+		}
+
 		#my $tmp = &Set::Infinite::Date::quantizer;
 		#print " [ELEM:quantizer " . $self->{type} . " $tmp]\n";
 
@@ -179,11 +215,22 @@ sub type {
 	return $self;
 }
 
-sub quantizer {
+sub selector {
 	my $self = shift;
-	return $self->{quantizer};
+	# print " [selector:",($self->{selector} or $selector),"] ";
+	return ($self->{selector} or $selector);
 }
 
+sub quantizer {
+	my $self = shift;
+	# print " [quantizer:",($self->{quantizer} or $quantizer),"] ";
+	return ($self->{quantizer} or $quantizer);
+}
+
+sub offsetter {
+	my $self = shift;
+	return ($self->{offsetter} or $offsetter);
+}
 
 use overload
 	'<=>' => \&spaceship,
@@ -200,10 +247,28 @@ our @separators = (
 our $tolerance = 0;
 our $simple_null = __PACKAGE__->new();
 
+sub simple_null {
+	return $simple_null;
+}
+
 sub quantize {
 	my $self = shift;
 	my (@a);
-	tie @a, {$self->{quantizer}}, @_, $self;
+	tie @a, quantizer, $self, @_, ;
+	return @a;
+}
+
+sub select {
+	my $self = shift;
+	my (@a);
+	tie @a, selector, $self, @_;
+	return @a;
+}
+
+sub offset {
+	my $self = shift;
+	my (@a);
+	tie @a, offsetter, $self, @_;
 	return @a;
 }
 
@@ -270,7 +335,8 @@ sub intersects {
 	return 0 if ($i_beg > $i_end) or 
 		(($i_beg == $i_end) and ($open_beg or $open_end)) or
 		(not defined($i_beg)) or (not defined($i_end));
-	return 1;	
+	return 1;
+	
 }
 
 sub intersection {
@@ -278,7 +344,8 @@ sub intersection {
 	$tmp2 = __PACKAGE__->new($tmp2, @_) unless ref($tmp2) and $tmp2->isa(__PACKAGE__); 
 
 	my ($i_beg, $i_end, $open_beg, $open_end);
-
+
+
 	if ($tmp1->{a} < $tmp2->{a}) {
 		$i_beg 		= $tmp2->{a};
 		$open_beg 	= $tmp2->{open_begin};
@@ -291,7 +358,8 @@ sub intersection {
 		$i_beg 		= $tmp1->{a};
 		$open_beg	= $tmp1->{open_begin};
 	}
-
+
+
 	if ($tmp1->{b} > $tmp2->{b}) {
 		$i_end 		= $tmp2->{b};
 		$open_end 	= $tmp2->{open_end};
@@ -328,21 +396,31 @@ sub complement {
 		return $self->intersection($a);
 	}
 
+	# print " [CPL-S:",$self,"] ";
+
 	# we don't have a parameter - just complement the set
 	return __PACKAGE__->new(minus_infinite, infinite) if $self->is_null;
 
 	my $tmp1 = __PACKAGE__->new(minus_infinite, $self->{a});
 	$tmp1->open_end(not $self->{open_begin});
 
+	# print " [CPL-S:#1:",$tmp1,"] ";
+
 	my $tmp2 = __PACKAGE__->new($self->{b}, infinite);
 	$tmp2->open_begin(not $self->{open_end});
+
+	# print " [CPL-S:#2:",__PACKAGE__,":",$tmp2,"=(",$self->{b},", ",infinite,")] ";
 
 	if ($tmp2 == infinite) {
 		return $simple_null if ($tmp1 == minus_infinite);
 		return $tmp1;
 	}
-	return $tmp2 if ($tmp1 == minus_infinite);
-	return ($tmp1 , $tmp2);
+
+	return $tmp2 if ($tmp1 == minus_infinite);
+
+	# print " [CPL-S:RES:",$tmp1 ,";", $tmp2,"] ";
+
+	return ($tmp1 , $tmp2);
 }
 
 sub union {
@@ -353,7 +431,8 @@ sub union {
 	#print " [SIM:UNION:$tmp1 U $tmp2] \n";
 
 	return $tmp1 if $tmp2->is_null; # defined($tmp2->{a}) and defined($tmp2->{b});
-	return $tmp2 if $tmp1->is_null; # unless defined($tmp1->{a}) and defined($tmp1->{b});
+	return $tmp2 if $tmp1->is_null; # unless defined($tmp1->{a}) and defined($tmp1->{b});
+
 
 	if ($tmp2->{tolerance}) {
 		# "integer"
@@ -377,7 +456,8 @@ sub union {
 	else {
 		# "real"
 		#print " [SIM:UNION:REAL ",ref($tmp1->{a}),"=",$tmp1->{a}," <=> ",ref($tmp1->{b}),"=",$tmp1->{b},"] \n";
-		if (	($tmp1->{b} < $tmp2->{a}) or($tmp2->{b} < $tmp1->{a}) ) {
+		if (	($tmp1->{b} < $tmp2->{a}) or
+($tmp2->{b} < $tmp1->{a}) ) {
 			# self disjuncts b
 			return ( $tmp2, $tmp1 );
 		}
@@ -432,6 +512,8 @@ sub add {
 		$tmp  = ${@{$tmp}}[0];
 	}
 
+	# print " [SIMPLE:ADD=", $tmp, ";",$tmp2," (", ref(\$tmp), ";",ref(\$tmp2),")] ";
+
 	# is it now defined?
  	unless (defined($tmp)) {
 		$self->{a} = null;
@@ -441,10 +523,12 @@ sub add {
 
 	if (ref($tmp)) {
 		if ($tmp->isa(__PACKAGE__)) {
+			# print " [SIMPLE:ISA=", __PACKAGE__,":", $tmp,"] ";
 			%{$self} = %{$tmp};
 			return $self;	
 		}
-	}
+	}
+
 	elsif ($self->{type}) {
 		# print " [TYPE=",$self->{type},",$tmp] ";
 		$tmp = new {$self->{type}} $tmp;
@@ -454,7 +538,7 @@ sub add {
 		$tmp2 = new {$self->{type}} $tmp2;
 	}
 
-	# print " [SIM:ADD:$tmp1_elem,$tmp2_elem, is-null=",$tmp2_elem->is_null,"]\n";
+	# print " [SIM:ADD:$tmp,$tmp2, is-null=",$tmp2->is_null,"]\n";
 
 	if (Set::Infinite::Element_Inf::is_null($tmp2)) {
 		($self->{a}, $self->{b}) = ($tmp, $tmp);
@@ -499,7 +583,8 @@ sub spaceship {
 	if ($inverted) {
 		return $tmp2->{b} <=> $tmp1->{b} if $tmp1->{a} == $tmp2->{a};
 		return $tmp2->{a} <=> $tmp1->{a};
-	}
+	}
+
 	return $tmp1->{b} <=> $tmp2->{b} if $tmp1->{a} == $tmp2->{a};
 	return $tmp1->{a} <=> $tmp2->{a};
 }
@@ -560,7 +645,9 @@ sub new {
 	my ($self) = bless {}, shift;
 	$self->{tolerance} = $tolerance; 
 	$self->{type} = $type;
-	$self->{quantizer} = $quantizer;
+	# $self->{quantizer} = $quantizer;
+	# $self->{selector} = $selector;
+	# $self->{offsetter} = $offsetter;
 	$self->add(@_);
 	return $self;
 }
@@ -638,7 +725,8 @@ sub STORE {
 		# print " = $self\n";
 		$self->cleanup unless 
 			Set::Infinite::Element_Inf::is_null($self->{a}) or 
-			Set::Infinite::Element_Inf::is_null($self->{b});# unless it will become null!
+			Set::Infinite::Element_Inf::is_null($self->{b});
+# unless it will become null!
 		# print " = $self\n";
 		return ($data, @_);
 	}
@@ -649,4 +737,4 @@ sub STORE {
 sub DESTROY {
 }
 
-1;
+1;

@@ -8,7 +8,8 @@
 	Set::Infinite::Element_Inf - a set member
 
 =head1 USAGE
-
+
+
 
 Global:
 	infinite		returns an 'infinite' number.
@@ -56,7 +57,7 @@ use overload
 
 
 our $infinite  	= 'inf';
-our $null      	= 'null';
+our $null      	= '';	# changed in 0.21
 our $undef 	= 'undef';
 our $minus_infinite = "-$infinite";
 
@@ -65,7 +66,8 @@ our $o_minus_infinite = bless \$minus_infinite, __PACKAGE__;
 our $o_null =    	bless \$null,   	__PACKAGE__;
 our $o_elem_undef =   	bless \$undef,  	__PACKAGE__;
 
-sub infinite () {
+sub infinite () {
+
 	return $o_infinite;
 }
 
@@ -216,16 +218,20 @@ sub add {
 	return $tmp1 	if $null{$stmp2};
 	return $tmp2 	if $null{$stmp1};
 
-	return $tmp1 + $tmp2;
+	return $tmp1 + $tmp2;
+
 }
 
 sub sub {
-	my ($tmp1, $tmp2, $inverted) = @_;
+	my ($tmp1, $tmp2, $inverted) = @_;
+
 	if ($inverted) {
 		($tmp2, $tmp1) = ($tmp1, $tmp2);
-	}
+	}
+
 	my $stmp1 =  "$tmp1";
-	my $stmp2 =  "$tmp2";
+	my $stmp2 =  "$tmp2";
+
 
 	my $tmp = $sub{$stmp1}{$stmp2};
 	return $tmp if defined($tmp);
@@ -234,7 +240,8 @@ sub sub {
 	return - $tmp2	if $null{$stmp1};
 
 	return infinite     	if $stmp1 eq $infinite;
-	return minus_infinite  	if $stmp1 eq $minus_infinite;
+	return minus_infinite  	if $stmp1 eq $minus_infinite;
+
 	return minus_infinite  	if $stmp2 eq $infinite;
 	return infinite     	if $stmp2 eq $minus_infinite;
 	return $tmp1 - $tmp2;
@@ -279,4 +286,4 @@ sub cmp {
 }
 
 
-1;
+1;

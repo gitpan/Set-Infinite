@@ -1,32 +1,29 @@
 #/bin/perl
-
 # Copyright (c) 2001 Flavio Soibelmann Glock. All rights reserved.
-
 # This program is free software; you can redistribute it and/or
-
 # modify it under the same terms as Perl itself.
-
 #
-
 # Tests for Set::Infinite::Date
-
 # This is work in progress
-
 #
-
 
 # Note: Set::Infinite::Date module requires HTTP:Date and Time::Local
 
-
+use strict;
+use warnings;
 
 use Set::Infinite qw(type);
-
 
 # Just to help the warnings:
 use Set::Infinite::Date;
 
+my ($timeA1, $timeA2);
+my ($timeB1, $timeB2);
+my ($time2, $time3, $time4, $time5, @a);
+
 
 my $test = 0;
+my ($result, $errors);
 
 print "1..29\n";
 
@@ -40,7 +37,7 @@ sub test {
 	}
 	else {
 		print "not ok $test"; # \n\t# expected \"$expected\" got \"$result\"";
-		print "\n\t# expected \"$expected\" got \"$result\"";
+		print "\n\t# $sub expected \"$expected\" got \"$result\"";
 		$errors++;
 	}
 	print " \n";
@@ -55,13 +52,11 @@ sub stats {
 	}
 }
 
-
 type('Set::Infinite::Date');
 
 
 
 $a = Set::Infinite->new('10:00:00', '13:00:00');
-
 
 #print " a is ", $a, "\n";
 
@@ -75,7 +70,7 @@ test('','$a->size','10800');
 
 test('','$a->union(\'16:00:00\', \'17:00:00\')','[10:00:00..13:00:00],[16:00:00..17:00:00]');
 
-#print " $a complement is ", $a->complement, "\n";
+# print " $a complement is ", $a->complement, "\n";
 
 test('','$a->complement','(-inf..10:00:00),(13:00:00..inf)');
 
@@ -150,11 +145,11 @@ $a = Set::Infinite->new($timeA1,$timeA2,$timeB1,$timeB2);
 
 test('','$a','[2001-04-26 10:00:00..2001-04-26 10:30:00],[2001-04-27 10:00:00..2001-04-27 10:30:00]');
 test('','$a->intersection($time3)','2001-04-26 10:20:00');
-test('','$a->intersection($time4)','null');
+test('','$a->intersection($time4)','');
 
 test('','$a->intersection(Set::Infinite->new($time3,$time4))','[2001-04-26 10:20:00..2001-04-26 10:30:00]');
 
-test('','$a->intersection(Set::Infinite->new($time4,$time5))','null');
+test('','$a->intersection(Set::Infinite->new($time4,$time5))','');
 
 test('','$a->intersection(Set::Infinite->new($time2,$time5))','[2001-04-26 10:00:00..2001-04-26 10:30:00]');
 

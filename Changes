@@ -1,5 +1,20 @@
 Revision history for Perl extension Set::Infinite.
 
+0.21
+	new methods: "select" and "offset".
+	syntax changed: "quantize":
+		quantize( 1 );   # old syntax, still works
+		quantize( quant => 1 );
+		quantize( 'months', 1 );   # old syntax for quantize_date, still works
+		quantize( unit => 'seconds', quant => 1 ); # quantize_date
+	internal: quantize parameter order is different.
+	fixed: Quantize_Date returned Set::Infinite instead of Set::Infinite::Simple
+	fixed: Date::Add lost format
+	new: Set::Infinite::Date::day_size()
+	added: recursive test for quantize
+	changed: empty return value for quantize is "null" instead of ""; then
+		changed "null" name to "" :)
+
 0.20
 	local "type"
 
@@ -64,4 +79,4 @@ Revision history for Perl extension Set::Infinite.
 
 0.01  Mon May 14 14:43:09 2001
 	- made Makefile.PL; v.0.010
-
+

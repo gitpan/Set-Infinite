@@ -82,10 +82,12 @@ require Exporter;
 package Set::Infinite::Date;
 $VERSION = "0.17";
 
+my $DEBUG = 1;
 my $package = 'Set::Infinite::Date';
+# @ISA = qw(Set::Infinite::Simple); # DON'T !
 @EXPORT = qw();
 @EXPORT_OK = qw(
-	time2date date2time time2hour hour2time quantizer 
+	time2date date2time time2hour hour2time quantizer day_size
 );
 
 use strict;
@@ -101,6 +103,8 @@ use overload
 	qw("" as_string);
 
 our $quantizer = 'Set::Infinite::Quantize_Date';
+our $selector  = 'Set::Infinite::Select';
+our $offsetter = 'Set::Infinite::Offset';
 
 our $day_size = timelocal(0,0,0,2,3,2001) - timelocal(0,0,0,1,3,2001);
 our $hour_size = $day_size / 24;
@@ -108,6 +112,8 @@ our $minute_size = $hour_size / 60;
 our $second_size = $minute_size / 60;
 
 our $date_format = "year-month-day hour:min:sec";
+
+sub day_size { $day_size }
 
 sub quantizer {
 	# if (@_) {
@@ -168,6 +174,7 @@ sub div {
 }
 
 sub sub {
+	# TODO: (since 0.21) keep format ("mode") in result (see: "Date::add")
 	my ($tmp1, $tmp2, $inverted) = @_;
 	$tmp2 = Set::Infinite::Date->new($tmp2) unless ref($tmp2) and $tmp2->isa(__PACKAGE__);
 	if ($inverted) {
@@ -181,16 +188,40 @@ sub sub {
 sub add {
 	my ($tmp1, $tmp2, $inverted) = @_;
 	return $tmp1 unless defined($tmp2);
+	# print " [DATE::ADD $tmp1 $tmp2] ";
 	$tmp2 = Set::Infinite::Date->new($tmp2) unless ref($tmp2) and $tmp2->isa(__PACKAGE__);
-	return Set::Infinite::Date->new( $tmp1->{a} + $tmp2->{a} );
+	my $result = Set::Infinite::Date->new( $tmp1->{a} + $tmp2->{a} );
+	if ($inverted) {
+		$result->{mode} = $tmp2->{mode};
+	}
+	else {
+		$result->{mode} = $tmp1->{mode};
+	}
+	return $result;
 }
 
 sub spaceship {
 	my ($tmp1, $tmp2, $inverted) = @_;
 	# print " [DATE:CMP:",caller(1),"]\n";
 	# print " $tmp1 ";
+
 	return 1 unless defined($tmp2);
+
+	# if ($DEBUG) {
+		# if ($tmp2->isa(__PACKAGE__)) {
+		#	print " [DATE:CMP:$inverted:",$tmp1->{a};
+		#	print " [ ",$tmp2,": ", ref($tmp2), ": ", ref(\$tmp2), "]\n";
+		#	print "    <=>",$tmp2->{a},"]\n";
+		#}
+		# { else {
+		#	print " [DATE:CMP:$inverted:",$tmp1;
+		#	print " [ ",$tmp2,": ", ref($tmp2), ": ", ref(\$tmp2), "]\n";
+		#	print "    <=>",$tmp2,"]\n";
+		# }
+	# }
+
 	$tmp2 = Set::Infinite::Date->new($tmp2) unless ref($tmp2) and $tmp2->isa(__PACKAGE__);
+
 	if ($inverted) {
 		return ( $tmp2->{a} <=> $tmp1->{a} );
 	}
@@ -280,4 +311,4 @@ sub STORE {
 sub DESTROY {
 }
 
-1;
+1;

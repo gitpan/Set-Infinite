@@ -45,14 +45,14 @@ sub stats {
 
 $a = Set::Infinite::Simple->new(1,5)->open_end(1);
 $b = Set::Infinite::Simple->new(5,10);
-test ("intersect", '$a->intersection($b)', "null");
-test ("intersect", '$b->intersection($a)', "null");
+test ("intersect", '$a->intersection($b)', "");
+test ("intersect", '$b->intersection($a)', "");
 #print $a->intersection($b);
 
 $a = Set::Infinite::Simple->new(1,5);
 $b = Set::Infinite::Simple->new(5,10)->open_begin(1);
-test ("intersect", '$a->intersection($b)', "null");
-test ("intersect", '$b->intersection($a)', "null");
+test ("intersect", '$a->intersection($b)', "");
+test ("intersect", '$b->intersection($a)', "");
 #print $a->intersection($b);
 
 
@@ -83,21 +83,21 @@ test ("union [2..3]  : ", 'join(",",$a->union(2,3))',  "(-inf..1),[2..3]");
 # print "Testing 'null' and (0..0)\n";
 
 $a = Set::Infinite::Simple->new();
-test ("null", '$a', "null");
+test ("null", '$a', "");
 
 $a = Set::Infinite::Simple->new(null);
-test ("null", '$a', "null");
+test ("null", '$a', "");
 
 $a = Set::Infinite::Simple->new(undef);
-test ("null", '$a', "null");
+test ("null", '$a', "");
 
 $a = Set::Infinite::Simple->new();
 test ("(0,0) intersection to null",'$a->intersects(0,0)',"0");
-test ("(0,0) intersection to null",'$a->intersection(0,0)',"null");
+test ("(0,0) intersection to null",'$a->intersection(0,0)',"");
 
 $a = Set::Infinite::Simple->new(0,0);
 test ("(0,0) intersection to null",'$a->intersects()',"0"); 
-test ("(0,0) intersection to null",'$a->intersection()',"null");
+test ("(0,0) intersection to null",'$a->intersection()',"");
 
 test ("(0,0) intersection to 0",'$a->intersects(0)',"1");
 test ("(0,0) intersection to 0",'$a->intersection(0)',"0");
@@ -110,7 +110,7 @@ test ("(0,0) union to null : ",'$a->union()',"0");
 
 $a = Set::Infinite::Simple->new(0,0);
 test ("(0,0) intersection to (1,1) : ",'$a->intersects(1,1)',"0");
-test ("(0,0) intersection to (1,1) : ",'$a->intersection(1,1)->as_string',"null");
+test ("(0,0) intersection to (1,1) : ",'$a->intersection(1,1)->as_string',"");
 
 
 # print "Testing ",infinite,"\n";
@@ -199,16 +199,16 @@ test ("Union 0.0 .. 4.0 : ", '$a->union(Set::Infinite::Simple->new(0.0,4.0))', "
 
 $a = Set::Infinite::Simple->new(2,1);
 test ("Interval:", '$a', "[1..2]");
-test ("intersection 2.5 ", '$a->intersection(2.5)', "null");
+test ("intersection 2.5 ", '$a->intersection(2.5)', "");
 test ("intersection 1.5 ", '$a->intersection(1.5)', "1.5");
-test ("intersection 0.5 ", '$a->intersection(0.5)', "null");
+test ("intersection 0.5 ", '$a->intersection(0.5)', "");
 test ("intersection 0.1 .. 0.3 ", 
-	'$a->intersection(Set::Infinite::Simple->new(0.1,0.3))', "null");
+	'$a->intersection(Set::Infinite::Simple->new(0.1,0.3))', "");
 test ("intersection 0.1 .. 1.3 ", 
 	'$a->intersection(Set::Infinite::Simple->new(0.1,1.3))', "[1..1.3]");
 test ("intersection 1.1 .. 1.3 ", '$a->intersection(Set::Infinite::Simple->new(1.1,1.3))', "[1.1..1.3]");
 test ("intersection 1.1 .. 2.3 ", '$a->intersection(Set::Infinite::Simple->new(1.1,2.3))', "[1.1..2]");
-test ("intersection 2.1 .. 2.3 ", '$a->intersection(Set::Infinite::Simple->new(2.1,2.3))', "null");
+test ("intersection 2.1 .. 2.3 ", '$a->intersection(Set::Infinite::Simple->new(2.1,2.3))', "");
 test ("intersection 0.0 .. 4.0 ", '$a->intersection(Set::Infinite::Simple->new(0.0,4.0))', "[1..2]");
 test ("size", '$a->size', "1");
 
@@ -237,7 +237,7 @@ test ("(1,1)  ", 	'Set::Infinite::Simple->new(1,1)->complement', "(1..inf)");
 test ("(null) ", 	'Set::Infinite::Simple->new()->complement', "(-inf..inf)");
 test ("(1,infinite)", 	'Set::Infinite::Simple->new(1,inf)->complement', "(-inf..1)");
 test ("(-infinite,1)", 	'Set::Infinite::Simple->new(- inf,1)->complement', "(1..inf)");
-test ("(-infinite,infinite)", 	'Set::Infinite::Simple->new(- inf,inf)->complement', "null");
+test ("(-infinite,infinite)", 	'Set::Infinite::Simple->new(- inf,inf)->complement', "");
 test ("complement(10..20) (5,15) : ", 'Set::Infinite::Simple->new(10,20)->complement(5,15)', "(15..20]");
 
 # print "Integer Complement:\n";
@@ -250,7 +250,7 @@ test ("(1,infinite) ",
 test ("(-infinite,1) ", 
 	'Set::Infinite::Simple->new(- inf,1)->integer->complement', "(1..inf)");
 test ("(-infinite,infinite) ", 
-	'Set::Infinite::Simple->new(- inf,inf)->integer->complement' , "null");
+	'Set::Infinite::Simple->new(- inf,inf)->integer->complement' , "");
 test ("complement(10..20) (5,15) ", 
 	'Set::Infinite::Simple->new(10,20)->integer->complement(5,15)', "(15..20]");
 

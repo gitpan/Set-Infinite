@@ -15,19 +15,21 @@ our @ISA = qw(Exporter);
 
 # This allows declaration	use Set::Infinite ':all';
 
-our %EXPORT_TAGS = ( 'all' => [ qw() ] );
+our %EXPORT_TAGS = ( 'all' => [ qw(
+) ] );
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(type inf) );
 
-our @EXPORT = qw();
+our @EXPORT = qw(
+);
 
-our $VERSION = '0.20';
+our $VERSION = '0.21';
 
 
 # Preloaded methods go here.
 
 use Set::Infinite::Simple qw(
-	infinite minus_infinite separators null type quantizer inf
+	infinite minus_infinite separators null type quantizer selector offsetter inf
 ); 
 # ... tolerance integer real
 
@@ -42,15 +44,67 @@ use overload
 	'cmp' => \&cmp,
 	qw("" as_string);
 
+# quantize: splits in same-size subsets
 sub quantize {
 	my $self = shift;
 	my (@a);
 	# my $array_ref = shift;
-	my $tmp = ${@{$self->{list}}}[0]->quantizer;
+	my $tmp = $self->{list}->[0]->quantizer or quantizer;
 	# print " [INF:QUANT $tmp,",@_,",$self]\n";
-	tie @a, $tmp, @_, $self;
-	return @a;
+	tie @a, $tmp, $self, @_;
+
+	# array output: can be used by "foreach"
+	return @a if wantarray; 
+	
+	# object output: can be further "intersection", "union", etc.
+	my $b = Set::Infinite->new($self); # clone myself
+	$b->{list} = \@a; 	# change data
+	$b->{cant_cleanup} = 1; 	# quantize output is "virtual" (tied) -- can't splice, sort
+	return $b;
 }
+
+# select: position-based selection of subsets
+use Set::Infinite::Select; 	# ???
+sub select {
+	my $self = shift;
+	my (@a);
+	# my $array_ref = shift;
+	my $tmp = $self->{list}->[0]->selector or selector;
+	# print " [INF:SELECT $tmp,",@_,",$self FROM:", $self->{list}->[0],"]\n";
+	tie @a, $tmp, $self, @_;
+
+	# array output: can be used by "foreach"
+	# if (wantarray) { print " [wantarray] " }
+	return @a if wantarray; 
+	
+	# object output: can be further "intersection", "union", etc.
+	my $b = Set::Infinite->new($self); # clone myself
+	$b->{list} = \@a; 	# change data
+	$b->{cant_cleanup} = 1; 	# select output is "virtual" (tied) -- can't splice, sort
+	return $b;
+}
+
+# offset: offsets subsets
+use Set::Infinite::Offset; 	# ???
+sub offset {
+	my $self = shift;
+	my (@a);
+	# my $array_ref = shift;
+	my $tmp = $self->{list}->[0]->offsetter or offsetter;
+	# print " [INF:OFFSET $tmp,",$self,",",join(",",@_),"]\n";
+	tie @a, $tmp, $self, @_;
+
+	# array output: can be used by "foreach"
+	# if (wantarray) { print " [wantarray] " }
+	return @a if wantarray; 
+	
+	# object output: can be further "intersection", "union", etc.
+	my $b = Set::Infinite->new($self); # clone myself
+	$b->{list} = \@a; 	# change data
+	$b->{cant_cleanup} = 1; 	# offset output is "virtual" (tied) -- can't splice, sort
+	return $b;
+}
+
 
 sub is_null {
 	my $self = shift;
@@ -65,7 +119,7 @@ sub intersects {
 	my ($ia, $ib);
 	foreach $ib (0 .. $#{  @{ $b->{list} } }) {
 		foreach $ia (0 .. $#{  @{ $self->{list} } }) {
-			return 1 if $self->{list}[$ia]->intersects($b->{list}[$ib]);
+			return 1 if $self->{list}->[$ia]->intersects($b->{list}->[$ib]);
 		}
 	}
 	return 0;	
@@ -77,12 +131,16 @@ sub intersection {
 
 	my $tmp;
 	my $b = Set::Infinite->new(@param);
+	# print " [intersect ",$self," with ", $b, "] \n";
 	my ($ia, $ib);
 	my $intersection = Set::Infinite->new();
 	foreach $ib (0 .. $#{  @{ $b->{list} } }) {
 		foreach $ia (0 .. $#{  @{ $self->{list} } }) {
-			$tmp = $self->{list}[$ia]->intersection($b->{list}[$ib]);
+			# print "   [intersect_simple ",$self->{list}->[$ia]," with ", $b->{list}->[$ib], "] \n";
+			# unless ($self->{list}->[$ia]->is_null) {
+			$tmp = $self->{list}->[$ia]->intersection($b->{list}->[$ib]);
 			$intersection->add($tmp) if defined($tmp); # ->{a},$tmp->{b}) if $tmp;
+			# }
 		}
 	}
 	return $intersection;	
@@ -94,32 +152,38 @@ sub complement {
 	# do we have a parameter?
 
 	if (@_) {
-		my $a = Set::Infinite->new(@_);
+		my $a = __PACKAGE__->new(@_);
 		$a->tolerance($self->{tolerance});
 		$a = $a->complement;
+		# print " [CPL:intersect ",$self," with ", $a, "] ";
 		return $self->intersection($a);
 	}
 
 	my ($ia);
 	my $tmp;
 
+	# print " [CPL:",$self,"] ";
+
 	if (($#{$self->{list}} < 0) or (not defined ($self->{list}))) {
-		return Set::Infinite->new(minus_infinite, infinite);
+		return __PACKAGE__->new(minus_infinite, infinite);
 	}
 
-	my $complement = Set::Infinite->new();
-	my @tmp = $self->{list}[0]->complement;
+	my $complement = __PACKAGE__->new();
+	my @tmp = $self->{list}->[0]->complement;
+	# print " [CPL:ADDED:",join(";",@tmp),"] ";
 	foreach(@tmp) {
 		$complement->add($_); 
 	}
-	
+
 	foreach $ia (1 .. $#{  @{ $self->{list} } }) {
-			@tmp = $self->{list}[$ia]->complement;
+			@tmp = $self->{list}->[$ia]->complement;
 			$tmp = Set::Infinite->new();
 			foreach(@tmp) { $tmp->add($_); }
 
 			$complement = $complement->intersection($tmp); # if $tmp;
 	}
+
+	# print " [CPL:RES:",$complement,"] ";
 
 	return $complement;	
 }
@@ -127,20 +191,35 @@ sub complement {
 sub union {
 	my $self = shift;
 	my $b;
+	# print " [UNION] \n";
+	# print " [union: new b] \n";
 	$b = Set::Infinite->new(@_);  
 
+	# print " [union: new union] \n";
 	my $union = Set::Infinite->new($self);
+	# print " [union: $union +\n       $b ] \n";
 	my ($ia, $ib);
 	B: foreach $ib (0 .. $#{  @{ $b->{list} } }) {
 		foreach $ia (0 .. $#{  @{ $union->{list} } }) {
-			my @tmp = $union->{list}[$ia]->union($b->{list}[$ib]);
+			my @tmp = $union->{list}->[$ia]->union($b->{list}->[$ib]);
+			# print " [+union: $tmp[0] ; $tmp[1] ] \n";
 			if ($#tmp == 0) {
-				$union->{list}[$ia] = $tmp[0];
+				$union->{list}->[$ia] = $tmp[0];
 				next B;
 			}
 		}
-		$union->add($b->{list}[$ib]);
+		$union->add($b->{list}->[$ib]);
 	}
+	# print " [union: done from ", join(" ", caller), " ] \n";
+	# print " [union: result = $union ] \n";
+	# $union->{cant_cleanup} = 1;
+
+	#	foreach $ia (0 .. $#{  @{ $union->{list} } }) {
+	#		my @tmp = $union->{list}->[$ia];
+	#		print " #", $ia, ": ", $union->{list}->[$ia], " is ", join(" ", %{$union->{list}->[$ia]} ) , "\n";
+	#	}
+	# print " [union: is ", join(" ", %$union) , " ] \n";
+
 	return $union;	
 }
 
@@ -169,7 +248,8 @@ LOOP:
 		if (ref($tmp) eq 'ARRAY') {
 			my @tmp = @{$tmp};
 
-			# print " INF:ARRAY:",@tmp," ";
+	
+			# print " INF:ADD:ARRAY:",@tmp," ";
 
 			# Allows arrays of arrays
 			$tmp = Set::Infinite->new(@tmp) ;
@@ -186,6 +266,7 @@ LOOP:
 		# does it have a "{list}"?
 		elsif ((ref(\$tmp) eq 'REF')) {
 			if (($tmp->isa(__PACKAGE__))) {   # and defined ($tmp->{list})) {
+				# print " INF:ADD:",__PACKAGE__,":",$tmp," ";
 				foreach (@{$tmp->{list}}) {
 					push @{ $self->{list} }, Set::Infinite::Simple->new($_) ;
 				}
@@ -213,10 +294,12 @@ LOOP:
 sub min { 
 	my ($self) = shift;
 	my $tmp;
-	my $min = $self->{list}[0]->min if defined($self->{list}[0]);
+	my $min = $self->{list}->[0]->min if defined($self->{list}->[0]);
 	foreach(1 .. $#{  @{ $self->{list} } }) {
-		$tmp = $self->{list}[$_]->min;
-		$min = $tmp if $tmp < $min;
+		$tmp = $self->{list}->[$_]->min;
+		unless (Set::Infinite::Element_Inf::is_null($tmp)) {
+			$min = $tmp if $tmp < $min;
+		}
 	}
 	return $min; 
 };
@@ -224,9 +307,9 @@ sub min {
 sub max { 
 	my ($self) = shift;
 	my $tmp;
-	my $max = $self->{list}[0]->max if defined($self->{list}[0]);
+	my $max = $self->{list}->[0]->max if defined($self->{list}->[0]);
 	foreach(1 .. $#{  @{ $self->{list} } }) {
-		$tmp = $self->{list}[$_]->max;
+		$tmp = $self->{list}->[$_]->max;
 		$max = $tmp if $tmp > $max;
 	}
 	return $max; 
@@ -236,9 +319,9 @@ sub size {
 	my ($self) = shift;
 	my $tmp;
 	$self->cleanup;
-	my $size = $self->{list}[0]->size;
+	my $size = $self->{list}->[0]->size;
 	foreach(1 .. $#{ @{ $self->{list} } }) {
-		$tmp = $self->{list}[$_]->size;
+		$tmp = $self->{list}->[$_]->size;
 		$size += $tmp;
 	}
 	return $size; 
@@ -256,14 +339,15 @@ sub spaceship {
 
 	if ($inverted) {
 		($tmp2, $tmp1) = ($tmp1, $tmp2);
-	}
+	}
+
 
 	return $tmp1->min  <=> $tmp2->min  if ($tmp1->min  != $tmp2->min);
 	return $tmp1->size <=> $tmp2->size if ($tmp1->size != $tmp2->size);
 	return $#{ @{ $tmp1->{list} } } <=> $#{ @{ $tmp2->{list} } } if $#{ @{ $tmp1->{list} } } != $#{ @{ $tmp2->{list} } };
 	foreach(0 .. $#{  @{ $tmp1->{list} } }) {
-		my $this  = $tmp1->{list}[$_];
-		my $other = $tmp2->{list}[$_];
+		my $this  = $tmp1->{list}->[$_];
+		my $other = $tmp2->{list}->[$_];
 		return $this <=> $other if $this != $other;
 	}
 	return 0;
@@ -275,6 +359,7 @@ sub cmp {
 
 sub cleanup {
 	my ($self) = shift;
+	return $self if $self->{cant_cleanup}; 	# quantize output is "virtual", can't be cleaned
 
 	# $self->tolerance($self->{tolerance});	# ???
 
@@ -282,9 +367,9 @@ sub cleanup {
 
 	$_ = 1;
 	while ( $_ <= $#{  @{ $self->{list} } } ) {
-		my @tmp = $self->{list}[$_]->union($self->{list}[$_ - 1]);
+		my @tmp = $self->{list}->[$_]->union($self->{list}->[$_ - 1]);
 		if ($#tmp == 0) {
-			$self->{list}[$_ - 1] = $tmp[0];
+			$self->{list}->[$_ - 1] = $tmp[0];
 			splice (@{$self->{list}}, $_, 1);
 		} 
 		else {
@@ -302,7 +387,7 @@ sub tolerance {
 		if ($tmp ne '') {
 			$self->{tolerance} = $tmp;
 			foreach (0 .. $#{  @{ $self->{list} } }) {
-				$self->{list}[$_]->tolerance($self->{tolerance});
+				$self->{list}->[$_]->tolerance($self->{tolerance});
 			}
 		}
 		return $self;
@@ -383,7 +468,7 @@ sub FETCH {
 		# we have an index, so we are an array
 		# print " FETCH \n";
 		my $index = shift;
-		return $self->{list}[$index];
+		return $self->{list}->[$index];
 	}
 	return $self->as_string;
 }
@@ -395,7 +480,7 @@ sub STORE {
 		# we have a valid index and data, so we are an array
 		my $index = $data;
 		$data = shift;
-		$self->{list}[$index] = $data if $index == 0;
+		$self->{list}->[$index] = $data if $index == 0;
 		$self->cleanup;
 		return ($data, @_);
 	}
@@ -414,7 +499,7 @@ __END__
 
 =head1 NAME
 
-Set::Infinite - Perl extension for Sets of intervals
+Set::Infinite - Sets of intervals
 
 =head1 SYNOPSIS
 
@@ -460,7 +545,7 @@ Logic functions:
 
 	$logic = $a->is_null;
 
-Sets functions:
+Set functions:
 
 	$i = $a->union($b);	
 
@@ -503,7 +588,7 @@ Global functions:
 
 	null($i)		
 
-		chooses 'null' name. default is 'null'
+		chooses 'null' name. default is ''
 
 	infinite($i)
 
@@ -519,22 +604,56 @@ Global functions:
 
 	null
 
-		returns 'null'.
+		returns the 'null' object.
 
-	quantize($i)
+	quantize( parameters )
 
-		returns a tied reference to an array of sets.
-		Each array have size $i.
-		In some cases, one or more array members may be empty.
+		Makes equal-sized subsets.
+
+		In array context: returns a tied reference to the subset list.
+		In set context: returns an ordered set of equal-sized subsets.
+
+		The quantization function is external to this module:
+		Parameters may vary depending on implementation. 
+
+		Positions for which a subset does not exist may show as null.
 
 		Example: 
 
 			$a = Set::Infinite->new([1,3]);
-			print join (" ", $a->quantize(1) );
+			print join (" ", $a->quantize( quant => 1 ) );
 
 		Gives: 
 
 			[1..2) [2..3) [3..4)
+
+	select( parameters )
+
+		Selects set members based on their ordered positions.
+		Selection is more useful after quantization.
+
+		In array context: returns a tied reference to the array of selected subsets.
+		In set context: returns the set of selected subsets.
+
+		Unselected subsets may show as null.
+
+		The selection function is external to this module:
+		Parameters may vary depending on implementation. 
+
+			freq     - default=1
+			by       - default=[0]
+			interval - default=1
+			count    - dafault=infinite
+
+	offset ( parameters )
+
+		Offsets the subsets.
+
+		The selection function is external to this module:
+		Parameters may vary depending on implementation. 
+
+			value   - default=[0,0]
+			mode    - default='offset'. Possible values are: 'offset', 'begin', 'end'.
 
 	type($i)
 
@@ -572,11 +691,16 @@ It requires HTTP:Date and Time::Local
 
 It changes quantize function behaviour to accept time units:
 
+	use Set::Infinite;
+	use Set::Infinite::Quantize_Date;
+	Set::Infinite->type('Set::Infinite::Date');
+	Set::Infinite::Date->date_format("year-month-day");
+
 	$a = Set::Infinite->new('2001-05-02', '2001-05-13');
-	print "Weeks in $a: ", join (" ", $a->quantize('weeks', 1) );
+	print "Weeks in $a: ", join (" ", $a->quantize(unit => 'weeks', quant => 1) );
 
 	$a = Set::Infinite->new('09:30', '10:35');
-	print "Quarters of hour in $a: ", join (" ", $a->quantize('minutes', 15) );
+	print "Quarters of hour in $a: ", join (" ", $a->quantize(unit => 'minutes', quant => 15) );
 
 Units can be years, months, days, weeks, hours, minutes, or seconds.
 
@@ -597,8 +721,16 @@ they are used with `0 + '.
 		Will be interpreted as [1..2],3 instead of [1,2,3].
 		You probably want ->new(1,3) instead.
 
+=head1 CHANGES
+
+0.21
+	Change: "quantize()" or "quantize( quant => 1)" instead of "quantize(1)".
+	Change: "quantize(unit => 'minutes', quant => 15)" instead of "quantize('minutes',15)"
+	New methods: "select" and "offset"
+
 =head1 AUTHOR
 
 	Flavio Soibelmann Glock <fglock@pucrs.br>
 
-=cut
+=cut
+

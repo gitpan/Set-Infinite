@@ -4,11 +4,14 @@ package Set::Infinite::Quantize;
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 
+# CHANGES
+# 0.21 - change quantize(1) -> quantize( quant => 1 )
+
 use strict;
 use warnings;
 
 require Exporter;
-our $VERSION = "0.16";
+our $VERSION = "0.21";
 
 my $package = 'Set::Infinite::Quantize';
 our @EXPORT = qw();
@@ -21,6 +24,8 @@ use Set::Infinite qw(type);
 Set::Infinite::Quantize - arrays of subsets
 
 =head2 USAGE
+
+	Please see Set::Infinite
 
 =head2 TODO
 
@@ -45,12 +50,25 @@ sub get_index {
 }
 
 sub new {
-	my ($self) = bless {}, shift;
-	$self->{quant} = shift;
-	my $tmp = Set::Infinite->new(@_); 
-	$self->{set}   = $tmp;
-	$self->{begin} = $self->{set}->min;
-	$self->{end}   = $self->{set}->max;
+	# print " [ QUANT:NEW:", join(", ", @_), "]\n";
+	my ($class, $parent, %rules);
+	if ($#_ == 2) {
+		# old syntax (non-hash)
+		($class, $parent, $rules{quant}) = @_;
+	}
+	else {
+		($class, $parent, %rules) = @_;
+	}
+	my ($self) = bless \%rules, $class;
+
+	# my ($self) = bless {}, shift;
+	$self->{quant} = 1 unless $self->{quant};
+	# my $tmp = Set::Infinite->new(@_); 
+	$self->{parent}   = $parent;
+	# print " [ QUANT:parent=", $self->{parent}, " ", ref($self->{parent}), "]\n";
+	$self->{begin} = $self->{parent}->min;
+	$self->{end}   = $self->{parent}->max;
+	# print " [ QUANT ]\n";
 	# estimate size
 	$self->{size}  = 2 + ($self->{end} - $self->{begin}) / $self->{quant};
 	# print " [end:",$self->{end},"]";
@@ -97,8 +115,8 @@ sub FETCH {
 	#	return '';
 	# }
 	my $tmp = Set::Infinite::Simple->new($this,$next)->open_end(1);
-	return $tmp if $self->{set}->intersects($tmp);
-	return '';
+	return $tmp if $self->{parent}->intersects($tmp);
+	return Set::Infinite::Simple->simple_null;
 }
 
 sub STORE {
@@ -110,4 +128,3 @@ sub DESTROY {
 
 
 1;
-

@@ -23,16 +23,7 @@ Set::Infinite::Quantize_Date - arrays of date intervals to make calendars
 
 =head2 USAGE
 
-	use Set::Infinite::Quantize_Date;
-
-	Set::Infinite->type('Set::Infinite::Date');
-	Set::Infinite::Date->date_format("year-month-day");
-
-	print "Years: ";
-	tie @a, 'Set::Infinite::Quantize_Date', 'years', '1998-01-01', '2002-01-01';
-	for (my $i = 0; $i <= $#a; $i++) {
-		print " $a[$i]\n";
-	}
+	See Set::Infinite
 
 =head2 TODO
 
@@ -117,10 +108,27 @@ sub seconds {
 }
 
 sub new {
-	my ($self) = bless {}, shift;
-	$self->{type} = shift;	# 'minutes'
-	$self->{quant} = shift;	# 15 
-	$self->{dates} = Set::Infinite->new(@_); # date
+	my ($class, $parent, %rules);
+	if ($#_ == 2) {
+		# old syntax (non-hash):  new(1) "one day"  
+		($class, $parent, $rules{quant}) = @_;
+	}
+	elsif ( ($#_ == 3) and (exists ($subs{$_[2]}) ) ) {  
+		# old syntax (non-hash):  new('days', 1) "one day"  
+		($class, $parent, $rules{unit}, $rules{quant}) = @_;
+	}
+	else {
+		($class, $parent, %rules) = @_;
+	}
+	my ($self) = bless \%rules, $class;
+
+	# my ($class, $parent, %rules) = @_;
+	# my ($self) = bless \%rules, $class;
+
+	$self->{unit} = 'days' unless $self->{unit};
+	$self->{quant} = 1 unless $self->{quant};
+
+	$self->{dates} = $parent;   # Set::Infinite->new(@_); # date
 	$self->{mode}  = $self->{dates}->min->{mode};
 
 	#$self->{last} = 0;
@@ -128,8 +136,8 @@ sub new {
 
 	my $rest;
 
-	# print " [MODE:",$self->{mode},"]\n";
-	# print " [MIN:",$self->{dates}->min," = ",0+ $self->{dates}->min,"]\n";
+	# print " [Q-DATE:MIN:",$self->{dates}->min," = ",0+ $self->{dates}->min,"]\n";
+	# print " [Q-DATE:MODE:",$self->{mode},"]\n";
 
 	@{$self->{date_begin}} = localtime( 0 + $self->{dates}->min );
 	$self->{date_begin}[5] += 1900;
@@ -137,7 +145,7 @@ sub new {
 	$self->{first} = timelocal( @{$self->{date_begin}} );
 	$self->{mult} = 1;
 
-	if ($self->{type} eq 'seconds') {
+	if ($self->{unit} eq 'seconds') {
 
 		# $rest = $self->{date_begin}[0] % $self->{quant};
 		# modulo operation - can't use `%'
@@ -149,7 +157,7 @@ sub new {
 			$self->{date_begin}[3],	$self->{date_begin}[4],$self->{date_begin}[5]);
 		$self->{mult} = $second_size;
 	}
-	elsif ($self->{type} eq 'minutes') {
+	elsif ($self->{unit} eq 'minutes') {
 		# $rest = $self->{date_begin}[1] % $self->{quant};
 		# modulo operation - can't use `%'
 		my $tmp1 = int($self->{date_begin}[1] / $self->{quant});
@@ -160,29 +168,29 @@ sub new {
 			$self->{date_begin}[3], $self->{date_begin}[4],$self->{date_begin}[5]);
 		$self->{mult} = $minute_size;
 	}
-	elsif ($self->{type} eq 'hours') {
+	elsif ($self->{unit} eq 'hours') {
 		$self->{first} = timelocal(
 			0,0,$self->{date_begin}[2], 
 			$self->{date_begin}[3],$self->{date_begin}[4],$self->{date_begin}[5]);
 		$self->{mult} = $hour_size;
 	}
-	elsif ($self->{type} eq 'days') {
+	elsif ($self->{unit} eq 'days') {
 		$self->{first} = timelocal(
 			0,0,0, 
 			$self->{date_begin}[3],$self->{date_begin}[4],$self->{date_begin}[5]);
 		$self->{mult} = $day_size;
 	}
-	elsif ($self->{type} eq 'weeks') {
+	elsif ($self->{unit} eq 'weeks') {
 		$self->{first} = timelocal(
 			0,0,0, 
 			$self->{date_begin}[3],$self->{date_begin}[4],$self->{date_begin}[5]);
 		$self->{first} -= $self->{date_begin}[6] * $day_size;
 		$self->{mult} = 7 * $day_size;
 	}
-	elsif ($self->{type} eq 'months') {
+	elsif ($self->{unit} eq 'months') {
 		$self->{mult} = 31 * $day_size;
 	}
-	elsif ($self->{type} eq 'years') {
+	elsif ($self->{unit} eq 'years') {
 		$self->{mult} = 365 * $day_size;
 	}
 
@@ -229,14 +237,14 @@ sub FETCH {
 
 	my ($this, $next);
 
-	$this = &{ $subs{$self->{type}} } ($self, $index);
+	$this = &{ $subs{$self->{unit}} } ($self, $index);
 
 	# test cache
 	#if (($index + 1) == $self->{last_index}) {
 	#	$next = $self->{last};
 	#}
 	#else {
-		$next = &{ $subs{$self->{type}} } ($self, $index + 1);
+		$next = &{ $subs{$self->{unit}} } ($self, $index + 1);
 	#}
 
 	# add to cache
@@ -245,17 +253,19 @@ sub FETCH {
 
 	if ($this > $self->{time2_end}) {
 		$self->{size} = $index if $self->{size} > $index;
-		return '';
+		return Set::Infinite::Simple->simple_null;
 	}
 	my $tmp = Set::Infinite::Simple->new($this,$next)->open_end(1);
 	$tmp->{a}->mode($self->{mode});
 	$tmp->{b}->mode($self->{mode});
-	$tmp = Set::Infinite->new($tmp);# slower but necessary
+	$tmp = Set::Infinite::Simple->new($tmp);
+	# slower but necessary:
 	if ($self->{dates}->intersects($tmp)) {
 		# print " [QD:INTER:",$self->{dates}->intersects($tmp),"=",	$self->{dates}->intersection($tmp),"]\n";
 		return $tmp;
 	}
-	return '';
+	return Set::Infinite::Simple->simple_null;
+;
 }
 
 sub STORE {
@@ -267,4 +277,3 @@ sub DESTROY {
 
 
 1;
-

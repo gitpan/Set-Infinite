@@ -16,4 +16,14 @@ t/infinite.t
 todo/simple_bigfloat.t
 t/simple.t
 t/quantize_date.t
-t/quantize.t
+t/quantize.t
+lib/Set/Infinite/Element_Inf.pm
+lib/Set/Infinite/Offset.pm
+lib/Set/Infinite/Quantize.pm
+lib/Set/Infinite/Quantize_Date.pm
+lib/Set/Infinite/Select.pm
+t/date_select_offset.t
+t/select.t
+t/select_offset.t
+todo/element_inf.t
+
