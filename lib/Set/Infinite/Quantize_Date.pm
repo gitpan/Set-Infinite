@@ -156,6 +156,7 @@ sub FETCH {
 		$Memoize{$self->{memo}}{$index + $self->{offset}} = $tmp;
 	}
 
+        # print " FETCH ",%$tmp,":",ref($tmp),"\n";
 	if ($self->{strict} and not $self->{strict}->intersects($tmp)) {
 		$tmp = Set::Infinite::_simple_null;
 	}
@@ -168,8 +169,13 @@ sub _FETCH {
 	my $tmp;
 	my ($this, $next);
 
+        # return undef if Set::Infinite::Element_Inf::is_null($this);
+
 	$this = &{ $Set::Infinite::Arithmetic::subs_offset1{$self->{unit}} } ($self, $index);
 	$next = &{ $Set::Infinite::Arithmetic::subs_offset1{$self->{unit}} } ($self, $index + 1);
+
+        # print " Q[$this,$next] \n";
+        # return undef if Set::Infinite::Element_Inf::is_null($this);
 
 	return Set::Infinite::_simple_fastnew($this, $next, 0, 1 ) unless $self->{fixtype};
 

@@ -19,7 +19,7 @@ our %EXPORT_TAGS = ( 'all' => [ qw(type inf new ) ] );
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(type inf new ) );
 our @EXPORT = qw();
 
-our $VERSION = '0.36_11';
+our $VERSION = '0.36_37';
 
 our $TRACE = 0;      # basic trace method execution
 our $DEBUG_BT = 0;     # backtrack tracer
@@ -28,11 +28,10 @@ our $DEBUG_BT = 0;     # backtrack tracer
 
 use Set::Infinite::_Simple;
 
-# global defaults 
-#    for object private vars
+# global defaults for object private vars
 our $type = '';
 our $tolerance = 0;
-
+our $fixtype = 1;
 
 sub inf();
 sub infinite();
@@ -71,13 +70,6 @@ unions, and infinite recurrences.
 
 
 use overload
-    # '@{}' => \&{ 
-    #    return () unless $#_ >= 0;
-    #    print " [\@:$_[0]:",caller,":", ref(\$_[0]), "] "; 
-    #    # return () if ref(\$_[0]) eq 'SCALAR'; # ???
-    #    # return () unless exist $_[0]->{list};
-    #    return compact_array($_[0]->{list});
-    # },
     '<=>' => \&spaceship,
     qw("" as_string),
 ;
@@ -107,8 +99,10 @@ sub type {
 sub list {
     my $self = shift;
     # my $class = ref($self);
+    carp "Can't list an unbounded set" if $self->{too_complex};
     my @b = ();
     foreach (@{$self->{list}}) {
+        next unless defined $_;
         push @b, $self->new($_);
     }
     return @b;
@@ -116,9 +110,27 @@ sub list {
 
 sub fixtype {
     my $self = shift;
+    $self = $self->copy;
+    $self->{fixtype} = 1;
+    return $self if $self->{too_complex};
     foreach (@{$self->{list}}) {
+        next unless defined $_;
         $_->{a} = $type->new($_->{a}) unless ref($_->{a});
         $_->{b} = $type->new($_->{b}) unless ref($_->{b});
+    }
+    return $self;
+}
+
+sub numeric {
+    my $self = shift;
+    return $self unless $self->{fixtype};
+    $self = $self->copy;
+    $self->{fixtype} = 0;
+    return $self if $self->{too_complex};
+    foreach (@{$self->{list}}) {
+        next unless defined $_;
+        $_->{a} = 0 + $_->{a};
+        $_->{b} = 0 + $_->{b};
     }
     return $self;
 }
@@ -132,12 +144,14 @@ sub compact {
         $self->trace(title=>"compact:backtrack"); 
         # print " [compact:backtrack] \n" if $DEBUG_BT;
         $b->{too_complex} = 1;
-        $b->{parent} = $self->copy;
+        $b->{parent} = $self;  # ->copy;
         $b->{method} = 'compact';
         $b->{param}  = \@_;
         return $b;
     }
+    $self->trace(title=>"compact");
     foreach (@{$self->{list}}) {
+        next unless defined $_;
         unless ( Set::Infinite::Element_Inf::is_null($_->{a}) ) {
             push @{$b->{list}}, $_;
         }
@@ -171,7 +185,7 @@ sub quantize {
         # print " [quantize:backtrack] \n" if $DEBUG_BT;
         my $b = $self->new();
         $b->{too_complex} = 1;
-        $b->{parent} = $self->copy;
+        $b->{parent} = $self;   # ->copy;
         $b->{method} = 'quantize';
         $b->{param}  = \@_;
         return $b;
@@ -185,6 +199,7 @@ sub quantize {
     $b->{list} = \@a;        # change data
     $b->{cant_cleanup} = 1;     # quantize output is "virtual" (tied) -- can't splice, sort
     # print " [QUANT:returns:",ref($b),"] \n";
+    $self->trace(title=>"quantize:end");
     return $b;
 }
 
@@ -197,7 +212,7 @@ sub select {
     if ($self->{too_complex}) {
         my $b = $self->new();
         $b->{too_complex} = 1;
-        $b->{parent} = $self->copy;
+        $b->{parent} = $self;  # ->copy;
         $b->{method} = 'select';
         $b->{param}  = \@_;
         return $b;
@@ -223,7 +238,7 @@ sub offset {
     if ($self->{too_complex}) {
         my $b1 = $self->new();
         $b1->{too_complex} = 1;
-        $b1->{parent} = $self->copy;
+        $b1->{parent} = $self;  # ->copy;
         $b1->{method} = 'offset';
         $b1->{param}  = \@_;
         return $b1;
@@ -243,7 +258,7 @@ sub offset {
     $param{unit}   =      'one'    unless $param{unit};
     my $parts  =      ($#{$param{value}}) / 2;
     # $param{strict} =      0        unless $param{strict};
-    $param{fixtype} =     1        unless exists $param{fixtype};
+    # $param{fixtype} =     1        unless exists $param{fixtype};
     # $param{fetchsize} = $param{parts} * (1 + $#{ $self->{list} });
     my $sub_unit =    $Set::Infinite::Arithmetic::subs_offset2{$param{unit}};
     my $sub_mode =    $Set::Infinite::Offset::_MODE{$param{mode}};
@@ -263,7 +278,7 @@ sub offset {
         my $interval = $self->{list}[$i];
         my $ia = $interval->{a};
 
-        next if Set::Infinite::Element_Inf->is_null($ia);  # skip if interval is null
+        next unless defined $ia;   # if Set::Infinite::Element_Inf->is_null($ia);  # skip if interval is null
         $ib = $interval->{b};
         $open_begin = $interval->{open_begin};
         $open_end = $interval->{open_end};
@@ -279,7 +294,7 @@ sub offset {
                     $this = $next;  #  make sure to use the same object from cache!
                 }
                 # skip this if don't need to "fixtype"
-                if ($param{fixtype}) {
+                if ($self->{fixtype}) {
                     # bless results into 'type' class
                     # print " [ofs($this,$next) = $class] ";
                     if (ref($this) ne ref($ia) ) {
@@ -302,11 +317,14 @@ sub offset {
     return $b1;
 }
 
+# note: is_null returns a wrong value if is_too_complex is set.
+# this is due to the implementation of min()
 
 sub is_null {
     my $self = shift;
-    return 1 unless $#{$self->{list}} >= 0;
-    Set::Infinite::Element_Inf::is_null($self->{list}->[0]->{a});
+    # return 1 unless $#{$self->{list}} >= 0;
+    defined $self->min ? undef : 1;
+    # Set::Infinite::Element_Inf::is_null($self->{list}->[0]->{a});
 }
 
 =head2 is_too_complex
@@ -463,13 +481,16 @@ sub intersects {
     # print " [I:", ref ($_[0]), "] ";
     if (ref ($_[0]) eq 'HASH') {
         # optimized for "quantize"
-        $a->trace(title=>"intersects:simple");
+        # $a->trace(title=>"intersects:simple ");
         # print "*";
         # print " n:", $#{$a->{list}}, "=$a ";
         $b = shift;
+        return 0 unless defined $b;
+        $a->trace(title=>"intersects:simple " . join(':', %$b) );
         foreach my $ia (0 .. $#{$a->{list}}) {
             return 1 if _simple_intersects($a->{list}->[$ia], $b);
         }
+        # print "don't\n";
         return 0;    
     } 
     elsif (ref ($_[0]) ) { 
@@ -496,7 +517,7 @@ sub intersects {
         print " [inter:backtrack] \n" if $DEBUG_BT;
         my $intersection = $a->new();
         $intersection->{too_complex} = 1;
-        $intersection->{parent} = [$a->copy, $b->copy];
+        $intersection->{parent} = [$a, $b];  # [$a->copy, $b->copy];
         $intersection->{method} = 'intersects';
         return $intersection;
     }
@@ -536,7 +557,7 @@ sub iterate {
         $a->trace(title=>"iterate:backtrack");
         # print " [iterate:backtrack] \n" if $DEBUG_BT;
         $iterate->{too_complex} = 1;
-        $iterate->{parent} = $a->copy;
+        $iterate->{parent} = $a;  # ->copy;
         $iterate->{method} = 'iterate';
         $iterate->{param} = \@_;
         return $iterate;
@@ -550,12 +571,15 @@ sub iterate {
         # print " [iterate:$a->{list}->[$ia] -- $subroutine ]\n";
         $tmp = &{$subroutine} ( $a->new($a->{list}->[$ia]) );
         # print " [iterate:result:$tmp]\n";
-        $iterate = $iterate->union($tmp) unless Set::Infinite::Element_Inf::is_null($tmp); 
+        $iterate = $iterate->union($tmp) if defined $tmp;  # unless Set::Infinite::Element_Inf::is_null($tmp); 
     }
     return $iterate;    
 }
 
 sub intersection {
+
+    # return undef unless defined $_[1];
+
     my $a1 = shift;
     my $b1;
     $a1->trace(title=>"intersection");
@@ -565,7 +589,7 @@ sub intersection {
     else {
         $b1 = $a1->new(@_);  
     }
-    my $tmp;
+    # my $tmp;
     # print " [intersect ",$a,"--",ref($a)," with ", $b, "--",ref($b)," ", caller, "] \n";
 
     if ($a1->{too_complex}) {
@@ -582,7 +606,7 @@ sub intersection {
         print " [inter:backtrack] \n" if $DEBUG_BT;
         my $intersection = $a1->new();
         $intersection->{too_complex} = 1;
-        $intersection->{parent} = [$a1->copy, $b1->copy];
+        $intersection->{parent} = [$a1,$b1]; # [$a1->copy, $b1->copy];
         $intersection->{method} = 'intersection';
         return $intersection;
     }
@@ -590,34 +614,31 @@ sub intersection {
     # print " [intersect \n    ",$a,"--",ref($a)," with \n    ", $b, "--",ref($b)," \n    ", caller, "] \n";
 
     my ($ia, $ib);
-    # my ($na, $nb) = (0,0);
-    # $tmp = ref($a1->{list}) . ref($b1->{list}); # instantiate, just in case
     my ($ma, $mb) = ($#{$a1->{list}}, $#{$b1->{list}});
     my $intersection = $a1->new();
-
-    # for loop optimization
+    # for-loop optimization (makes little difference)
     if ($ma < $mb) {
         ($ma, $mb) = ($mb, $ma);
-        # ($na, $nb) = ($nb, $na);
         ($a1, $b1) = ($b1, $a1);
     }
-
-    my ($tmp1, $tmp2);
-    my ($tmp1a, $tmp2a, $tmp1b, $tmp2b);
-    my ($i_beg, $i_end, $open_beg, $open_end);
-
-    my ($cmp1);
+    my ($tmp1, $tmp2, $tmp1a, $tmp2a, $tmp1b, $tmp2b, $i_beg, $i_end, $open_beg, $open_end, $cmp1);
+    my $a0 = 0;
 
     B: foreach $ib (0 .. $mb) {
         $tmp2 = $b1->{list}[$ib];
+        next unless defined $tmp2;
         $tmp2a = $tmp2->{a};
         $tmp2b = $tmp2->{b};
-        # my $dummy = ref($pb1);
-         A: foreach $ia (0 .. $ma) {
+         A: foreach $ia ($a0 .. $ma) {
             $tmp1 = $a1->{list}[$ia];
+            next unless defined $tmp1;
             $tmp1b = $tmp1->{b};
 
-            next A if $tmp1b < $tmp2a; 
+            if ($tmp1b < $tmp2a) {
+                $a0++;
+                next A;
+            }
+            # next A if $tmp1b < $tmp2a; 
 
             $tmp1a = $tmp1->{a};
             next B if $tmp1a > $tmp2b;
@@ -665,10 +686,13 @@ sub intersection {
     return $intersection;    
 }
 
+# TODO: make complement() work with backtracking
+
 sub complement {
     my $self = shift;
     # my $class = ref($self);
     $self->trace(title=>"complement");
+    # carp "Can't complement an unbounded set" if $self->{too_complex};
     # do we have a parameter?
     if (@_) {
         if (ref ($_[0]) eq ref($self) ) {
@@ -680,6 +704,16 @@ sub complement {
         $a = $a->complement;
         # print " [CPL:intersect ",$self," with ", $a, "] ";
         return $self->intersection($a);
+    }
+
+    if ($self->{too_complex}) {
+        # TODO: check set "span" when backtracking
+        my $b1 = $self->new();
+        $b1->{too_complex} = 1;
+        $b1->{parent} = $self;  # ->copy;
+        $b1->{method} = 'offset';
+        $b1->{param}  = \@_;
+        return $b1;
     }
 
     my ($ia);
@@ -729,7 +763,7 @@ sub union {
         print " [union:backtrack] \n" if $DEBUG_BT;
         my $union = $a1->new();
         $union->{too_complex} = 1;
-        $union->{parent} = [$a1->copy, $b1->copy];
+        $union->{parent} = [$a1,$b1];   # [$a1->copy, $b1->copy];
         $union->{method} = 'union';
         return $union;
     }
@@ -737,8 +771,12 @@ sub union {
     # -- special case: $a1 or $b1 is empty
      # print " A=0 B=$b1 " if $#{$a1->{list}} < 0;
      # print " B=0 A=$a1 " if $#{$b1->{list}} < 0;
-    return $a1 if $#{$b1->{list}} < 0;
-    return $b1 if $#{$a1->{list}} < 0;
+
+    my $b1_min = $b1->min;
+    my $a1_max = $a1->max;
+
+    return $a1 unless defined $b1_min;   # $#{$b1->{list}} < 0;
+    return $b1 unless defined $a1_max;   # $#{$a1->{list}} < 0;
 
     my ($ia, $ib);
     $ia = 0;
@@ -751,7 +789,7 @@ sub union {
     $a1 = $a1->new($a1);    # don't modify ourselves 
     my $b_list = $b1->{list};
     # -- frequent case - $b1 is after $a1
-    if ($b1->min > $a1->max) {
+    if ($b1_min > $a1_max) {
         # print " [UNION: $a1 \n         $b1 $#{$b_list}\n       ";
         push @{$a1->{list}}, @$b_list;
         return $a1;
@@ -821,6 +859,7 @@ Makes a new object from the object's data.
 sub copy {
     my $self = shift;
     my $copy = $self->new();
+    return $copy unless ref($self);   # constructor!
     foreach my $key (keys %{$self}) {
         $copy->{$key} = $self->{$key};
     }
@@ -838,10 +877,12 @@ sub new {
     if (ref($class)) {
         $self->{tolerance} = $class->{tolerance} if $class->{tolerance};
         $self->{type}      = $class->{type}      if $class->{type};
+        $self->{fixtype}   = $class->{fixtype}   if $class->{fixtype};
     }
     else {
-        $self->{tolerance} = $tolerance ? $tolerance : '';
+        $self->{tolerance} = $tolerance ? $tolerance : 0;
         $self->{type} =      $type      ? $type : '';
+        $self->{fixtype} =   $fixtype   ? $fixtype : 0;
     }
     # print " [INF:new:$class ", $tolerance, " ",$type," ",$self->{tolerance}," ",$self->{type}," ]\n"; 
 
@@ -872,6 +913,13 @@ sub new {
             }
         }
         $tmp2 = shift;
+        # print " [$tmp:",ref($tmp),"]eq[$tmp2:",ref($tmp2),"] ";
+        # if (Set::Infinite::Element_Inf::is_null($tmp)) {
+        #    carp " [1]$tmp is null ";
+        # }
+        # if (Set::Infinite::Element_Inf::is_null($tmp2)) {
+        #    carp " [2]$tmp2 is null ";
+        # }
         push @{ $self->{list} }, _simple_new($tmp,$tmp2, $self->{type} );
         # next;
     }
@@ -881,32 +929,63 @@ sub new {
 sub min { 
     my ($self) = shift;
     my $tmp;
+    my $i;
 
     $self->trace(title=>"min"); 
 
-    foreach(@{$self->{list}}) {
-        $tmp = $_->{a};
-        return $tmp unless Set::Infinite::Element_Inf::is_null($tmp) ;
+    if ($self->{too_complex}) {
+        # print " min ",$self->{method}," ",$self->{parent}->min,"\n";
+        if ($self->{method} eq 'quantize') {
+            $tmp = $self->{parent}->min;
+            return $tmp if ($tmp == &inf) or ($tmp == -&inf);
+            return $self->new( $tmp )->quantize( @{$self->{param}} )->min;
+        }
     }
+
+    for($i = 0; $i <= $#{$self->{list}}; $i++) {
+        # foreach(0 .. $#{$self->{list}}) {
+        next unless defined $self->{list}[$i];
+        $tmp = $self->{list}[$i]->{a};
+        return $tmp;  # unless Set::Infinite::Element_Inf::is_null($tmp) ;
+    }
+
+    # foreach(@{$self->{list}}) {
+    #    $tmp = $_->{a};
+    #    return $tmp unless Set::Infinite::Element_Inf::is_null($tmp) ;
+    # }
+
     # print " min:null /min> ";
-    return Set::Infinite::Element_Inf::null;  
+    return undef;   # Set::Infinite::Element_Inf::null;  
 };
 
 sub max { 
     my ($self) = shift;
     my $tmp;
     my $i;
-    my $tmp_ptr;  # perl bug? too deep - maybe due to autovivification
+    ## my $tmp_ptr;  # perl bug? too deep - maybe due to autovivification
 
     $self->trace(title=>"max"); 
 
-    for($i = $#{$self->{list}}; $i >= 0; $i--) {
-        $tmp_ptr = $self->{list}->[$i];
-        $tmp = $tmp_ptr->{b};
-        #print "max:$tmp ";
-        return $tmp unless Set::Infinite::Element_Inf::is_null($tmp) ;
+    if ($self->{too_complex}) {
+        # print " max ",$self->{method}," ",$self->{parent}->max,"\n";
+        if ($self->{method} eq 'quantize') {
+            $tmp = $self->{parent}->max;
+            return $tmp if ($tmp == &inf) or ($tmp == -&inf);
+            return $self->new( $tmp )->quantize( @{$self->{param}} )->max;
+        }
     }
-    return Set::Infinite::Element_Inf::null; 
+
+    for($i = $#{$self->{list}}; $i >= 0; $i--) {
+        ## $tmp_ptr = $self->{list}->[$i];
+        ## $tmp = $tmp_ptr->{b};
+
+        next unless defined $self->{list}[$i];
+        $tmp = $self->{list}[$i]{b};
+
+        #print "max:$tmp ";
+        return $tmp;  # unless Set::Infinite::Element_Inf::is_null($tmp) ;
+    }
+    return undef;   # Set::Infinite::Element_Inf::null; 
 };
 
 sub size { 
@@ -914,8 +993,17 @@ sub size {
     my $tmp;
     # $self->cleanup;
     # print " [INF:SIZE:$self->{list}->[0]->{b} - $self->{list}->[0]->{a} ] \n";
+
+    if ($self->{too_complex}) {
+        # print " max ",$self->{method}," ",$self->{parent}->max,"\n";
+        if ($self->{method} eq 'quantize') {
+            return $self->max - $self->min;
+        }
+    }
+
     my $size = $self->{list}->[0]->{b} - $self->{list}->[0]->{a};
     foreach(1 .. $#{$self->{list}}) {
+        next unless defined $self->{list}->[$_];
         $size += $self->{list}->[$_]->{b} - $self->{list}->[$_]->{a};
     }
     return $size; 
@@ -928,6 +1016,7 @@ sub span {
 
 sub spaceship {
     my ($tmp1, $tmp2, $inverted) = @_;
+    carp "Can't compare unbounded sets" if $tmp1->{too_complex} or $tmp2->{too_complex};
     if ($inverted) {
         ($tmp2, $tmp1) = ($tmp1, $tmp2);
     }
@@ -948,10 +1037,16 @@ sub no_cleanup {
 
 sub cleanup {
     my ($self) = shift;
+    return $self if $self->{too_complex};
     return $self if $self->{cant_cleanup};     # quantize output is "virtual", can't be cleaned
 
     $_ = 1;
     while ( $_ <= $#{$self->{list}} ) {
+        # unless (defined $self->{list}->[$_]) {
+        #    splice (@{$self->{list}}, $_, 1);
+        #    next;
+        # }
+
         my @tmp = _simple_union($self->{list}->[$_],
             $self->{list}->[$_ - 1], 
             $self->{tolerance});
@@ -969,6 +1064,8 @@ sub cleanup {
 
 
 #-------- tolerance, integer, real
+
+# TODO: make tolerance, integer, real -> function methods
 
 sub tolerance {
     my $tmp = pop;
@@ -1162,7 +1259,9 @@ __END__
 
     $a->backtrack($b);
 
-    $a->fixtype;
+    $a->fixtype; 
+
+    $a->numeric;
 
 =head1 Notes on Dates
 

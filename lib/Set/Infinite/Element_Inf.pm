@@ -12,7 +12,6 @@
 Global:
     infinite        returns an 'infinity' number.
     minus_infinite  returns '-infinity' number.
-    null            returns 'null'.
 
 =head1 DESCRIPTION
 
@@ -22,8 +21,6 @@ Global:
 =head1 TODO
 
     infinite($i)    chooses 'infinity' name. default is 'inf'
-
-    null($i)        chooses 'null' name. default is 'null'
 
 
 =head1 AUTHOR
@@ -35,11 +32,12 @@ Global:
 require Exporter;
 
 package Set::Infinite::Element_Inf;
-$VERSION = "0.17";
+$VERSION = "0.18";
 
 @ISA = qw(Exporter);
 @EXPORT = qw();
-@EXPORT_OK = qw(infinite minus_infinite minus_inf null is_null elem_undef inf);
+@EXPORT_OK = qw(infinite minus_infinite minus_inf null is_null elem_undef inf
+  o_infinite o_minus_infinite);
 
 use strict;
 use Carp;
@@ -52,15 +50,15 @@ use overload
     fallback => 1;
 
 
-our $infinite       = 'inf';
-our $null           = '';    # changed in 0.21
-our $undef          = 'undef';
-our $minus_infinite = "-$infinite";
+our $infinite       = rand() * 1e100;   # 'inf' is some very random constant;
+our $null           = undef;   
+our $undef          = undef;
+our $minus_infinite = -$infinite;  
 
 our $o_infinite =       bless \$infinite,       __PACKAGE__;
 our $o_minus_infinite = bless \$minus_infinite, __PACKAGE__;
-our $o_null =           bless \$null,           __PACKAGE__;
-our $o_elem_undef =     bless \$undef,          __PACKAGE__;
+our $o_null =           undef;   
+our $o_elem_undef =     undef;  
 
 sub infinite ()       { $o_infinite }
 sub inf ()            { $o_infinite }
@@ -69,171 +67,19 @@ sub minus_inf ()      { $o_minus_infinite }
 sub null ()           { $o_null }
 sub elem_undef ()     { $o_elem_undef }
 
-sub as_string ()      { ${$_[0]} }
+sub as_string ()      { ${$_[0]} == $infinite ? 'inf' : '-inf' }
 
-our %null = (
-    ''       => 1,
-    $null    => 1
-);
+sub is_null           { ! defined $_[-1] }
 
-sub is_null {
-    my $self = pop;
-    return 1 unless defined($self);
-    ref($self) ne __PACKAGE__ ? 0 : $null{$self};
-}
+sub add { ${$_[0]} == $infinite ? $o_infinite : $o_minus_infinite }
 
-our %add = (
-    '' => { 
-        ''            => $o_null,    
-        '0'           => 0,    
-        $null         => $o_null,    
-        $infinite     => $o_infinite,
-        $minus_infinite => $o_minus_infinite },
-    '0' => { 
-        ''            => 0,    
-        '0'           => 0,    
-        $null         => 0,    
-        $infinite     => $o_infinite,
-        $minus_infinite => $o_minus_infinite },
-    $null => { 
-        ''            => $o_null,    
-        '0'           => 0,    
-        $null         => $o_null,    
-        $infinite     => $o_infinite,
-        $minus_infinite => $o_minus_infinite },
-    $infinite => { 
-        ''            => $o_infinite,    
-        '0'           => $o_infinite,    
-        $null         => $o_infinite,    
-        $infinite     => $o_infinite,
-        $minus_infinite => $o_elem_undef },
-    $minus_infinite => { 
-        ''            => $o_minus_infinite,    
-        '0'           => $o_minus_infinite,    
-        $null         => $o_minus_infinite,    
-        $infinite     => $o_elem_undef,
-        $minus_infinite => $o_minus_infinite }
-);
+our @inverted = ( $infinite, $minus_infinite );
 
-our %sub = (
-    '' => {  
-        ''              => $o_null,    
-        '0'             => 0,    
-        $null           => $o_null,    
-        $infinite       => $o_minus_infinite,
-        $minus_infinite => $o_infinite },
-    '0' => { 
-        ''              => 0,    
-        '0'             => 0,    
-        $null           => 0,    
-        $infinite       => $o_minus_infinite,
-        $minus_infinite => $o_infinite },
-    $null => { 
-        ''              => $o_null,    
-        '0'             => 0,    
-        $null           => $o_null,    
-        $infinite       => $o_minus_infinite,
-        $minus_infinite => $o_infinite },
-    $infinite => { 
-        ''              => $o_infinite,    
-        '0'             => $o_infinite,    
-        $null           => $o_infinite,    
-        $infinite       => $o_elem_undef,
-        $minus_infinite => $o_infinite },
-    $minus_infinite => { 
-        ''              => $o_minus_infinite,    
-        '0'             => $o_minus_infinite,    
-        $null           => $o_minus_infinite,    
-        $infinite       => $o_minus_infinite,
-        $minus_infinite => $o_elem_undef }
-);
-
-# 0 ne null !
-our %cmp = (
-    '' => { 
-        ''            => 0,    
-        '0'           => 0,    
-        $null         => 0,    
-        $infinite     => -1,
-        $minus_infinite => 1 },
-    '0' => { 
-        ''            => 0,    
-        '0'           => 0,    
-        $null         => 1,    
-        $infinite     => -1,
-        $minus_infinite => 1 },
-    $null => { 
-        ''            => 0,    
-        '0'           => -1,    
-        $null         => 0,    
-        $infinite     => -1,
-        $minus_infinite => 1 },
-    $infinite => { 
-        ''              => 1,    
-        '0'             => 1,    
-        $null           => 1,    
-        $infinite       => 0,
-        $minus_infinite => 1 },
-    $minus_infinite => { 
-        ''              => -1,    
-        '0'             => -1,    
-        $null           => -1,    
-        $infinite       => -1,
-        $minus_infinite => 0 }
-);
-
-sub add {
-    my ($tmp1, $tmp2) = @_;
-    my $stmp1 =  "$tmp1";
-    my $stmp2 =  "$tmp2";
-    my $tmp = $add{$stmp1}{$stmp2};
-    return $tmp               if defined($tmp);
-    return infinite           if $stmp1 eq $infinite;
-    return minus_infinite     if $stmp1 eq $minus_infinite;
-    return infinite           if $stmp2 eq $infinite;
-    return minus_infinite     if $stmp2 eq $minus_infinite;
-    return $tmp1              if $null{$stmp2};
-    return $tmp2              if $null{$stmp1};
-    $tmp1 + $tmp2;
-}
-
-sub sub {
-    my ($tmp1, $tmp2, $inverted) = @_;
-    if ($inverted) {
-        ($tmp2, $tmp1) = ($tmp1, $tmp2);
-    }
-    my $stmp1 =  "$tmp1";
-    my $stmp2 =  "$tmp2";
-    my $tmp = $sub{$stmp1}{$stmp2};
-    return $tmp if defined($tmp);
-    return $tmp1            if $null{$stmp2};
-    return - $tmp2          if $null{$stmp1};
-    return infinite         if $stmp1 eq $infinite;
-    return minus_infinite   if $stmp1 eq $minus_infinite;
-    return minus_infinite   if $stmp2 eq $infinite;
-    return infinite         if $stmp2 eq $minus_infinite;
-    $tmp1 - $tmp2;
-}
+sub sub { ${$_[0]} == $inverted[$_[2]] ? $o_infinite : $o_minus_infinite }
 
 sub spaceship {
-    my ($tmp1, $tmp2, $inverted) = @_;
-    my ($stmp1, $stmp2);
-    $tmp2 = "" unless defined($tmp2);
-    if ($inverted) {
-        ($tmp2, $tmp1) = ($tmp1, $tmp2);
-    }
-    $stmp1 = "$tmp1";
-    $stmp2 = "$tmp2";
-    my $tmp = $cmp{$stmp1}{$stmp2};
-    return $tmp if defined($tmp);
-    return 1    if $null{$stmp2};
-    return -1   if $null{$stmp1};
-    return 0    if $stmp1 eq $stmp2;      
-    return 1    if $stmp1 eq $infinite;
-    return -1   if $stmp2 eq $infinite;    
-    return -1   if $stmp1 eq $minus_infinite; 
-    return 1    if $stmp2 eq $minus_infinite; 
-    $tmp1 <=> $tmp2; 
+    return 0 if ${$_[0]} == $_[1];
+    ${$_[0]} == $inverted[$_[2]] ? 1 : -1;
 }
 
 1;

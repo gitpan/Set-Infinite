@@ -72,15 +72,10 @@ sub FETCHSIZE {
 }
 
 sub FETCH {
-	my ($self) = shift;
-	my $index = shift;
-	if ($index and (exists $self->{cache}->{$index})) {
-		# print "*";
-		return $self->{cache}->{$index};
-	}
+	my $self = $_[0];  # shift;
+	my $index = $_[1];  # shift;
+	return $self->{cache}->{$index} if exists $self->{cache}->{$index};
 	my $this;
-	# my $return;
-	my $dummy;
 	my $tmp;
 	
 	my $parent_list = $self->{parent}->{list};
@@ -102,15 +97,11 @@ sub FETCH {
 			# print " [select:ovf $this < ", $parent_list->[$this-2], " & ", $parent_list->[$this-1], " & ", $parent_list->[$this], " > ";
 			$this = $parent_size;
 			# print "--> $this $parent_size \n";
-			$dummy = $parent_list->[$this-1];  # instantiate or get a "Can't use an undefined value as a HASH reference"
-			if (Set::Infinite::Element_Inf::is_null($parent_list->[$this-1]->{a})) {
-				$this-- if $this;  # handle 30-day month
-				# may not need this:
-				# print "--> $this $parent_size \n";
-				$dummy = $parent_list->[$this-1];  # instantiate
-				if (Set::Infinite::Element_Inf::is_null($parent_list->[$this-1]->{a})) {
-					$this-- if $this;  # handle 29-day month
-				}
+			unless (defined $parent_list->[$this-1]) {  
+			    $this-- if $this;  # handle 30-day month
+			    unless (defined $parent_list->[$this-1]) { 
+			        $this-- if $this;  # handle 29-day month
+			    }
 			}
 			# print " [2] $this]\n";
 		}
@@ -119,18 +110,14 @@ sub FETCH {
 
 	if (($this > $parent_size) or ($this < 0)) { 
 		# print " [select:out $this] \n";
-		$self->{cache}->{$index} = Set::Infinite::_simple_null;
-		return $self->{cache}->{$index};
+		return $self->{cache}->{$index} = undef; 
 	}
 
 	$tmp = $parent_list->[$this];
 	if ($self->{strict} and not ($self->{strict}->intersects($tmp))) {
-		$tmp = Set::Infinite::_simple_null;
+		return $self->{cache}->{$index} = undef;
 	}
-
-	$self->{cache}->{$index} = $tmp;
-	# print " [select: $self->{cache}->{$index}] \n";
-	return $tmp;
+	return $self->{cache}->{$index} = $tmp;
 }
 
 

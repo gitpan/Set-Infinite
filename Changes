@@ -1,5 +1,12 @@
 Revision history for Perl extension Set::Infinite.
 
+0.36_36
+    complement backtracks, although not it might fail for some sets
+        (not tested at all!)
+    min/max/span/size are estimated for complex sets
+        might work for select() too.
+    list(), <=> carp for unbounded sets
+
 0.36_11
     backtrack method call is cleaner
 

@@ -1,8 +1,22 @@
 Set::Infinite TODO 
 
+    - create some "chunk size" estimation, to take elements
+      from unbounded sets ("numerically" instead of using equations)
+
+    - find out how to correctly (inheritable) declare module global vars
+
     - verify POD format and contents; mix POD and program
 
+    - make Set::Infinite::Date inherit Set::Infinite; 
+      make Set::Infinite::Date::Element a leaf-node
+      move all date arithmetic/gmtime/timegm into 
+          Set::Infinite::Date::Arithmetic (maybe)
+      remove ICal.pm
     - move $self->{mode} to "Date" only.
+    - rename Set::Infinite::Element_Inf Set::Infinite::Infinity
+    - find out how to use Perl's Infinity
+
+    - find out how to compare unbounded sets
 
 BACKTRACK
 
@@ -96,6 +110,10 @@ SYNTAX
 	think about: some "if-else" mechanism
 
 TESTS
+
+        more tests for min/max/span/size on too_complex sets
+
+        tests for complement() backtracking 
 
 	make t/icalset.t
 

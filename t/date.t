@@ -37,7 +37,7 @@ sub test {
 	}
 	else {
 		print "not ok $test"; # \n\t# expected \"$expected\" got \"$result\"";
-		print "\n\t# $sub expected \"$expected\" got \"$result\"";
+		print "\n\t# $sub expected \"$expected\" got \"$result\" $@";
 		$errors++;
 	}
 	print " \n";

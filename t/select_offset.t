@@ -13,6 +13,8 @@ use warnings;
 my $test = 0;
 my ($result, $errors);
 
+# $Set::Infinite::TRACE = 1;
+
 sub test {
 	my ($header, $sub, $expected) = @_;
 	$test++;

@@ -105,7 +105,7 @@ test ("(0,0) intersection to null : ",'$a->intersection()',"");
 
 test ("(0,0) intersects to 0    : ",'$a->intersects(0)',"1");
 test ("(0,0) intersection to 0    : ",'$a->intersection(0)',"0");
-test ("is-null : ",'$a->is_null',"0");
+test ("is-null : ",'$a->is_null',"");
 
 $a = Set::Infinite->new();
 test ("(0,0) union to null : ",'$a->union(0,0)',"0");

@@ -27,14 +27,14 @@ sub test {
 	}
 	else {
 		print "not ok $test"; # \n\t# expected \"$expected\" got \"$result\"";
-		print "\n\t# $sub expected \"$expected\" got \"$result\"";
+		print "\n\t# $sub expected \"$expected\" got \"$result\" $@";
 		$errors++;
 	}
 	print " \n";
 }
 
 
-print "1..19\n";
+print "1..22\n";
 
  $a = Set::Infinite->new([-&inf,15]);
  $a_quant = $a->quantize(quant => 1);
@@ -47,11 +47,18 @@ print "1..19\n";
 	# print "q = ",$q,"\n";
 	test ('', '$q', $Set::Infinite::too_complex);
 
-# 2 scalar
+# 2-5 quantize has min/max
+    # print " q $q ",$q->min," $q ",$q->max," ", $q->intersection($finite),"\n";        test ('', '$q->min', '-inf');
+        test ('', '$q->max', '16'  );
+        test ('', '$q->span', '(-inf..16]'  );
+        test ('', '$q->size', 'inf'  );
+
+
+# 6 scalar
 	# print "r = ",$q->intersection(10,20),"\n";
 	test ('', '$q->intersection(10,20)', '[10..16)');
 
-# 3 "date"
+# 7 "date"
 	$a = Set::Infinite->new([-&inf,3800]);
 	# print "s = ",$a->quantize(quant => 1, unit => 'hours')->intersection(1000,15000),"\n";
 	test ('', '$a->quantize(quant => 1, unit => \'hours\')->intersection(1000,15000)', 

@@ -15,6 +15,7 @@ use warnings;
 
 use Set::Infinite; 
 
+# $Set::Infinite::TRACE = 1;
 
 my $test = 0;
 my ($result, $errors);
@@ -29,7 +30,7 @@ sub test {
 	}
 	else {
 		print "not ok $test"; # \n\t# expected \"$expected\" got \"$result\"";
-		print "\n\t# $sub expected \"$expected\" got \"$result\"";
+		print "\n\t# $sub expected \"$expected\" got \"$result\" $@";
 		$errors++;
 	}
 	print " \n";
@@ -41,6 +42,12 @@ print "1..8\n";
 #print "1: \n";
 $a = Set::Infinite->new([1,3]);
 #print join (" ",@{$a->quantize(quant => 1)}),"\n";
+
+# $a = $a->quantize(quant => 1);
+# $a = $a->compact;
+# our @a = $a->list;
+# exit;
+
 test ( '', ' join (" ", $a->quantize(quant => 1)->compact->list ) ',
 	"[1..2) [2..3) [3..4)");
 
