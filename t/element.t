@@ -7,6 +7,7 @@
 #
 
 use Set::Infinite::Element qw(infinite);
+use Set::Infinite::Element_Inf qw(inf);
 
 my $errors = 0;
 my $test = 0;
@@ -23,7 +24,8 @@ sub test {
 		print "ok $test";
 	}
 	else {
-		print "not ok $test"; # \n\t# expected \"$expected\" got \"$result\"";
+		print "not ok $test"; 
+		print "\n\t# expected \"$expected\" got \"$result\"";
 		$errors++;
 	}
 	print " \n";
@@ -51,12 +53,12 @@ $a = Set::Infinite::Element->new(0);
 test ("0",		'$a',	'0');
 
 test ("infinite",
-	'Set::Infinite::Element->new($Set::Infinite::Element::infinite)', "inf");
+	'Set::Infinite::Element->new(inf)', inf);
 
-$a = Set::Infinite::Element->new($Set::Infinite::Element::infinite);
+$a = Set::Infinite::Element->new(inf);
 test ("infinite", '$a', 'inf');
 
-$a = Set::Infinite::Element->new("-$Set::Infinite::Element::infinite");
+$a = Set::Infinite::Element->new(- inf);
 test ("-infinite", '$a', '-inf');
 
 $a = - Set::Infinite::Element->new(infinite);
@@ -65,41 +67,41 @@ test ("-infinite", '$a', '-inf');
 #print "Testing sort\n";
 
 test ("-infinite cmp infinite", '
-  Set::Infinite::Element->new("-$Set::Infinite::Element::infinite") cmp
-  Set::Infinite::Element->new("$Set::Infinite::Element::infinite")', "-1");
+  Set::Infinite::Element->new(- inf) cmp
+  Set::Infinite::Element->new(inf)', "-1");
 test ("-infinite cmp 10", '
-  Set::Infinite::Element->new("-$Set::Infinite::Element::infinite") cmp
+  Set::Infinite::Element->new(- inf) cmp
   Set::Infinite::Element->new("10")', "-1");
 test ("-infinite cmp 10", '
-  Set::Infinite::Element->new("-$Set::Infinite::Element::infinite") cmp
+  Set::Infinite::Element->new(- inf) cmp
   10', "-1");
 test ("-infinite cmp 0", 
-  'Set::Infinite::Element->new("-$Set::Infinite::Element::infinite") cmp
+  'Set::Infinite::Element->new(- inf) cmp
   0', "-1");
 
 test ("infinite cmp -infinite", 
-  'Set::Infinite::Element->new("$Set::Infinite::Element::infinite") cmp
-  Set::Infinite::Element->new("-$Set::Infinite::Element::infinite")', "1");
+  'Set::Infinite::Element->new(inf) cmp
+  Set::Infinite::Element->new(- inf)', "1");
 test ("infinite cmp -1", 
-  'Set::Infinite::Element->new("$Set::Infinite::Element::infinite") cmp
+  'Set::Infinite::Element->new(inf) cmp
   -1', "1");
 test ("infinite cmp 0", 
-  'Set::Infinite::Element->new("$Set::Infinite::Element::infinite") cmp
+  'Set::Infinite::Element->new(inf) cmp
   0', "1");
 test ("infinite cmp 1", 
-  'Set::Infinite::Element->new("$Set::Infinite::Element::infinite") cmp
+  'Set::Infinite::Element->new(inf) cmp
   1', "1");
 test ("infinite cmp 2", 
-  'Set::Infinite::Element->new("$Set::Infinite::Element::infinite") cmp
+  'Set::Infinite::Element->new(inf) cmp
   2', "1");
 
 test ("infinite cmp inf", 
-  'Set::Infinite::Element->new("$Set::Infinite::Element::infinite") cmp
-  "inf"', "0");
+  'Set::Infinite::Element->new(inf) cmp
+  inf', "0");
 
 test ("-infinite cmp -inf", 
-  'Set::Infinite::Element->new("-$Set::Infinite::Element::infinite") cmp
-  "-inf"', "0");
+  'Set::Infinite::Element->new(- inf) cmp
+  - inf', "0");
 
 @a = (
 	1, 0, infinite,	3, 2, 0 - infinite, 5, 4, infinite
@@ -112,13 +114,13 @@ test ("Sorted", 'join(",", @b)', "-inf,0,1,2,3,4,5,inf,inf");
 #print "Testing add, sub\n";
 #test ("(infinite is ", infinite, ")\n";
 test ("1 + 2",'Set::Infinite::Element->new(1) + Set::Infinite::Element->new(2)', "3");
-test ("1 + inf",'Set::Infinite::Element->new(1) + Set::Infinite::Element->new("inf")', "inf");
-test ("1 - inf",'Set::Infinite::Element->new(1) - Set::Infinite::Element->new("inf")', "-inf");
+test ("1 + inf",'Set::Infinite::Element->new(1) + Set::Infinite::Element->new(inf)', inf);
+test ("1 - inf",'Set::Infinite::Element->new(1) - Set::Infinite::Element->new(inf)', - inf);
 
 #print "Testing literals\n";
 # test ("a + b",'Set::Infinite::Element->new("a") + Set::Infinite::Element->new("b")', "0");
-test ("a + inf",'Set::Infinite::Element->new("a") + Set::Infinite::Element->new("inf")', "inf");
-test ("a - inf",'Set::Infinite::Element->new("a") - Set::Infinite::Element->new("inf")', "-inf");
+test ("a + inf",'Set::Infinite::Element->new("a") + Set::Infinite::Element->new(inf)', inf);
+test ("a - inf",'Set::Infinite::Element->new("a") - Set::Infinite::Element->new(inf)', - inf);
 
 @a = (
 	'c','a','b', 1, 0, infinite,	3, 2, 0 - infinite, 5, 4, infinite

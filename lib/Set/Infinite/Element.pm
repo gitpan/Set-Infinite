@@ -21,17 +21,11 @@
 	tie $a, 'Set::Infinite::Element', 1;
 
 Global:
-	infinite		returns an 'infinite' number.
-	minus_infinite	returns '-infinite' number.
-	null			returns 'null'.
-
-	infinite($i)	chooses 'infinite' name. default is 'inf'
 
 	type($i)	chooses an object data type. 
-		default is none (a normal perl $something variable).
+		default is none (a normal perl $something scalar).
 		example: 'Math::BigFloat', 'Math::BigInt'
 
-	null($i)		chooses 'null' name. default is 'null'
 
 =head1 DESCRIPTION
 
@@ -47,6 +41,19 @@ Global:
 	BigFloat members sort wrongly when mixed with Real members. 
 	It looks like a BigFloat 'cmp' problem.
 
+=head1 CHANGES
+
+v.0.15
+
+	Functions moved to Element_Inf:
+
+	infinite		returns an 'infinite' number.
+	minus_infinite	returns '-infinite' number.
+	null			returns 'null'.
+
+	infinite($i)	chooses 'infinite' name. default is 'inf'
+	null($i)		chooses 'null' name. default is 'null'
+
 =head1 AUTHOR
 
 	Flavio Soibelmann Glock <fglock@pucrs.br>
@@ -56,12 +63,12 @@ Global:
 require Exporter;
 
 package Set::Infinite::Element;
-$VERSION = "0.13";
+$VERSION = "0.15";
 
 my $package        = 'Set::Infinite::Element';
 @ISA = qw(Exporter);
 @EXPORT = qw();
-@EXPORT_OK = qw(infinite minus_infinite type null quantizer is_null);
+@EXPORT_OK = qw(infinite minus_infinite type null quantizer is_null inf);
 
 use strict;
 use Carp;
@@ -74,9 +81,16 @@ use overload
 	qw("" as_string),
 	fallback => 1;
 
+use Set::Infinite::Element_Inf qw(infinite minus_infinite null inf);
+
+sub inf();
+sub infinite();
+sub minus_infinite();
+sub null();
+
 our $type = '';
-our $infinite  = 'inf';
-our $null      = 'null';
+our $infinite  = Set::Infinite::Element_Inf::infinite;
+our $null      = Set::Infinite::Element_Inf::null;
 our $quantizer = 'Set::Infinite::Quantize';
 
 sub type {
@@ -123,39 +137,18 @@ sub quantize {
 	return @a;
 }
 
-sub infinite {
- 	$infinite = shift if @_;
-	return Set::Infinite::Element->new($infinite);
-}
-
-sub minus_infinite {
-	return Set::Infinite::Element->new("-$infinite");
-}
-
-sub null {
-	$null = shift if @_;
-	return $null;
-}
-
 sub is_null {
-	my $self = shift;
+	my $self = pop;
 	my $tmp = $self->{v} . "";
-	return (($tmp eq null) or ($tmp eq "")) ? 1 : 0;
+	return Set::Infinite::Element_Inf::is_null($tmp);
+
+	# return (($tmp eq null) or ($tmp eq "")) ? 1 : 0;
 }
 
 sub add {
 	my ($tmp1, $tmp2) = @_;
 
 	$tmp2 = Set::Infinite::Element->new($tmp2); # unless ref($tmp2) eq 'Set::Infinite::Element';
-
-	my $stmp1 = "" . $tmp1->{v};
-	my $stmp2 = "" . $tmp2->{v};
-
-	return  infinite     	if $stmp1 eq $infinite;
-	return  minus_infinite  if $stmp1 eq "-$infinite";
-
-	return  infinite     	if $stmp2 eq $infinite;
-	return  minus_infinite  if $stmp2 eq "-$infinite";
 
 	$tmp2->{v} = $tmp2->{v} + $tmp1->{v};
 	return $tmp2;
@@ -168,17 +161,10 @@ sub sub {
 	my $tmp1 = $self;
 
 	if ($inverted) {
-		($tmp2, $tmp1) = ($tmp1, $tmp2);
+		# ($tmp2, $tmp1) = ($tmp1, $tmp2);
+		$tmp2->{v} = $tmp2->{v} - $tmp1->{v};
+		return $tmp2;
 	}
-
-	my $stmp1 = "" . $tmp1->{v};
-	my $stmp2 = "" . $tmp2->{v};
-
-	return infinite     	if $stmp1 eq $infinite;
-	return minus_infinite  	if $stmp1 eq "-$infinite";
-
-	return minus_infinite  	if $stmp2 eq $infinite;
-	return infinite     	if $stmp2 eq "-$infinite";
 
 	$tmp2->{v} = $tmp1->{v} - $tmp2->{v};
 	return $tmp2;
@@ -190,11 +176,16 @@ sub spaceship {
 	my ($stmp1, $stmp2);
 
 	# print " [ELEM:CMP:",ref($tmp1),"=$tmp1 <=> ",ref($tmp2),"=$tmp2] \n";
-	if (ref($tmp2)) {
-		$tmp2 = Set::Infinite::Element->new($tmp2) unless ref($tmp2) eq 'Set::Infinite::Element';
+	# if (ref($tmp2)) {
+
+	if (ref($tmp2) eq __PACKAGE__) {
 		$tmp2 = $tmp2->{v};
+		# }
+
+		# $tmp2 = Set::Infinite::Element->new($tmp2) unless ref($tmp2) eq __PACKAGE__;
+		# $tmp2 = $tmp2->{v};
 	} else {
-		$tmp2 = '' unless (defined($tmp2)); 	# keep warnings quiet
+		$tmp2 = null unless (defined($tmp2)); 	# keep warnings quiet
 	}
 
 	# my $tmp1 = $self;
@@ -207,27 +198,14 @@ sub spaceship {
 	$stmp1 = "$tmp1";
 	$stmp2 = "$tmp2";
 
-	if    ($stmp1 eq $stmp2) 		{ $res = 0; }
-	elsif ($stmp2 eq "")    	 	{ $res = 1; }
-	elsif ($stmp1 eq "")    	 	{ $res = -1; }
-	elsif ($stmp1 eq $infinite) 	{ $res = 1; }
-	elsif ($stmp2 eq $infinite) 	{ $res = -1; }
-	elsif ($stmp1 eq "-$infinite") 	{ $res = -1; }
-	elsif ($stmp2 eq "-$infinite") 	{ $res = 1; }
-	elsif ($stmp1 eq $null)     	{ $res = -1; }
-	elsif ($stmp2 eq $null)     	{ $res = 1; }
-	else { 
-		# these are used instead of '<=>' because of a problem with BigFloat
+	# if    ($stmp1 eq $stmp2) { $res = 0; }
+	# else { 
 
-		my $tmp = ($tmp1 - $tmp2);
-		$res = 0  if $tmp == 0; 
-		$res = 1  if $tmp > 0; 
-		$res = -1 if $tmp < 0; 
+	$res = ( $tmp1 <=> $tmp2 ); 
+	$res = ( $stmp1 cmp $stmp2 ) unless $res; 
 
-		#$res = ( $tmp1 <=> $tmp2 ); 
-
-		$res = ( $stmp1 cmp $stmp2 ) unless $res; 
-	}
+	#}
+	# print " [ELEM:CMP:",ref($tmp1),"=$tmp1 <=> ",ref($tmp2),"=$tmp2 = $res] \n";
 	return $res;
 }
 
@@ -239,28 +217,26 @@ sub new {
 	my ($self) = bless {}, shift;
 	my $val = shift;
 
-	$val = '' unless defined($val);
-
-	if ( ref($val) eq 'Set::Infinite::Element' ) {
-		$self->{v} = $val->{v};
+	unless (defined($val)) {
+		$self->{v} = '';
 		return $self;
 	}
 
-	if ( ref(\$val) eq 'REF' ) {
+	if ( ref(\$val) eq 'REF' ) {
+		if ( ref($val) eq __PACKAGE__ ) {
+			$self->{v} = $val->{v};
+			return $self;
+		}
+		#print " [REF:$val] ";
 		$self->{v} = $val;
 		return $self;
 	}
 
-	if (	($type ne '') and 
-		($val ne '') and 
-		($val ne $null) and  
-		($val ne $infinite) and  
-		($val ne "-$infinite") )  
-	{
-			$self->{v} = new $type $val;
+	if ($type) {
+		$self->{v} = new $type $val;
 	}
 	else {
-			$self->{v} = $val;
+		$self->{v} = $val;
 	}
 
 	return $self;

@@ -1,5 +1,9 @@
 Revision history for Perl extension Set::Infinite.
 
+0.15
+	20% speed improvement in tests over version 0.14.
+	bigint.t fails; moved to 'todo' directory.
+
 0.14
 	Problems with Bigfloat tests - can't fix them. Moved to `todo' directory.
 	Fixed Bigint tests and warnings in other tests.

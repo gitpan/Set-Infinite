@@ -19,12 +19,12 @@ our %EXPORT_TAGS = ( 'all' => [ qw(
 	
 ) ] );
 
-our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(type) );
+our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(type inf) );
 
 our @EXPORT = qw(
 	
 );
-our $VERSION = '0.14';
+our $VERSION = '0.15';
 
 
 # Preloaded methods go here.
@@ -43,9 +43,15 @@ my $package        = 'Set::Infinite';
 #);
 
 use Set::Infinite::Simple qw(
-	infinite minus_infinite separators null type quantizer	
+	infinite minus_infinite separators null type quantizer inf
 ); 
 # ... tolerance integer real
+
+sub inf();
+sub infinite();
+sub minus_infinite();
+sub null();
+
 
 use overload
 	'<=>' => \&spaceship,
@@ -174,36 +180,46 @@ LOOP:
 		return $self unless defined($tmp);
 
 		# is it an array?
+		#print " [INF:ADD:",ref($tmp),"=$tmp]\n";
 		if (ref($tmp) eq 'ARRAY') {
 			my @tmp = @{$tmp};
 
 			# print " INF:ARRAY:",@tmp," ";
 
+			# Allows arrays of arrays
 			$tmp = Set::Infinite->new(@tmp) ;
 			foreach (@{$tmp->{list}}) {
 				push @{ $self->{list} }, Set::Infinite::Simple->new($_) ;
 			}
 
+
+			#$tmp = Set::Infinite::Simple->new(@tmp) ;
+			#push @{ $self->{list} }, $tmp ;
+
 			goto LOOP;
 		}
 		# does it have a "{list}"?
-		elsif ((ref(\$tmp) eq 'REF') and defined ($tmp->{list})) {
-			foreach (@{$tmp->{list}}) {
-				push @{ $self->{list} }, Set::Infinite::Simple->new($_) ;
+		elsif ((ref(\$tmp) eq 'REF')) {
+			if (($tmp->isa(__PACKAGE__))) {   # and defined ($tmp->{list})) {
+				foreach (@{$tmp->{list}}) {
+					push @{ $self->{list} }, Set::Infinite::Simple->new($_) ;
+				}
+				goto LOOP;
+			}
+			# does it have a "{a},{b}"?
+			elsif (($tmp->isa("Set::Infinite::Simple")) ) {  # and (not $tmp->is_null)) {
+				push @{ $self->{list} }, Set::Infinite::Simple->new($tmp) ;
+				goto LOOP;
 			}
 		}
-		# does it have a "{a},{b}"?
-		elsif ((ref(\$tmp) eq 'REF') and defined ($tmp->{a})) {
-			push @{ $self->{list} }, Set::Infinite::Simple->new($tmp) ;
-		}
-		else {
+		# else {
 			my $tmp2 = shift @param;
 			$tmp = Set::Infinite::Simple->new($tmp,$tmp2);
 			$tmp->tolerance($self->{tolerance});
 			push @{ $self->{list} }, $tmp;
 
 			goto LOOP;
-		}
+		# }
 
 	return $self;
 }
@@ -254,11 +270,7 @@ sub spaceship {
 
 	if ($inverted) {
 		($tmp2, $tmp1) = ($tmp1, $tmp2);
-	}
-
-	#return 1 if ($tmp2 eq '');
-	#return 0  unless defined($tmp1->{list}) and defined($tmp2->{list});
-	#return -1 unless defined($tmp1->{list});
+	}
 
 	return $tmp1->min  <=> $tmp2->min  if ($tmp1->min  != $tmp2->min);
 	return $tmp1->size <=> $tmp2->size if ($tmp1->size != $tmp2->size);

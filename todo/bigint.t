@@ -7,7 +7,7 @@
 # This is work in progress
 #
 
-use Set::Infinite;
+use Set::Infinite qw(inf);
 
 my $errors = 0;
 my $test = 0;
@@ -26,6 +26,11 @@ sub test {
 	else {
 		print "not ok $test"; 
 		print "\n\t# expected \"$expected\" got \"$result\"";
+
+		# $result = 
+		foreach(0..length($result)) { print substr($expected,$_,1),substr($result,$_,1)," "; }
+		print "\n";
+
 		$errors++;
 	}
 	print " \n";
@@ -46,12 +51,12 @@ Set::Infinite::integer;
 
 # print "Union\n";
 
-$a = Set::Infinite->new(1,'inf');
+$a = Set::Infinite->new(1,inf);
 $a = $a->complement;
-# print " A is ", $a, "\n";
+#print " A is ", $a, "\n";
 test ("union A [2..3]  : ", '$a->union(2,3)', "(-inf..+1),[+2..+3]");
 
-$b = Set::Infinite->new('-inf',1)->complement;
+$b = Set::Infinite->new(- inf,1)->complement;
 test ("union $b : ", '$a->union($b)', "(-inf..+1),(+1..inf)");
 
 
@@ -63,7 +68,7 @@ $a = Set::Infinite->new(16, 17);
 test ("$a union (10..13)  ", '$a->union(10, 13)', "[+10..+13],[+16..+17]");
 
 # print "Operations on open sets\n";
-$a = Set::Infinite->new(1,'inf');
+$a = Set::Infinite->new(1,inf);
 test ("set : ", 	'$a', "[+1..inf)");
 $a = $a->complement;
 test ("[-inf,1) : ", 	'$a', "(-inf..+1)");
@@ -74,13 +79,13 @@ test ("union [-1..0] : ", '$a->union(-1,0)', "(-inf..+1)");
 test ("union [0..1]  : ", '$a->union(0,1)', "(-inf..+1]");
 test ("union [1..2]  : ", '$a->union(1,2)', "(-inf..+2]");
 test ("union [2..3]  : ", '$a->union(2,3)', "(-inf..+1),[+2..+3]");
-$b = Set::Infinite->new('-inf',1)->complement;
+$b = Set::Infinite->new(- inf,1)->complement;
 #test ("set : ", '$a, "");
 $c = $a->union($b);
 test ("union $b : ", 		'$c', "(-inf..+1),(+1..inf)");
 test ("  complement : ", 	'$c->complement',"+1");
-test ("union $c [1..inf) ", 	'$c->union(1,"inf")', "(-inf..inf)");
-test ("union $b [1..inf) ", 	'$b->union(1,"inf")', "[+1..inf)");
+test ("union $c [1..inf) ", 	'$c->union(1,inf)', "(-inf..inf)");
+test ("union $b [1..inf) ", 	'$b->union(1,inf)', "[+1..inf)");
 
 # print "Testing 'null' and (0..0)\n";
 

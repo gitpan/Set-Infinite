@@ -11,7 +11,7 @@ MANIFEST
 TODO
 Makefile.PL
 todo/bigfloat.t
-t/bigint.t
+todo/bigint.t
 t/date.t
 todo/element_bigfloat.t
 t/element.t

@@ -9,6 +9,7 @@
 
 
 use Set::Infinite::Simple qw(infinite minus_infinite);
+use Set::Infinite::Element_Inf qw(inf null);
 
 my $errors = 0;
 my $test = 0;
@@ -24,7 +25,8 @@ sub test {
 		print "ok $test";
 	}
 	else {
-		print "not ok $test"; # \n\t# expected \"$expected\" got \"$result\"";
+		print "not ok $test"; #
+		print "\n\t# $header expected \"$expected\" got \"$result\"";
 		$errors++;
 	}
 	# print "\n\t# $header expected \"$expected\" got \"$result\"";
@@ -66,7 +68,7 @@ test ("contains [4..15] ", $a->contains(4,15),  "0");
 test ("contains [15..16]", $a->contains(15,16), "0");
 
 # print "Operations on open sets\n";
-$a = Set::Infinite::Simple->new(1,'inf');
+$a = Set::Infinite::Simple->new(1,inf);
 test ("set", '$a', "[1..inf)");
 $a = $a->complement;
 test ("complement : ", '$a', "(-inf..1)");
@@ -83,7 +85,7 @@ test ("union [2..3]  : ", 'join(",",$a->union(2,3))',  "(-inf..1),[2..3]");
 $a = Set::Infinite::Simple->new();
 test ("null", '$a', "null");
 
-$a = Set::Infinite::Simple->new('null');
+$a = Set::Infinite::Simple->new(null);
 test ("null", '$a', "null");
 
 $a = Set::Infinite::Simple->new(undef);
@@ -114,14 +116,14 @@ test ("(0,0) intersection to (1,1) : ",'$a->intersection(1,1)->as_string',"null"
 # print "Testing ",infinite,"\n";
 
 $a = Set::Infinite::Simple->new(infinite);
-test ("infinite", '$a', "inf");
+test ("infinite", '$a', inf);
 
 $a = Set::Infinite::Simple->new(3,infinite);
 test ("(3 .. infinite)", '$a', "[3..inf)");
 
 test ("intersection (4,5) : ", '$a->intersection(4,5)',"[4..5]");
-test ("intersection (-infinite, 5)  : ", '$a->intersection("-inf",5)',"[3..5]");
-test ("intersection (-infinite, 5)  : ", '$a->intersection(-"inf",5)',"[3..5]");
+test ("intersection (-infinite, 5)  : ", '$a->intersection(- inf,5)',"[3..5]");
+test ("intersection (-infinite, 5)  : ", '$a->intersection(- inf,5)',"[3..5]");
 
 # print "Testing new\n";
 
@@ -226,16 +228,16 @@ test ("size", 	'tied(@a)->size', "4");
 
 # print "cmp\n";
 test ("(infinite) cmp inf", 
-  'Set::Infinite::Simple->new(infinite) cmp "inf"', "0");
+  'Set::Infinite::Simple->new(infinite) cmp inf', "0");
 test ("(-infinite) cmp -inf ", 
-  '(Set::Infinite::Simple->new(- infinite)) cmp "-inf"', "0");
+  '(Set::Infinite::Simple->new(- infinite)) cmp - inf', "0");
 
 # print "Complement:\n";
 test ("(1,1)  ", 	'Set::Infinite::Simple->new(1,1)->complement', "(1..inf)");
 test ("(null) ", 	'Set::Infinite::Simple->new()->complement', "(-inf..inf)");
-test ("(1,infinite)", 	'Set::Infinite::Simple->new(1,"inf")->complement', "(-inf..1)");
-test ("(-infinite,1)", 	'Set::Infinite::Simple->new("-inf",1)->complement', "(1..inf)");
-test ("(-infinite,infinite)", 	'Set::Infinite::Simple->new("-inf","inf")->complement', "null");
+test ("(1,infinite)", 	'Set::Infinite::Simple->new(1,inf)->complement', "(-inf..1)");
+test ("(-infinite,1)", 	'Set::Infinite::Simple->new(- inf,1)->complement', "(1..inf)");
+test ("(-infinite,infinite)", 	'Set::Infinite::Simple->new(- inf,inf)->complement', "null");
 test ("complement(10..20) (5,15) : ", 'Set::Infinite::Simple->new(10,20)->complement(5,15)', "(15..20]");
 
 # print "Integer Complement:\n";
@@ -244,11 +246,11 @@ test ("(1,1) ",
 test ("(null) ", 
 	'Set::Infinite::Simple->new()->integer->complement', "(-inf..inf)");
 test ("(1,infinite) ", 
-	'Set::Infinite::Simple->new(1,"inf")->integer->complement' , "(-inf..1)");
+	'Set::Infinite::Simple->new(1,inf)->integer->complement' , "(-inf..1)");
 test ("(-infinite,1) ", 
-	'Set::Infinite::Simple->new("-inf",1)->integer->complement', "(1..inf)");
+	'Set::Infinite::Simple->new(- inf,1)->integer->complement', "(1..inf)");
 test ("(-infinite,infinite) ", 
-	'Set::Infinite::Simple->new("-inf","inf")->integer->complement' , "null");
+	'Set::Infinite::Simple->new(- inf,inf)->integer->complement' , "null");
 test ("complement(10..20) (5,15) ", 
 	'Set::Infinite::Simple->new(10,20)->integer->complement(5,15)', "(15..20]");
 

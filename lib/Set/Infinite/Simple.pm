@@ -69,10 +69,7 @@
 Global:
 	separators(@i)	chooses the separators. 
 		default are [ ] ( ) '..' ','.
-
-	null($i)		chooses 'null' name. default is 'null'
-	infinite($i)	chooses 'infinite' name. default is 'inf'
-
+
 	infinite		returns an 'infinite' number.
 	minus_infinite	returns '- infinite' number.
 	null			returns 'null'.
@@ -95,6 +92,15 @@ Internal:
 
 	formatted string input like '[0..1]'
 
+=head1 CHANGES
+
+v0.15
+
+	Functions moved to Element_Inf:
+
+	null($i)		chooses 'null' name. default is 'null'
+	infinite($i)	chooses 'infinite' name. default is 'inf'
+
 =head1 SEE ALSO
 
 	Other options for working with sets:
@@ -115,21 +121,27 @@ Internal:
 require Exporter;
 
 package Set::Infinite::Simple;
-$VERSION = "0.13";
+$VERSION = "0.15";
 
 my $package        = 'Set::Infinite::Simple';
 @ISA = qw(Exporter);
 @EXPORT = qw();
 @EXPORT_OK = qw(
-	infinite minus_infinite separators null type
+	infinite minus_infinite separators null typeinf
 	tolerance integer real quantizer
 );
 
 use strict;
 use Carp;
-use Set::Infinite::Element qw(infinite minus_infinite type null
+use Set::Infinite::Element qw(infinite minus_infinite type nullinf
 	quantizer
 );
+
+sub inf();
+sub infinite();
+sub minus_infinite();
+sub null();
+
 
 use overload
 	'<=>' => \&spaceship,
@@ -176,20 +188,15 @@ sub open_begin {
 sub is_null {
 	my $self = shift;
 	return 1 unless defined($self->{a});
+	return $self->{a}->is_null;
 
-	my $tmp = $self->{a} . "";
-	return (($tmp eq null) or ($tmp eq "")) ? 1 : 0;
-
-	# return $self->{a}->is_null;
+	# my $tmp = $self->{a} . "";
+	# return (($tmp eq null) or ($tmp eq "")) ? 1 : 0;
 }
 
 sub intersects {
 	my $self = shift;
-	return $self->intersection(@_)->is_null ? 0 : 1;
-
-	#my $tmp = $self->intersection(@_);
-	#return 0 if ($tmp->{a} eq null) or ($tmp->{a} eq "");
-	#return 1;	
+	return $self->intersection(@_)->is_null ? 0 : 1;	
 }
 
 sub intersection {
@@ -260,11 +267,16 @@ sub complement {
 }
 
 sub union {
-	my $self = shift;
+	my $tmp1 = shift;
+	my @param = @_;
 	# my $b = shift;
 
-	my $tmp1 = Set::Infinite::Simple->new($self);
-	my $tmp2 = Set::Infinite::Simple->new(@_); 
+	#print " [SIM:UNION:@param] \n";
+
+	$tmp1 = Set::Infinite::Simple->new($tmp1);
+	my $tmp2 = Set::Infinite::Simple->new(@param); 
+
+	#print " [SIM:UNION:$tmp1 U $tmp2] \n";
 
 	return $tmp1 if $tmp2->is_null; # defined($tmp2->{a}) and defined($tmp2->{b});
 	return $tmp2 if $tmp1->is_null; # unless defined($tmp1->{a}) and defined($tmp1->{b});
@@ -273,6 +285,8 @@ sub union {
 
 	if ($tmp1->{tolerance}) {
 		# "integer"
+		#print " [SIM:UNION:INT ",ref($tmp1->{a}),"=",$tmp1->{a}," <=> ",ref($tmp1->{b}),"=",$tmp1->{b},"] \n";
+
 		my $a1_open =  $tmp1->{open_begin} ? -$tmp1->{tolerance} : $tmp1->{tolerance} ;
 		my $b1_open =  $tmp1->{open_end}   ? -$tmp1->{tolerance} : $tmp1->{tolerance} ;
 		my $a2_open =  $tmp2->{open_begin} ? -$tmp1->{tolerance} : $tmp1->{tolerance} ;
@@ -290,6 +304,7 @@ sub union {
 	}
 	else {
 		# "real"
+		#print " [SIM:UNION:REAL ",ref($tmp1->{a}),"=",$tmp1->{a}," <=> ",ref($tmp1->{b}),"=",$tmp1->{b},"] \n";
 		if ($tmp1->{b} < $tmp2->{a}) {
 			# self disjuncts b
 			return ( $tmp1, $tmp2 );
@@ -307,6 +322,8 @@ sub union {
 			return ( $tmp1, $tmp2 ) unless (not $tmp2->{open_end}) or (not $tmp1->{open_begin});
 		}
 	}
+
+	#print " [SIM:UNION:",ref($tmp1->{a}),"=",$tmp1->{a}," <=> ",ref($tmp1->{b}),"=",$tmp1->{b},"] \n";
 
 	if ($tmp1->{a} == $tmp2->{a}) {
 			$tmp1->{open_begin} = $tmp2->{open_begin} if $tmp1->{open_begin};
@@ -347,7 +364,7 @@ sub add {
 		my @aux = @{$param[0]};
 		# print " SIMPLE:ARRAY:",@aux," ";
 		# $aux[1] = $aux[0] unless defined($aux[1]);
-		@param = ($aux[0], $aux[-1], @param[1..$#param]);
+		@param = ($aux[0], $aux[-1]); # , @param[1..$#param]);
 	}
 
 	# is it now defined?
@@ -360,29 +377,41 @@ sub add {
 	my $tmp  = shift @param;
 	my $tmp2 = shift @param;
 
-	if (ref($tmp) eq $package) {
+	if (ref($tmp) eq __PACKAGE__) {
 		($self->{a}, $self->{b}) =  ($tmp->{a}, $tmp->{b});
 		# $self->{b} = $self->{a} unless $self->{b};
 		$self->tolerance($tmp->{tolerance}) 	if defined $tmp->{tolerance};
 		$self->open_begin($tmp->{open_begin})	if defined $tmp->{open_begin};
 		$self->open_end($tmp->{open_end})   	if defined $tmp->{open_end};
-		unshift @param, $tmp2;
+		# unshift @param, $tmp2;
 		return $self;	
 	}
 
-	my $tmp1_elem = Set::Infinite::Element->new($tmp);
-	my $tmp2_elem = Set::Infinite::Element->new($tmp2);
-	if ($tmp2_elem->is_null) {
-		($self->{a}, $self->{b}) = ($tmp1_elem, $tmp1_elem);
+	if (ref($tmp) ne 'Set::Infinite::Element') {
+		$tmp = Set::Infinite::Element->new($tmp);
+	}
+
+	if (ref($tmp2) ne 'Set::Infinite::Element') {
+		$tmp2 = Set::Infinite::Element->new($tmp2);
+	}
+	
+	# my $tmp2_elem = Set::Infinite::Element->new($tmp2);
+
+	# print " [SIM:ADD:$tmp1_elem,$tmp2_elem, is-null=",$tmp2_elem->is_null,"]\n";
+	if ($tmp2->is_null) {
+		#print " [is-null]\n";
+		($self->{a}, $self->{b}) = ($tmp, $tmp);
 	}
 	else {
-		if ($tmp1_elem < $tmp2_elem) {
-			($self->{a}, $self->{b}) = ($tmp1_elem, $tmp2_elem);
+		#print " [add]\n";
+		if ($tmp < $tmp2) {
+			($self->{a}, $self->{b}) = ($tmp, $tmp2);
 		}
 		else {
-			($self->{a}, $self->{b}) = ($tmp2_elem, $tmp1_elem);
+			($self->{a}, $self->{b}) = ($tmp2, $tmp);
 		}
 	}
+	#print " [add=$self]",($self->{a}, $self->{b}, null),"\n";
 	return $self;	
 }
 
@@ -433,8 +462,8 @@ sub cleanup {
 	if ($self->{a} > $self->{b}) {
 		($self->{a}, $self->{b}) = ($self->{b}, $self->{a});
 	}
-	$self->open_begin(1) if ($self->{a} == minus_infinite);
-	$self->open_end(1)	 if ($self->{b} == infinite);
+	$self->open_begin(1) 	if ($self->{a} == minus_infinite);
+	$self->open_end(1) 	if ($self->{b} == infinite);
 	return $self;
 }
 
