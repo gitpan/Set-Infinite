@@ -781,16 +781,31 @@ sub max_a {
     return @{$self->{max}} = (undef, 0); 
 };
 
+sub count {
+    my ($self) = shift;
+    return 1 + $#{$self->{list}};
+}
+
 sub size { 
     my ($self) = shift;
     my $tmp;
-    my $size = 0;
+    my $size;  # = 0;
     foreach(0 .. $#{$self->{list}}) {
         # next unless defined $self->{list}->[$_];
-        $size += $self->{list}->[$_]->{b} - $self->{list}->[$_]->{a};
-        $size -= $self->{tolerance} if $self->{list}->[$_]->{open_begin};
-        $size -= $self->{tolerance} if $self->{list}->[$_]->{open_end};
-     }
+        # my @tmp = %{ $self->{list}->[$_] };
+        # warn " @tmp  tol=". $self->{tolerance};
+        if ( $size ) {
+            $size += $self->{list}->[$_]->{b} - $self->{list}->[$_]->{a};
+        }
+        else {
+            $size = $self->{list}->[$_]->{b} - $self->{list}->[$_]->{a};
+        }
+        if ( $self->{tolerance} ) {
+            $size += $self->{tolerance} unless $self->{list}->[$_]->{open_end};
+            $size -= $self->{tolerance} if $self->{list}->[$_]->{open_begin};
+            $size -= $self->{tolerance} if $self->{list}->[$_]->{open_end};
+        }
+    }
     return $size; 
 };
 
@@ -890,6 +905,8 @@ __END__
     $i = $a->max;
 
     $i = $a->size;  
+
+    $i = $a->count;  # number of spans
 
 =head2 Overloaded Perl functions:
 

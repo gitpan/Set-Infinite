@@ -24,7 +24,7 @@ use vars qw( @ISA %EXPORT_TAGS @EXPORT_OK @EXPORT $VERSION
 @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(inf new $inf trace_open trace_close) );
 @EXPORT = qw();
 
-$VERSION = '0.49';
+$VERSION = '0.50';
 
 use Set::Infinite::Arithmetic;
 
@@ -170,7 +170,7 @@ sub _function2 {
 
 sub quantize {
     my $self = shift;
-    $self->trace_open(title=>"quantize"); 
+    $self->trace_open(title=>"quantize") if $TRACE; 
     my @min = $self->min_a;
     my @max = $self->max_a;
     if (($self->{too_complex}) or 
@@ -306,7 +306,7 @@ sub quantize {
 sub select {
     my $self = shift;
     # $TRACE =1;
-    $self->trace_open(title=>"select");
+    $self->trace_open(title=>"select") if $TRACE;
     # $TRACE=0;
 
     # pre-process parameters
@@ -513,7 +513,7 @@ sub first {
         return wantarray ? @{$self->{first}} : $self->{first}[0];
     }
 
-    $self->trace_open(title=>"first");
+    $self->trace_open(title=>"first") if $TRACE;
     # trace_open;
 
     if ( $self->{too_complex} ) {
@@ -999,7 +999,7 @@ sub offset {
     my $self = shift;
     #  my $class = ref($self);
 
-    $self->trace_open(title=>"offset");
+    $self->trace_open(title=>"offset") if $TRACE;
 
     if ($self->{too_complex}) {
         my $b1 = $self->_function( 'offset', @_ );
@@ -1134,7 +1134,7 @@ sub is_too_complex {
 sub _quantize_span {
     my $self = shift;
     my %param = @_;
-    $self->trace_open(title=>"_quantize_span");
+    $self->trace_open(title=>"_quantize_span") if $TRACE;
     my $res;
     if ($self->{too_complex}) {
         $res = $self->{parent};
@@ -1176,7 +1176,7 @@ sub _quantize_span {
     else {
         $res = $self->iterate (   sub { $_[0] }   );
     }
-    $self->trace_close( arg => $res );
+    $self->trace_close( arg => $res ) if $TRACE;
     return $res;
 }
 
@@ -1186,12 +1186,12 @@ sub backtrack {
     #
     my ($self, $method, $arg) = @_;
     unless ( $self->{too_complex} ) {
-        $self->trace_open( title => 'backtrack '.$method );
+        $self->trace_open( title => 'backtrack '.$method ) if $TRACE;
         my $tmp = $self->$method ($arg);
-        $self->trace_close( arg => $tmp );
+        $self->trace_close( arg => $tmp ) if $TRACE;
         return $tmp;
     }
-    $self->trace_open( title => 'backtrack '.$self->{method} );
+    $self->trace_open( title => 'backtrack '.$self->{method} ) if $TRACE;
 
     $backtrack_depth++;
     if ($backtrack_depth > $max_backtrack_depth) {
@@ -1238,7 +1238,7 @@ sub backtrack {
         if ( $result1->{too_complex} or $result2->{too_complex} ) {
                 # backtrack failed...
                 $backtrack_depth--;
-                $self->trace_close( arg => $self );
+                $self->trace_close( arg => $self ) if $TRACE;
 
                 # return the simplified version
                 return $result1->_function2( $self->{method}, $result2 );
@@ -1252,7 +1252,7 @@ sub backtrack {
         # print "\n\n/eval-2> \n\n";
 
         $backtrack_depth--;
-        $self->trace_close( arg => $result );
+        $self->trace_close( arg => $result ) if $TRACE;
         return $result;
     }  # parent is ARRAY
 
@@ -1412,13 +1412,13 @@ sub intersection {
     else {
         $b1 = $a1->new(@_);  
     }
-    $a1->trace_open(title=>"intersection", arg => $b1);
+    $a1->trace_open(title=>"intersection", arg => $b1) if $TRACE;
     if (($a1->{too_complex}) or ($b1->{too_complex})) {
         my $arg0 = $a1->_quantize_span;
         my $arg1 = $b1->_quantize_span;
         unless (($arg0->{too_complex}) or ($arg1->{too_complex})) {
             my $res = $arg0->_quantize_span->intersection( $arg1->_quantize_span );
-            $a1->trace_close( arg => $res );
+            $a1->trace_close( arg => $res ) if $TRACE;
             return $res;
         }
     }
@@ -1431,7 +1431,7 @@ sub intersection {
         $b1 = $b1->backtrack('intersection', $a1) unless $a1->{too_complex};
     }
     if (($a1->{too_complex}) or ($b1->{too_complex})) {
-        $a1->trace_close( );
+        $a1->trace_close( ) if $TRACE;
         return $a1->_function2( 'intersection', $b1 );
     }
     return $a1->SUPER::intersection( $b1 );
@@ -1447,15 +1447,15 @@ sub complement {
         else {
             $a = $self->new(@_);  
         }
-        $self->trace_open(title=>"complement", arg => $a);
+        $self->trace_open(title=>"complement", arg => $a) if $TRACE;
         $a = $a->complement;
         my $tmp =$self->intersection($a);
-        $self->trace_close( arg => $tmp );
+        $self->trace_close( arg => $tmp ) if $TRACE;
         return $tmp;
     }
-    $self->trace_open(title=>"complement");
+    $self->trace_open(title=>"complement") if $TRACE;
     if ($self->{too_complex}) {
-        $self->trace_close( );
+        $self->trace_close( ) if $TRACE;
         return $self->_function( 'complement', @_ );
     }
     return $self->SUPER::complement;
@@ -1471,7 +1471,7 @@ sub until {
     else {
         $b1 = $a1->new(@_);  
     }
-    $a1->trace_open(title=>"until", arg => $b1);
+    $a1->trace_open(title=>"until", arg => $b1) if $TRACE;
     # warn "until: $a1 n=". $#{ $a1->{list} } ." $b1 n=". $#{ $b1->{list} } ;
     if (($a1->{too_complex}) or ($b1->{too_complex})) {
         my $u = $a1->_function2( 'until', $b1 );
@@ -1480,9 +1480,9 @@ sub until {
         $a1->trace( title=>"computing first()" );
         my @first1 = $a1->first;
         my @first2 = $b1->first;
-        $a1->trace( title=>"first got $first1[0] and $first2[0] (". defined ($first1[0]) . ";". defined ($first2[0]) .")" );
-        $a1->trace( title=>"first $first1[0]{list}[0]{a} ".$first1[0]{list}[0]{open_end} );
-        $a1->trace( title=>"first $first2[0]{list}[0]{a} ".$first2[0]{list}[0]{open_end} );
+        # $a1->trace( title=>"first got $first1[0] and $first2[0] (". defined ($first1[0]) . ";". defined ($first2[0]) .")" );
+        # $a1->trace( title=>"first $first1[0]{list}[0]{a} ".$first1[0]{list}[0]{open_end} );
+        # $a1->trace( title=>"first $first2[0]{list}[0]{a} ".$first2[0]{list}[0]{open_end} );
         my ($first, $tail);
         if ( $first2[0] <= $first1[0] ) {
             # added ->first because it returns 2 spans if $a1 == $a2
@@ -1499,7 +1499,7 @@ sub until {
             }
         }
         $u->{first} = [ $first, $tail ];
-        $a1->trace_close( arg => $u );
+        $a1->trace_close( arg => $u ) if $TRACE;
 
         return $u;
     }
@@ -1517,9 +1517,9 @@ sub union {
     else {
         $b1 = $a1->new(@_);  
     }
-    $a1->trace_open(title=>"union", arg => $b1);
+    $a1->trace_open(title=>"union", arg => $b1) if $TRACE;
     if (($a1->{too_complex}) or ($b1->{too_complex})) {
-        $a1->trace_close( );
+        $a1->trace_close( ) if $TRACE;
         return $a1 if $b1->is_null;
         return $b1 if $a1->is_null;
         return $a1->_function2( 'union', $b1);
@@ -1534,24 +1534,24 @@ sub union {
 #    - can backtrack = works for unbounded sets
 sub contains {
     my $a = shift;
-    $a->trace_open(title=>"contains");
+    $a->trace_open(title=>"contains") if $TRACE;
     if ( $a->{too_complex} ) { 
         # we use intersection because it is better for backtracking
         my $b = (ref $_[0] eq ref $a) ? $_[0] : $a->new(@_);
         my $b1 = $a->intersection($b);
         if ( $b1->{too_complex} ) {
-            $b1->trace_close( arg => 'undef' );
+            $b1->trace_close( arg => 'undef' ) if $TRACE;
             return undef;
         }
-        $a->trace_close( arg => ($b1 == $b ? 1 : 0) );
+        $a->trace_close( arg => ($b1 == $b ? 1 : 0) ) if $TRACE;
         return ($b1 == $b) ? 1 : 0;
     }
     my $b1 = $a->union(@_);
     if ( $b1->{too_complex} ) {
-        $b1->trace_close( arg => 'undef' );
+        $b1->trace_close( arg => 'undef' ) if $TRACE;
         return undef;
     }
-    $a->trace_close( arg => ($b1 == $a ? 1 : 0) );
+    $a->trace_close( arg => ($b1 == $a ? 1 : 0) ) if $TRACE;
     return ($b1 == $a) ? 1 : 0;
 }
 
@@ -1561,7 +1561,7 @@ sub min_a {
         $self->trace(title=>"min_a cache= @{$self->{min}}" ) if $TRACE; 
         return @{$self->{min}};
     }
-    $self->trace_open(title=>"min_a"); 
+    $self->trace_open(title=>"min_a") if $TRACE; 
     my $tmp;
     my $i;
     if ($self->{too_complex}) {
@@ -1609,7 +1609,7 @@ sub min_a {
 
             my @first = $self->{parent}->first;
             unless (defined $first[0]) {
-                $self->trace_close( arg => "undef 0" );
+                $self->trace_close( arg => "undef 0" ) if $TRACE;
                 return @{$self->{min}} = (undef, 0);
             }
             # warn "first is $first[0]";
@@ -1625,12 +1625,12 @@ sub min_a {
                 my @p1 = $self->{parent}[0]->min_a;
                 my @p2 = $self->{parent}[1]->min_a;
                 unless (defined $p1[0]) {
-                    $self->trace_close( arg => 'undef 0' );
+                    $self->trace_close( arg => 'undef 0' ) if $TRACE;
                     return @{$self->{min}} = @p1 ;
                 }
                 # my @p2 = $self->{parent}[1]->min_a;
                 unless (defined $p2[0]) {
-                    $self->trace_close( arg => 'undef 0' );
+                    $self->trace_close( arg => 'undef 0' ) if $TRACE;
                     return @{$self->{min}} = @p2 ;
                 }
 
@@ -1658,7 +1658,7 @@ sub min_a {
     }
 
     $self->trace( title=> 'min simple tolerance='. $self->{tolerance}  );
-    $self->trace_close( arg => 'undef 0' );
+    $self->trace_close( arg => 'undef 0' ) if $TRACE;
     return $self->SUPER::min_a;
 };
 
@@ -1668,7 +1668,7 @@ sub max_a {
     return @{$self->{max}} if exists $self->{max};
     my $tmp;
     my $i;
-    $self->trace_open(title=>"max_a"); 
+    $self->trace_open(title=>"max_a") if $TRACE; 
     if ($self->{too_complex}) {
         my $method = $self->{method};
         # offset, select, quantize
@@ -1783,6 +1783,12 @@ sub max_a {
     $self->trace_close( arg => "undef 0" ) if $TRACE;
     return $self->SUPER::max_a;
 };
+
+sub count {
+    my ($self) = shift;
+    return $inf if $self->{too_complex};
+    return $self->SUPER::count;
+}
 
 sub size { 
     my ($self) = shift;
@@ -1979,6 +1985,10 @@ set bounded by -inf or inf.
 =head2 size
 
     $i = $a->size;  
+
+=head2 count
+
+    $i = $a->count;
 
 =head1 OVERLOADED LANGUAGE OPERATORS
 

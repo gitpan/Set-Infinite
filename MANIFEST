@@ -27,6 +27,7 @@ t/quantize.t
 t/date_select_offset.t
 t/select.t
 t/select_offset.t
+t/size.t
 
 _eg/month_to_html.pl
 _eg/schedule.dat

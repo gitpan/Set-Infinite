@@ -1,5 +1,10 @@
 Revision history for Perl extension Set::Infinite.
 
+0.50
+    count()
+    fixed: size() does not try to add 'zero' to object.
+    tests for count() and size()
+
 0.49
     fixed: "first/last" of intersection between recurrences
 
