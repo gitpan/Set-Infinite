@@ -61,11 +61,11 @@ METHODS
 
         $i = $a->size;  
 
-  Perl functions:
+  Overloaded Perl functions:
 
-        @b = sort @a;
+        print    
 
-        print $a;
+        sort, <=> 
 
   Global functions:
 
@@ -75,25 +75,17 @@ METHODS
 
             default are [ ] ( ) '..' ','.
 
-        null($i)        
-
-            chooses 'null' name. default is ''
-
         infinite($i)
 
             chooses 'infinite' name. default is 'inf'
 
-        infinite
+        inf
 
-            returns an 'infinite' number.
+            returns an 'Infinity' number.
 
-        minus_infinite
+        minus_inf
 
-            returns '-infinite' number.
-
-        null
-
-            returns the 'null' object.
+            returns '-Infinity' number.
 
         quantize( parameters )
 
@@ -105,7 +97,7 @@ METHODS
             The quantization function is external to this module:
             Parameters may vary depending on implementation. 
 
-            Positions for which a subset does not exist may show as null.
+            Positions for which a subset does not exist may show as undef.
 
             Example: 
 
@@ -118,20 +110,22 @@ METHODS
 
         select( parameters )
 
-            Selects set members based on their ordered positions.
-            Selection is more useful after quantization.
-
-            In array context: returns a tied reference to the array of selected subsets.
-            In set context: returns the set of selected subsets.
-
-            Unselected subsets may show as null.
-
-            The selection function is external to this module:
-            Parameters may vary depending on implementation. 
+            Selects set members based on their ordered positions
+            (Selection is more useful after quantization).
 
                 freq     - default=1
                 by       - default=[0]
-                count    - dafault=infinite
+                count    - default=Infinity
+
+     0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15    # [0..15] quantized by "1"
+
+     0              5             10             15    # freq => 5
+
+        1     3        6     8       11    13          # freq => 5, by => [ -2, 1 ]
+
+        1     3        6     8                         # freq => 5, by => [ -2, 1 ], count => 2
+
+        1                                     14       # by => [ -2, 1 ]
 
         offset ( parameters )
 
@@ -143,9 +137,17 @@ METHODS
 
         iterate ( sub { } )
 
-            EXPERIMENTAL - may be removed in next release
             Iterates over a subroutine. 
             Returns the union of partial results.
+
+        first
+
+            In scalar context returns the first interval of a set.
+
+            In list context returns the first interval of a set, and the
+            'tail'.
+
+            Works in unbounded sets
 
         type($i)
 
@@ -165,7 +167,7 @@ METHODS
 
         real            defaults to real sets (default)
 
-        integer            defaults to integer sets
+        integer         defaults to integer sets
 
   Internal functions:
 
@@ -173,33 +175,30 @@ METHODS
 
         $a->backtrack($b);
 
-        $a->fixtype;
+        $a->fixtype; 
+
+        $a->numeric;
 
 Notes on Dates
     See module Date::Set for up-to-date information on date-sets.
 
-    Set::Infinite::Date and Set::Infinite::ICal are Date "plugins" for sets.
+    Set::Infinite::Date is a Date "plug-in" for sets.
 
-    use:
+    usage:
 
-        type('Set::Infinite::Date');  # 2001-05-02 10:00:00   
-        # or
-        type('Set::Infinite::ICal');  # 20010502T100000Z
+        type('Set::Infinite::Date');  # allows values like '2001-05-02 10:00:00'
 
-    Both require Time::Local. Set::Infinite::ICal requires Date::ICal.
-
-    They change quantize function behaviour to accept time units:
+    Set::Infinite::Date requires Time::Local.
 
         use Set::Infinite;
-        use Set::Infinite::Quantize_Date;
         Set::Infinite->type('Set::Infinite::Date');
         Set::Infinite::Date->date_format("year-month-day");
 
         $a = Set::Infinite->new('2001-05-02', '2001-05-13');
-        print "Weeks in $a: ", join (" ", $a->quantize(unit => 'weeks', quant => 1) );
+        print "Weeks in $a: ", $a->quantize(unit => 'weeks', quant => 1);
 
         $a = Set::Infinite->new('09:30', '10:35');
-        print "Quarters of hour in $a: ", join (" ", $a->quantize(unit => 'minutes', quant => 15) );
+        print "Quarters of hour in $a: ", $a->quantize(unit => 'minutes', quant => 15);
 
     Quantize units can be years, months, days, weeks, hours, minutes, or
     seconds. To quantize the year to first-week-of-year until
@@ -226,6 +225,8 @@ CAVEATS
 
 SEE ALSO
         Date::Set
+
+        the Reefknot project <http://reefknot.sf.net>
 
 AUTHOR
         Flavio Soibelmann Glock <fglock@pucrs.br>

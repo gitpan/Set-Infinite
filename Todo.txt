@@ -1,5 +1,7 @@
 Set::Infinite TODO 
 
+    - change "link to self" to "link to copy" in first()
+
     no - make separate methods for quantize, quantize-first and quantize-last
 
     done - first() of a select/complement should return next interval,
@@ -42,6 +44,7 @@ Set::Infinite TODO
     - move $self->{mode} to "Date" only.
 
     - find out how to compare "<=>" unbounded sets
+    - try using first() in intersects() and "<=>"
 
 BACKTRACK
 

@@ -1,5 +1,12 @@
 Revision history for Perl extension Set::Infinite.
 
+0.38 - changes to 0.37:
+    new method first()
+    min() and max() improved
+    fixed some bugs: intersection -inf with (-inf..15); "<=>"; more tests
+    new $PRETTY_PRINT global option; better TRACE
+    about 20% faster than 0.37; uses less memoization
+
 0.37_71
     trace works on a copy of the variables, so that autovivification
         and cleanups don't interfere with the program.
