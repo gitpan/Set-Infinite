@@ -1,5 +1,8 @@
 Revision history for Perl extension Set::Infinite.
 
+0.41_03
+    can intersects() to an object (it checks the reference type)
+
 0.41_02
     fixed copy() - copying array refs
 

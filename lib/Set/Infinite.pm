@@ -20,7 +20,7 @@ our %EXPORT_TAGS = ( 'all' => [ qw(inf new $inf) ] );
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(inf new $inf trace_open trace_close) );
 our @EXPORT = qw();
 
-our $VERSION = '0.41_02';
+our $VERSION = '0.41_03';
 
 our $TRACE = 0;      # basic trace method execution
 our $DEBUG_BT = 0;   # backtrack tracer
@@ -1406,7 +1406,7 @@ sub intersects {
         return 0;    
     } 
 
-    if (ref ($_[0]) ) { 
+    if (ref ($_[0]) eq ref($a) ) { 
         $b = shift;
     } 
     else {

@@ -4,8 +4,8 @@ LICENSE
 README
 TODO
 Makefile.PL
-make_htmldoc.pl
-make_readme.pl
+make_htmldoc
+make_readme
 
 lib/Set/Infinite.pm
 lib/Set/Infinite/Date.pm
