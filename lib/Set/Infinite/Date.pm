@@ -187,7 +187,8 @@ sub add {
 
 sub spaceship {
 	my ($tmp1, $tmp2, $inverted) = @_;
-	#print " [DATE:CMP:",caller(1),"]\n";
+	# print " [DATE:CMP:",caller(1),"]\n";
+	# print " $tmp1 ";
 	return 1 unless defined($tmp2);
 	$tmp2 = Set::Infinite::Date->new($tmp2) unless ref($tmp2) and $tmp2->isa(__PACKAGE__);
 	if ($inverted) {
@@ -203,6 +204,7 @@ sub cmp {
 sub new {
 	my ($self) = bless {}, shift;
 	my $tmp = shift;
+	$tmp = '' unless defined $tmp;
 	$self->{string} = '';
 	if ($tmp =~ /\d[\/\.\-]\d/) {
 		# $self->{string} = $tmp;
@@ -232,14 +234,20 @@ sub mode {
 sub as_string {
 	my ($self) = shift;
 
-	if ($self->{string}) {
+	#return '' unless defined($self);
+	#print " [ $self->{string} ] " ;
+
+	if ($self->{string} ne '') {
 		# done
+		#print "1 ";
 	}
 	elsif (not defined($self->{a})) {
 		$self->{string} = '';
+		#print "2 ";
 	}
 	elsif ($self->{mode} == 0) {
 		$self->{string} = $self->{a};
+		#print "3 ";
 	}
 	elsif ($self->{mode} == 1) {
 		$self->{string} = time2hour($self->{a});

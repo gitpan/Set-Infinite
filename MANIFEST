@@ -5,7 +5,6 @@ eg/schedule_check.pl
 eg/weekly_to_html.pl
 lib/Set/Infinite.pm
 lib/Set/Infinite/Date.pm
-lib/Set/Infinite/Element.pm
 lib/Set/Infinite/Simple.pm
 MANIFEST
 Todo.txt
@@ -13,8 +12,6 @@ Makefile.PL
 todo/bigfloat.t
 todo/bigint.t
 t/date.t
-todo/element_bigfloat.t
-t/element.t
 t/infinite.t
 todo/simple_bigfloat.t
 t/simple.t

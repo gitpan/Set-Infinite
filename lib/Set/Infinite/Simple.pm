@@ -23,8 +23,7 @@
 
 	$a = Set::Infinite::Simple->new();
 	$a = Set::Infinite::Simple->new(1);
-	$a = Set::Infinite::Simple->new(1,2);
-	$a = Set::Infinite::Simple->new( a => 1, b => 2, tolerance => 1);	# integer interval
+	$a = Set::Infinite::Simple->new(1,2);
 	$a = Set::Infinite::Simple->new(@b);	
 	$a = Set::Infinite::Simple->new($b);	
 		parameters can be:
@@ -32,8 +31,6 @@
 		SCALAR => means an interval like (1,1)
 		SCALAR,SCALAR
 		ARRAY of SCALAR
-		<removed!> HASH containing 'a'
-		<removed!> HASH containing 'a' and 'b'
 		Set::Infinite::Simple
 	$a->real;
 	$a->integer;
@@ -91,26 +88,7 @@ Internal:
 =head1 TODO
 
 	formatted string input like '[0..1]'
-
-=head1 CHANGES
-
-v0.15
-
-	Functions moved to Element_Inf:
-
-	null($i)		chooses 'null' name. default is 'null'
-	infinite($i)	chooses 'infinite' name. default is 'inf'
-
-=head1 SEE ALSO
-
-	Other options for working with sets:
-
-	Set::IntRange
-		Works on integers only
-		use Bit::Vector for storage
-
-	Set::Window
-		Works on integers only		
+	local type	
 
 =head1 AUTHOR
 
@@ -121,9 +99,8 @@ v0.15
 require Exporter;
 
 package Set::Infinite::Simple;
-$VERSION = "0.17";
-
-my $package        = 'Set::Infinite::Simple';
+$VERSION = "0.19";
+
 @ISA = qw(Exporter);
 @EXPORT = qw();
 @EXPORT_OK = qw(
@@ -133,14 +110,79 @@ my $package        = 'Set::Infinite::Simple';
 
 use strict;
 use Carp;
-use Set::Infinite::Element qw(infinite minus_infinite type nullinf
-	quantizer
-);
+
+use Set::Infinite::Element_Inf qw(infinite minus_infinite null inf elem_undef);
 
 sub inf();
 sub infinite();
 sub minus_infinite();
 sub null();
+
+our $type = '';
+our $infinite  = Set::Infinite::Element_Inf::infinite;
+our $null      = Set::Infinite::Element_Inf::null;
+our $quantizer = 'Set::Infinite::Quantize';
+
+sub type {
+	my ($self, $tmp_type) = @_;
+
+	#print " [S:TYPE: $self $tmp_type ] " ;
+
+	if (not defined ($tmp_type)) {
+		# global
+		$tmp_type = $self;
+		$self = __PACKAGE__;
+	}
+
+	#print " [S:TYPE:($self, $tmp_type)] " ;
+
+	if (defined($tmp_type) and ($tmp_type ne '')) {
+		if (ref($self)) {
+			# local
+			$self->{type} = $tmp_type;
+		}
+		else {
+			# global
+			$type = $tmp_type;
+		}
+		eval "use " . $tmp_type;
+			carp "Warning: can't start $tmp_type package: $@" if $@;
+
+		my $tmp_quantizer = eval '&' . $tmp_type . '::quantizer';
+		if ($tmp_quantizer) {
+			if (ref($self)) {
+				# local
+				$self->{quantizer} = $tmp_quantizer;
+			}
+			else {
+				# global
+				$quantizer = $tmp_quantizer;
+			}
+			eval "use " . $tmp_quantizer; 
+				carp "Warning: can't start $tmp_type  $tmp_quantizer package: $@" if $@;
+			# print " [ELEM:quantizer $tmp_type $tmp_quantizer]\n";
+		}
+
+		#my $tmp = &Set::Infinite::Date::quantizer;
+		#print " [ELEM:quantizer " . $self->{type} . " $tmp]\n";
+
+		if ( (eval "(new " . $tmp_type . " (4)) cmp (new " . $tmp_type . " (3))") != 1) {
+			if ((eval "new " . $tmp_type . " (4)") != 4) {
+				carp "Warning: can't start " . $tmp_type . " package";
+			}
+			else {
+				carp "Warning: " . $tmp_type . " can't `cmp'";
+			}
+		}
+	}
+
+	return $self;
+}
+
+sub quantizer {
+	my $self = shift;
+	return $self->{quantizer};
+}
 
 
 use overload
@@ -155,13 +197,13 @@ our @separators = (
 	','			# list separator
 );
 
-our $granularity = 0; # 1e-10; `real' tolerance
-our $tolerance = $granularity;
+our $tolerance = 0;
+our $simple_null = __PACKAGE__->new();
 
 sub quantize {
 	my $self = shift;
 	my (@a);
-	tie @a, quantizer, @_, $self;
+	tie @a, {$self->{quantizer}}, @_, $self;
 	return @a;
 }
 
@@ -187,70 +229,90 @@ sub open_begin {
 
 sub is_null {
 	my $self = shift;
-	# return 1 unless defined($self->{a});
-	return $self->{a}->is_null;
-
-	# my $tmp = $self->{a} . "";
-	# return (($tmp eq null) or ($tmp eq "")) ? 1 : 0;
+	return Set::Infinite::Element_Inf::is_null($self->{a});
 }
 
 sub intersects {
-	my $self = shift;
-
-	#my $tmp2 = shift;
-	#$tmp2 = Set::Infinite::Simple->new($tmp2, @_) unless ref($tmp2) and $tmp2->isa(__PACKAGE__); 
-	#return 0 if $self->{b} < $tmp2->{a};
-	#return 0 if $self->{a} > $tmp2->{b};
-	#return $self->intersection($tmp2)->is_null ? 0 : 1;	
-
-	return $self->intersection(@_)->is_null ? 0 : 1;	
-}
-
-sub intersection {
-	my $tmp1 = shift;
-	my $tmp2 = shift;
-	$tmp2 = Set::Infinite::Simple->new($tmp2, @_) unless ref($tmp2) and $tmp2->isa(__PACKAGE__); 
-
-	#return Set::Infinite::Simple->new()  if $tmp1->{b} < $tmp2->{a};
-	#return Set::Infinite::Simple->new()  if $tmp1->{a} > $tmp2->{b};
+	my ($tmp1, $tmp2) = (shift, shift);
+	$tmp2 = __PACKAGE__->new($tmp2, @_) unless ref($tmp2) and $tmp2->isa(__PACKAGE__); 
 
 	my ($i_beg, $i_end, $open_beg, $open_end);
 
-	# $open_beg	= $tmp1->{open_begin};
-	if ($tmp1->{a} == $tmp2->{a}) {
-		$i_beg 		= $tmp1->{a};
-		$open_beg 	= ($tmp1->{open_begin} or $tmp2->{open_begin});
-	}
-	elsif ($tmp1->{a} < $tmp2->{a}) {
+	#return 0 if ($tmp1->{b} < $tmp2->{a});
+	#return 0 if ($tmp2->{b} < $tmp1->{a});
+
+	if ($tmp1->{a} < $tmp2->{a}) {
 		$i_beg 		= $tmp2->{a};
 		$open_beg 	= $tmp2->{open_begin};
+	}
+	elsif ($tmp1->{a} == $tmp2->{a}) {
+		$i_beg 		= $tmp1->{a};
+		$open_beg 	= ($tmp1->{open_begin} or $tmp2->{open_begin});
 	}
 	else {
 		$i_beg 		= $tmp1->{a};
 		$open_beg	= $tmp1->{open_begin};
 	}
 
-	# $i_end 		= $tmp1->{b};
-	# $open_end	= $tmp1->{open_end};
-	if ($tmp1->{b} == $tmp2->{b}) {
-		$i_end 		= $tmp1->{b};
-		$open_end 	= ($tmp1->{open_end} or $tmp2->{open_end});
-	}
-	elsif ($tmp1->{b} > $tmp2->{b}) {
+	if ($tmp1->{b} > $tmp2->{b}) {
 		$i_end 		= $tmp2->{b};
 		$open_end 	= $tmp2->{open_end};
+	}
+	elsif ($tmp1->{b} == $tmp2->{b}) {
+		$i_end 		= $tmp1->{b};
+		$open_end 	= ($tmp1->{open_end} or $tmp2->{open_end});
 	}
 	else {
 		$i_end 		= $tmp1->{b};
 		$open_end	= $tmp1->{open_end};
 	}
 
-	return Set::Infinite::Simple->new() if ($i_beg == $i_end) and ($open_beg or $open_end);	
-	return Set::Infinite::Simple->new() if ($i_beg > $i_end) or (not defined($i_beg)) or (not defined($i_end));
+	return 0 if ($i_beg > $i_end) or 
+		(($i_beg == $i_end) and ($open_beg or $open_end)) or
+		(not defined($i_beg)) or (not defined($i_end));
+	return 1;	
+}
 
-	my $tmp = Set::Infinite::Simple->new($i_beg, $i_end);
-	$tmp->open_begin(1) if $open_beg;
-	$tmp->open_end(1) if $open_end;
+sub intersection {
+	my ($tmp1, $tmp2) = (shift, shift);
+	$tmp2 = __PACKAGE__->new($tmp2, @_) unless ref($tmp2) and $tmp2->isa(__PACKAGE__); 
+
+	my ($i_beg, $i_end, $open_beg, $open_end);
+
+	if ($tmp1->{a} < $tmp2->{a}) {
+		$i_beg 		= $tmp2->{a};
+		$open_beg 	= $tmp2->{open_begin};
+	}
+	elsif ($tmp1->{a} == $tmp2->{a}) {
+		$i_beg 		= $tmp1->{a};
+		$open_beg 	= ($tmp1->{open_begin} or $tmp2->{open_begin});
+	}
+	else {
+		$i_beg 		= $tmp1->{a};
+		$open_beg	= $tmp1->{open_begin};
+	}
+
+	if ($tmp1->{b} > $tmp2->{b}) {
+		$i_end 		= $tmp2->{b};
+		$open_end 	= $tmp2->{open_end};
+	}
+	elsif ($tmp1->{b} == $tmp2->{b}) {
+		$i_end 		= $tmp1->{b};
+		$open_end 	= ($tmp1->{open_end} or $tmp2->{open_end});
+	}
+	else {
+		$i_end 		= $tmp1->{b};
+		$open_end	= $tmp1->{open_end};
+	}
+
+	return $simple_null if ($i_beg > $i_end) or 
+		(($i_beg == $i_end) and ($open_beg or $open_end)) or	
+		(not defined($i_beg)) or (not defined($i_end));
+
+	my $tmp = __PACKAGE__->new($i_beg, $i_end);
+	$tmp->{open_begin} = $open_beg;
+	$tmp->{open_end} =   $open_end;
+
 	return $tmp;
 }
 
@@ -260,68 +322,56 @@ sub complement {
 	# do we have a parameter?
 
 	if (@_) {
-		my $a = Set::Infinite::Simple->new(@_);
-		$a->tolerance($self->{tolerance});
+		my $a = __PACKAGE__->new(@_);
+		# $a->{tolerance} = $self->{tolerance} if defined($self->{tolerance});
 		$a = $a->complement;
 		return $self->intersection($a);
 	}
 
 	# we don't have a parameter - just complement the set
-	return Set::Infinite::Simple->new(minus_infinite, infinite) if $self->is_null;
+	return __PACKAGE__->new(minus_infinite, infinite) if $self->is_null;
 
-	my $tmp1 = Set::Infinite::Simple->new(minus_infinite, $self->{a});
+	my $tmp1 = __PACKAGE__->new(minus_infinite, $self->{a});
 	$tmp1->open_end(not $self->{open_begin});
 
-	my $tmp2 = Set::Infinite::Simple->new($self->{b}, infinite);
+	my $tmp2 = __PACKAGE__->new($self->{b}, infinite);
 	$tmp2->open_begin(not $self->{open_end});
 
-	return Set::Infinite::Simple->new() if 
-		(($tmp1 == infinite) or ($tmp1 == minus_infinite)) and
-		(($tmp2 == infinite) or ($tmp2 == minus_infinite));
-
-	return $tmp1 if ($tmp2 == infinite);
-	return $tmp1 if ($tmp2 == minus_infinite);
-
-	return $tmp2 if ($tmp1 == infinite);
-	return $tmp2 if ($tmp1 == minus_infinite);
-
-	return ($tmp1 , $tmp2);
+	if ($tmp2 == infinite) {
+		return $simple_null if ($tmp1 == minus_infinite);
+		return $tmp1;
+	}
+	return $tmp2 if ($tmp1 == minus_infinite);
+	return ($tmp1 , $tmp2);
 }
 
 sub union {
-	my $tmp1 = shift;
-	my @param = @_;
-	# my $b = shift;
+	my $tmp2 = shift;
+	my $tmp1 = __PACKAGE__->new(@_); 
 
 	#print " [SIM:UNION:@param] \n";
-
-	$tmp1 = Set::Infinite::Simple->new($tmp1);
-	my $tmp2 = Set::Infinite::Simple->new(@param); 
-
 	#print " [SIM:UNION:$tmp1 U $tmp2] \n";
 
 	return $tmp1 if $tmp2->is_null; # defined($tmp2->{a}) and defined($tmp2->{b});
-	return $tmp2 if $tmp1->is_null; # unless defined($tmp1->{a}) and defined($tmp1->{b});
+	return $tmp2 if $tmp1->is_null; # unless defined($tmp1->{a}) and defined($tmp1->{b});
 
-	# return ( $tmp1, $tmp2 ) unless $tmp1->intersects($tmp2);
-
-	if ($tmp1->{tolerance}) {
+	if ($tmp2->{tolerance}) {
 		# "integer"
 		#print " [SIM:UNION:INT ",ref($tmp1->{a}),"=",$tmp1->{a}," <=> ",ref($tmp1->{b}),"=",$tmp1->{b},"] \n";
 
-		my $a1_open =  $tmp1->{open_begin} ? -$tmp1->{tolerance} : $tmp1->{tolerance} ;
-		my $b1_open =  $tmp1->{open_end}   ? -$tmp1->{tolerance} : $tmp1->{tolerance} ;
-		my $a2_open =  $tmp2->{open_begin} ? -$tmp1->{tolerance} : $tmp1->{tolerance} ;
-		my $b2_open =  $tmp2->{open_end}   ? -$tmp1->{tolerance} : $tmp1->{tolerance} ;
+		my $a1_open =  $tmp1->{open_begin} ? -$tmp2->{tolerance} : $tmp2->{tolerance} ;
+		my $b1_open =  $tmp1->{open_end}   ? -$tmp2->{tolerance} : $tmp2->{tolerance} ;
+		my $a2_open =  $tmp2->{open_begin} ? -$tmp2->{tolerance} : $tmp2->{tolerance} ;
+		my $b2_open =  $tmp2->{open_end}   ? -$tmp2->{tolerance} : $tmp2->{tolerance} ;
 
 		# open_end touching?
 		if ((($tmp1->{b}+$tmp1->{b}) + $b1_open ) < (($tmp2->{a}+$tmp2->{a}) - $a2_open)) {
 			# self disjuncts b
-			return ( $tmp1, $tmp2 ); 
+			return ( $tmp2, $tmp1 );
 		}
 		if ((($tmp1->{a}+$tmp1->{a}) - $a1_open ) > (($tmp2->{b}+$tmp2->{b}) + $b2_open)) {
 			# self disjuncts b
-			return ( $tmp1, $tmp2 ); 
+			return ( $tmp2, $tmp1 );
 		}
 	}
 	else {
@@ -329,34 +379,34 @@ sub union {
 		#print " [SIM:UNION:REAL ",ref($tmp1->{a}),"=",$tmp1->{a}," <=> ",ref($tmp1->{b}),"=",$tmp1->{b},"] \n";
 		if (	($tmp1->{b} < $tmp2->{a}) or($tmp2->{b} < $tmp1->{a}) ) {
 			# self disjuncts b
-			return ( $tmp1, $tmp2 );
+			return ( $tmp2, $tmp1 );
 		}
 		if (($tmp1->{b} == $tmp2->{a}) and $tmp1->{open_end} and $tmp2->{open_begin}) {
 			# self disjuncts b
-			return ( $tmp1, $tmp2 ); 
+			return ( $tmp2, $tmp1 );
 		}
 		if (($tmp2->{b} == $tmp1->{a}) and $tmp2->{open_end} and $tmp1->{open_begin}) {
 			# self disjuncts b
-			return ( $tmp1, $tmp2 );
+			return ( $tmp2, $tmp1 );
 		}
 	}
 
 	#print " [SIM:UNION:",ref($tmp1->{a}),"=",$tmp1->{a}," <=> ",ref($tmp1->{b}),"=",$tmp1->{b},"] \n";
 
-	if ($tmp1->{a} == $tmp2->{a}) {
-			$tmp1->{open_begin} = $tmp2->{open_begin} if $tmp1->{open_begin};
-	}
 	if ($tmp1->{a} > $tmp2->{a}) {
 			$tmp1->{a} = $tmp2->{a};
 			$tmp1->{open_begin} = $tmp2->{open_begin};
 	}
-
-	if ($tmp1->{b} == $tmp2->{b}) {
-			$tmp1->{open_end} = $tmp2->{open_end} if $tmp1->{open_end};
+	elsif ($tmp1->{a} == $tmp2->{a}) {
+			$tmp1->{open_begin} = $tmp2->{open_begin} if $tmp1->{open_begin};
 	}
+
 	if ($tmp1->{b} < $tmp2->{b}) {
 			$tmp1->{b} = $tmp2->{b};
 			$tmp1->{open_end} = $tmp2->{open_end};
+	}
+	elsif ($tmp1->{b} == $tmp2->{b}) {
+			$tmp1->{open_end} = $tmp2->{open_end} if $tmp1->{open_end};
 	}
 	return $tmp1;
 }
@@ -367,62 +417,49 @@ sub contains {
 	# do we have a parameter?
 	return 1 unless @_;
 
-	my $a = Set::Infinite::Simple->new(@_);
-	$a->tolerance($self->{tolerance});
+	my $a = __PACKAGE__->new(@_);
+	# $a->{tolerance} = $self->{tolerance} if defined($self->{tolerance});
 	return ($self->union($a) == $self) ? 1 : 0;
 }
 
 sub add {
-	my ($self) = shift;
-	my @param = @_;
+	my ($self, $tmp, $tmp2) = @_;
 
 	# is it an array?
-	if (ref($param[0]) eq 'ARRAY') {
+	if (ref($tmp) eq 'ARRAY') {
 		# get 2 elements from it
-		my @aux = @{$param[0]};
-		# print " SIMPLE:ARRAY:",@aux," ";
-		# $aux[1] = $aux[0] unless defined($aux[1]);
-		@param = ($aux[0], $aux[-1]); # , @param[1..$#param]);
+		$tmp2 = ${@{$tmp}}[-1];
+		$tmp  = ${@{$tmp}}[0];
 	}
 
 	# is it now defined?
-	unless (defined($param[0])) {
+ 	unless (defined($tmp)) {
 		$self->{a} = null;
 		$self->{b} = null;
 		return $self;
 	}
 
-	my $tmp  = shift @param;
-	my $tmp2 = shift @param;
-
-	if (ref($tmp) and $tmp->isa(__PACKAGE__)) {
-		($self->{a}, $self->{b}) =  ($tmp->{a}, $tmp->{b});
-		# $self->{b} = $self->{a} unless $self->{b};
-		$self->tolerance($tmp->{tolerance}) 	if defined $tmp->{tolerance};
-		$self->open_begin($tmp->{open_begin})	if defined $tmp->{open_begin};
-		$self->open_end($tmp->{open_end})   	if defined $tmp->{open_end};
-		# unshift @param, $tmp2;
-		return $self;	
+	if (ref($tmp)) {
+		if ($tmp->isa(__PACKAGE__)) {
+			%{$self} = %{$tmp};
+			return $self;	
+		}
+	}
+	elsif ($self->{type}) {
+		# print " [TYPE=",$self->{type},",$tmp] ";
+		$tmp = new {$self->{type}} $tmp;
 	}
 
-	unless (ref($tmp) and $tmp->isa('Set::Infinite::Element')) {
-		$tmp = Set::Infinite::Element->new($tmp);
+	if ($self->{type} and not ref($tmp2)) {
+		$tmp2 = new {$self->{type}} $tmp2;
 	}
-
-
-	unless (ref($tmp2) and $tmp2->isa('Set::Infinite::Element')) {
-		$tmp2 = Set::Infinite::Element->new($tmp2);
-	}
-	
-	# my $tmp2_elem = Set::Infinite::Element->new($tmp2);
 
 	# print " [SIM:ADD:$tmp1_elem,$tmp2_elem, is-null=",$tmp2_elem->is_null,"]\n";
-	if ($tmp2->is_null) {
-		#print " [is-null]\n";
+
+	if (Set::Infinite::Element_Inf::is_null($tmp2)) {
 		($self->{a}, $self->{b}) = ($tmp, $tmp);
 	}
 	else {
-		#print " [add]\n";
 		if ($tmp < $tmp2) {
 			($self->{a}, $self->{b}) = ($tmp, $tmp2);
 		}
@@ -456,18 +493,13 @@ sub span {
 sub spaceship {
 	my ($tmp1, $tmp2, $inverted) = @_;
 	unless (ref($tmp2) and $tmp2->isa(__PACKAGE__)) {
-		$tmp2 = Set::Infinite::Simple->new($tmp2);
+		$tmp2 = __PACKAGE__->new($tmp2);
 	}
 
 	if ($inverted) {
-		#return $tmp2->max <=> $tmp1->max if $tmp1->min == $tmp2->min;
-		#return $tmp2->min <=> $tmp1->min;
-
-		($tmp2, $tmp1) = ($tmp1, $tmp2);
-	}
-
-	# return 1  if not defined($tmp2->{a});
-
+		return $tmp2->{b} <=> $tmp1->{b} if $tmp1->{a} == $tmp2->{a};
+		return $tmp2->{a} <=> $tmp1->{a};
+	}
 	return $tmp1->{b} <=> $tmp2->{b} if $tmp1->{a} == $tmp2->{a};
 	return $tmp1->{a} <=> $tmp2->{a};
 }
@@ -481,7 +513,10 @@ sub cleanup {
 	# print " SIMPLE:UNDEF-A " unless defined($self->{a});
 	# print " SIMPLE:UNDEF-B " unless defined($self->{b});
 	# return if $self->is_null;
-	$self->{a} = null if $self->{b}->is_null;
+	if (Set::Infinite::Element_Inf::is_null($self->{b})) {
+		$self->{a} = null;
+		# print " [NULL-B] ";
+	}
 	if ($self->{a} > $self->{b}) {
 		($self->{a}, $self->{b}) = ($self->{b}, $self->{a});
 	}
@@ -491,12 +526,14 @@ sub cleanup {
 }
 
 sub tolerance {
-	my $class = shift;
+	my $self = shift;
 	my $tmp = shift;
-	if (ref($class) eq 'Set::Infinite::Simple') {
-		$class->{tolerance} = $tmp if ($tmp ne '');
-		return $class;
+	if (ref($self)) {  
+		# local
+		$self->{tolerance} = $tmp if ($tmp ne '');
+		return $self;
 	}
+	# global
 	$tolerance = $tmp if defined($tmp) and ($tmp ne '');
 	return $tolerance;
 }
@@ -513,15 +550,17 @@ sub integer {
 sub real {
 	if (@_) {
 		my ($self) = shift;
-		$self->tolerance ($granularity);
+		$self->tolerance (0);
 		return $self;
 	}
-	return tolerance($granularity);
+	return tolerance(0);
 }
 
 sub new {
 	my ($self) = bless {}, shift;
-	$self->tolerance($tolerance);
+	$self->{tolerance} = $tolerance; 
+	$self->{type} = $type;
+	$self->{quantizer} = $quantizer;
 	$self->add(@_);
 	return $self;
 }
@@ -594,10 +633,12 @@ sub STORE {
 		my $index = $data;
 		$data = shift;
 		# print " STORE $data at $index ";
-		$self->{a} = Set::Infinite::Element->new($data) if $index == 0;
-		$self->{b} = Set::Infinite::Element->new($data) if $index == 1;
+		$self->{a} = $data if $index == 0;
+		$self->{b} = $data if $index == 1;
 		# print " = $self\n";
-		$self->cleanup unless $self->{a}->is_null or $self->{b}->is_null;# unless it will become null!
+		$self->cleanup unless 
+			Set::Infinite::Element_Inf::is_null($self->{a}) or 
+			Set::Infinite::Element_Inf::is_null($self->{b});# unless it will become null!
 		# print " = $self\n";
 		return ($data, @_);
 	}

@@ -15,32 +15,16 @@ our @ISA = qw(Exporter);
 
 # This allows declaration	use Set::Infinite ':all';
 
-our %EXPORT_TAGS = ( 'all' => [ qw(
-	
-) ] );
+our %EXPORT_TAGS = ( 'all' => [ qw() ] );
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(type inf) );
 
-our @EXPORT = qw(
-	
-);
-our $VERSION = '0.17';
+our @EXPORT = qw();
+
+our $VERSION = '0.20';
 
 
 # Preloaded methods go here.
-
-my $package        = 'Set::Infinite';
-
-#@EXPORT_OK = qw( 
-#	infinite 
-#	minus_infinite 
-#	separators 
-#	null
-#	type
-#	tolerance 
-#	integer 
-#	real
-#);
 
 use Set::Infinite::Simple qw(
 	infinite minus_infinite separators null type quantizer inf
@@ -62,7 +46,7 @@ sub quantize {
 	my $self = shift;
 	my (@a);
 	# my $array_ref = shift;
-	my $tmp = quantizer;
+	my $tmp = ${@{$self->{list}}}[0]->quantizer;
 	# print " [INF:QUANT $tmp,",@_,",$self]\n";
 	tie @a, $tmp, @_, $self;
 	return @a;
@@ -143,7 +127,7 @@ sub complement {
 sub union {
 	my $self = shift;
 	my $b;
-	$b = Set::Infinite->new(@_);  # unless ref($b) eq $package;
+	$b = Set::Infinite->new(@_);  
 
 	my $union = Set::Infinite->new($self);
 	my ($ia, $ib);
@@ -175,12 +159,13 @@ sub add {
 	my ($self) = shift;
 	my @param = @_;
 
+	#print " [I:ADD] ";
 LOOP:
 		my $tmp = shift @param;
 		return $self unless defined($tmp);
 
 		# is it an array?
-		#print " [INF:ADD:",ref($tmp),"=$tmp]\n";
+		#print " [INF:ADD:",ref($tmp),"=$tmp ; ",@param,"]\n";
 		if (ref($tmp) eq 'ARRAY') {
 			my @tmp = @{$tmp};
 
@@ -214,6 +199,7 @@ LOOP:
 		}
 		# else {
 			my $tmp2 = shift @param;
+			#print " [NEW] " ;
 			$tmp = Set::Infinite::Simple->new($tmp,$tmp2);
 			$tmp->tolerance($self->{tolerance});
 			push @{ $self->{list} }, $tmp;

@@ -8,7 +8,7 @@ use strict;
 use warnings;
 
 require Exporter;
-our $VERSION = "0.17";
+our $VERSION = "0.19";
 
 my $package = 'Set::Infinite::Quantize_Date';
 our @EXPORT = qw();
@@ -16,9 +16,6 @@ our @EXPORT_OK = qw();
 
 use Time::Local;
 use Set::Infinite qw(type);
-# use Set::Infinite::Date qw(date2time);
-
-# type('Set::Infinite::Date');
 
 =head2 NAME
 
@@ -67,8 +64,7 @@ our %subs = (
 
 # list of full years in a date set
 sub years {
-	my ($self) = shift;
-	my ($index) = shift;
+	my ($self, $index) = @_;
 	return timelocal(
 		0,0,0, 
 		1,0,$self->{date_begin}[5] + $self->{quant} * $index);
@@ -76,8 +72,7 @@ sub years {
 
 # list of full months in a date set
 sub months {
-	my ($self) = shift;
-	my ($index) = shift;
+	my ($self, $index) = @_;
 
 	my $mon = 	$self->{date_begin}[4] + $self->{quant} * $index; 
 	my $year =	$self->{date_begin}[5];
@@ -93,36 +88,31 @@ sub months {
 
 # list of full days in a date set
 sub days {
-	my ($self) = shift;
-	my ($index) = shift;
+	my ($self, $index) = @_;
 	return $self->{first} + $self->{quant} * $index * $day_size;
 }
 
 # list of full weeks in a date set
 sub weeks {
-	my ($self) = shift;
-	my ($index) = shift;
+	my ($self, $index) = @_;
 	return $self->{first} + 7 * $self->{quant} * $index * $day_size;
 }
 
 # list of full hours in a date set
 sub hours {
-	my ($self) = shift;
-	my ($index) = shift;
+	my ($self, $index) = @_;
 	return $self->{first} + $self->{quant} * $index * $hour_size;
 }
 
 # list of full minutes in a date set
 sub minutes {
-	my ($self) = shift;
-	my ($index) = shift;
+	my ($self, $index) = @_;
 	return $self->{first} + $self->{quant} * $index * $minute_size;
 }
 
 # list of full seconds in a date set
 sub seconds {
-	my ($self) = shift;
-	my ($index) = shift;
+	my ($self, $index) = @_;
 	return $self->{first} + $self->{quant} * $index * $second_size;
 }
 
@@ -130,12 +120,12 @@ sub new {
 	my ($self) = bless {}, shift;
 	$self->{type} = shift;	# 'minutes'
 	$self->{quant} = shift;	# 15 
-	# $self->{size} = 1000;
-	my @param = @_;			# date
-	# $self->{dates} = Set::Infinite->new(@param);
-	my $tmp = Set::Infinite->new(@param); 
-	$self->{dates} = $tmp;
-	$self->{mode}  = $self->{dates}->min->{v}->{mode};
+	$self->{dates} = Set::Infinite->new(@_); # date
+	$self->{mode}  = $self->{dates}->min->{mode};
+
+	#$self->{last} = 0;
+	#$self->{last_index} = -999;
+
 	my $rest;
 
 	# print " [MODE:",$self->{mode},"]\n";
@@ -201,8 +191,8 @@ sub new {
 
 	# print " [QUANT: = 2 + ($self->{time2_end} - $self->{first}) /  ($self->{quant} * $self->{mult})]\n";
 
-	$self->{size}  = 2 + ($self->{time2_end} - $self->{first}) / 
-				($self->{quant} * $self->{mult}) ;
+	$self->{size}  = 2 + ( $self->{time2_end} - $self->{first} ) / 
+				( $self->{quant} * $self->{mult} ) ;
 
 	return $self;
 }
@@ -236,18 +226,31 @@ sub EXTEND {
 sub FETCH {
 	my ($self) = shift;
 	my $index = shift;
-	my $this = &{ $subs{$self->{type}} } ($self, $index);
-	my $next = &{ $subs{$self->{type}} } ($self, $index + 1);
+
+	my ($this, $next);
+
+	$this = &{ $subs{$self->{type}} } ($self, $index);
+
+	# test cache
+	#if (($index + 1) == $self->{last_index}) {
+	#	$next = $self->{last};
+	#}
+	#else {
+		$next = &{ $subs{$self->{type}} } ($self, $index + 1);
+	#}
+
+	# add to cache
+	#$self->{last} = $next;
+	#$self->{last_index} = $index + 1;
+
 	if ($this > $self->{time2_end}) {
 		$self->{size} = $index if $self->{size} > $index;
 		return '';
 	}
-	#$this = Set::Infinite::Date::time2date($this);
-	#$next = Set::Infinite::Date::time2date($next);
 	my $tmp = Set::Infinite::Simple->new($this,$next)->open_end(1);
-	$tmp->{a}->{v}->mode($self->{mode});
-	$tmp->{b}->{v}->mode($self->{mode});
-	$tmp = Set::Infinite->new($tmp);
+	$tmp->{a}->mode($self->{mode});
+	$tmp->{b}->mode($self->{mode});
+	$tmp = Set::Infinite->new($tmp);# slower but necessary
 	if ($self->{dates}->intersects($tmp)) {
 		# print " [QD:INTER:",$self->{dates}->intersects($tmp),"=",	$self->{dates}->intersection($tmp),"]\n";
 		return $tmp;
