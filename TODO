@@ -1,64 +1,42 @@
 Set::Infinite TODO 
 
+    - verify and fix unbalanced trace_open/trace_close 
+
+    - move _cleanup to S::I::Basic
+
+    - move (offset, quantize), or most of Arithmetic.pm, to Date::Set 
     - refactor "widgets" out of the main code. Maybe create
-      a Set::Infinite::Widgets directory.
-
-    - a set with min == inf or max = -inf is an error!
-
-    - implement last of select, quantize; enable tests!
-
-    - tests for iterate min/max/first
-
-    - refactor backtracking, min, max, first, offset, quantize
-
-    - tests for min/max of iterate()
-
-    - test until() with first()/min()/max()
-
-    - backtrack code to 'offset' is a hack - fix it.
-
-    - change "link to self" to "link to copy" in first()
-
-    - finish last()
-
-    - finish select/first defined "boundedness" for negative by
-      and tests for negative by
-
-    - document first()
-
-    - test min/max after select()
-
+      a Set::Infinite::Widgets directory (offset, quantize).
     - give more standard names to Arithmetic.pm variables
+    - implement "last of quantize"
 
-    - size() is wrong for open, "integer" sets.
-      test!
+    - remove _quantize_span()
 
-    - verify POD format and contents; un-mix POD and program
+    - a set with first == inf or last = -inf is an error!
 
-    - make Set::Infinite::Date inherit Set::Infinite; 
-      make Set::Infinite::Date::Element a leaf-node?
+    - tests for "iterate" min/max/first/last
+    - more tests for min/max/span/size on too_complex sets
 
-    - remove all references to 'mode', except in 'S::I::Date'
-    - move $self->{mode} to "Date" only.
+    - refactor backtracking
 
     - find out how to compare "<=>" unbounded sets
     - try using first() in intersects() and "<=>"
+    - test finding out min/max of integer open sets (see backtrack.t tests 2,3)
+
+    - fix _todo/bigfloat, _todo/bigint
 
 BACKTRACK
 
     backtrack.t:
-        - test max/min after select
-
-	make backtrack_result method
 
 	test backtrack on:
 		iterate
 		compact
 		no_cleanup
+                tolerance
+                complement
 
 	change $backtrack_arg2 = $arg->quantize(@param)->union(); to span()
-
-	backtracking select - see '	# (TODO) ???? ' in Infinite.pm, backtrack.t
 
 	backtracking: should be extensible. Use tables instead of if-else
 	backtracking: change ->{method} to sub-pointer instead of string ?
@@ -69,34 +47,9 @@ BACKTRACK
 	backtracking: implement remaining tests in backtrack.t
 	verify results in backtrack.t
 
-        backtracking should use new min/max methods (v.45) because they are
-            faster/more correct
-
-	ok - backtracking quantize should round up and down values, according to unit, quant.
-		-- check if this is really necessary!
-		-- try using span, or create result directly (faster)
-		-- or: use 'offset' instead
-	backtracking select should move up and down values, according to 'by' limits.
-	See: backtrack.t in 'partially null "date"'
-    test finding out min/max of integer open sets (see backtrack.t tests 2,3)
-
-	backtracking: document backtracking resolution; document internal object data (partially done)
+	backtracking: document backtracking resolution
 
 SYNTAX
-
-	remove iterate ?
-	'iterate' options 'no-sort', 'no-merge', 'keep-null' ...
-
-	sort by[] -- 0 1 2 ... freq-3 freq-2 freq-1
-
-	'select' switch for negative-index overflow behaviour (end of subset, or end of freq)
-	tests: add test for negative 'by'
-
-	old: correct syntax problems due to accepting ( [ 1 .. 10 ] ) as input - see POD.
-
-	make 'freq' work with 'days', etc.
-
-	extra: offset option "middle"
 
 	extra: Make a 'strict' option for "quantize" and other filters, 
 	that will intersect
@@ -109,58 +62,31 @@ SYNTAX
 
 	think about: some "if-else" mechanism
 
-TESTS
-
-        more tests for min/max/span/size on too_complex sets
-
-        tests for complement() backtracking 
-
-	old: fix Bigfloat tests
-
 DOCUMENTATION
 
-	check: POD formatting 
+	check: POD formatting and contents 
 
 	verify, document parameter syntax everywhere
 
 	document:
-		new method 'compact'
-		offset option 'mode=>circle'
+		??? offset option 'mode=>circle'
 		new method 'list'
 		iterate
-		no_cleanup
+		??? no_cleanup
 
         document as "internal":
                 min_a
                 max_a
                 backtrack
-	        trace({options})
+	        trace
 
-	document: quantize extensibility through hash-subs
+	??? document: quantize extensibility through hash-subs
 
 CACHEING
 
 	cache quantize by month/day/...
 	-- doesn't work if 'quant' is changed
 	-- doesn't check 'intersects'
-
 	make a 'flush'-cache method. Make a 'cache-registry'.
-
 	think about: caching for union, etc  
-
-	old: Create a `dirty' variable so it knows when to cleanup.
-
-OTHER
-
-	find a better (bigger span) gmtime/timegm
-
-	check for negative-epoch errors (quantize, select, offset).
-
-	remove a lot of debug #-print lines
-
-	check: cleanup "type" hack
-
-	old: Make a global mode for `open_*' 
-
-	old: Quantize_Date should care of daylight savings time
 

@@ -45,9 +45,9 @@ sub stats {
 	}
 }
 
-use Set::Infinite qw(type);
-type('Math::BigInt');
-Set::Infinite::integer;
+use Set::Infinite;
+Set::Infinite->type('Math::BigInt');
+Set::Infinite->integer;
 
 # print "Union\n";
 

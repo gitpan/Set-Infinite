@@ -1,11 +1,36 @@
 Revision history for Perl extension Set::Infinite.
 
+0.5305
+    %_first and %_last are declared with 'use vars'
+
+0.5304
+    added more tests: intersects/until/select
+    optimized select()
+    refactored quantize()
+
+0.5303
+    removed Set::Infinite::Date
+    removed /_eg directory
+    simplified README
+
+0.5302
+    select( freq => $n ) is removed. 
+    - breaks Date::Set 0.28 (Date::Set 0.29 is ok)
+    select( by => [] ) default is changed to 'All'.
+    - in order to have the same behaviour as when 'freq' was omitted.
+
+0.5301
+    refactored methods: min, max, first, last, until, iterate, offset
+    removed obsolete method: compact
+    renamed internal methods with _underline
+    removed obsolete 'date' docs
+
 0.53    2003-09-05
-    - fixes a test that fails under 5.00503
-    - does not export 'new'
+    fixes a test that fails under 5.00503
+    does not export 'new'
 
 0.52    2003-09-04
-    change tests to run under Perl 5.9.0
+    change tests to run under (a broken) Perl 5.9.0
     - infinity string contains spaces
 
 0.51    2003-09-02

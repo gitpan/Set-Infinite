@@ -10,7 +10,7 @@
 BEGIN { $| = 1; print "1..74\n"; }
 END {$test++; print "not ok $test\n" unless $loaded;}
 
-use Set::Infinite qw(type);
+use Set::Infinite;
 $loaded = 1;
 use Math::BigFloat;
 
@@ -42,13 +42,13 @@ sub stats {
 	}
 }
 
-type('Math::BigFloat');
-Set::Infinite::real;
+Set::Infinite->type('Math::BigFloat');
+Set::Infinite->real;
 
 print "\t# Add element:\n";
 
 $a = Set::Infinite->new(1,2);
-$a->add(3,4);
+$a = $a->union(3,4);
 test (" (1,2) (3,4) : ",'$a',"[1...2.],[3...4.]");
 
 print "\t# Parameter passing:\n";

@@ -37,7 +37,7 @@ sub test {
 	print " \n";
 }
 
-print "1..14\n";
+print "1..24\n";
 $| = 1;
 
 # $Set::Infinite::TRACE = 1;
@@ -72,7 +72,7 @@ $a = Set::Infinite->new( $neg_inf, $inf )
     ->quantize( quant => 20 )
     ->offset( mode => 'begin', value => [0,0] );
 # $b = ...10,30,50,70... forever
-$b = $a->offset( value => [10,10] );
+$b = $a->offset( mode => 'begin', value => [10,10] );
 # warn "a: ". $a->intersection(5,45);
 # warn "b: ". $b->intersection(5,45);
 test ("until unbounded recurrence",
@@ -112,6 +112,42 @@ test ("until - doesn't contain - small set",
     "0");
 
 # first, min, max
-# - TODO!
+
+test ("until - first",
+    '$a->until( $b )->intersection(32,$inf)->first',
+    "[40..50)");
+test ("until - first",
+    '($a->until( $b )->intersection(32,$inf)->first)[1]->first',
+    "[60..70)");
+test ("until - last",
+    '$a->until( $b )->intersection(-$inf,32)->last',
+    "[20..30)");
+test ("until - last",
+    '($a->until( $b )->intersection(-$inf,32)->last)[1]->last',
+    "[0..10)");
+
+test ("until - min",
+    '$a->until( $b )->intersection(32,$inf)->min',
+    "40");
+test ("until - max",
+    '$a->until( $b )->intersection(-$inf,32)->max',
+    "30");
+
+# start-set == end-set
+
+test ("until - first",
+    '$a->until( $a )->intersection(32,$inf)->first',
+    "[32..40)");
+test ("until - last",
+    '$a->until( $a )->intersection(-$inf,32)->last',
+    "[20..32]");
+
+test ("until - min",
+    '$a->until( $a )->intersection(32,$inf)->min',
+    "32");
+test ("until - max",
+    '$a->until( $a )->intersection(-$inf,32)->max',
+    "32");
+
 
 1;

@@ -12,7 +12,7 @@ require Exporter;
 use Carp;
 use Data::Dumper; 
 use vars qw( @ISA @EXPORT_OK @EXPORT $VERSION );
-use vars qw( $Type $tolerance $fixtype $inf $minus_inf @separators );
+use vars qw( $Type $tolerance $fixtype $inf $minus_inf @separators $neg_inf );
 
 @ISA = qw(Exporter);
 @EXPORT_OK = qw( INFINITY NEG_INFINITY );
@@ -20,7 +20,7 @@ use vars qw( $Type $tolerance $fixtype $inf $minus_inf @separators );
 $VERSION = '0.00_01';
 
 $inf            = 100**100**100;
-$minus_inf      = -$inf;
+$minus_inf = $neg_inf = -$inf;
 use constant INFINITY => $inf;
 use constant NEG_INFINITY => $minus_inf;
 
@@ -86,65 +86,62 @@ BEGIN {
 
 # _simple_* set of internal methods: basic processing of "spans"
 
-# TODO: POD
-# TODO: make these class or object methods, maybe?
-
 sub _simple_intersects {
-    my ($tmp1, $tmp2) = (shift, shift);
-    return 0 unless defined $tmp1;
-    return 0 unless defined $tmp2;
+    my $tmp1 = $_[0];
+    my $tmp2 = $_[1];
     my ($i_beg, $i_end, $open_beg, $open_end);
-    if ($tmp1->{a} < $tmp2->{a}) {
-        $i_beg         = $tmp2->{a};
-        $open_beg     = $tmp2->{open_begin};
+    my $cmp = $tmp1->{a} <=> $tmp2->{a};
+    if ($cmp < 0) {
+        $i_beg       = $tmp2->{a};
+        $open_beg    = $tmp2->{open_begin};
     }
-    elsif ($tmp1->{a} == $tmp2->{a}) {
-        $i_beg         = $tmp1->{a};
-        $open_beg     = ($tmp1->{open_begin} or $tmp2->{open_begin});
-    }
-    else {
-        $i_beg         = $tmp1->{a};
+    elsif ($cmp > 0) {
+        $i_beg       = $tmp1->{a};
         $open_beg    = $tmp1->{open_begin};
     }
-
-    if ($tmp1->{b} > $tmp2->{b}) {
-        $i_end         = $tmp2->{b};
-        $open_end     = $tmp2->{open_end};
+    else {
+        $i_beg       = $tmp1->{a};
+        $open_beg    = $tmp1->{open_begin} || $tmp2->{open_begin};
     }
-    elsif ($tmp1->{b} < $tmp2->{b}) {
-        $i_end         = $tmp1->{b};
+    $cmp = $tmp1->{b} <=> $tmp2->{b};
+    if ($cmp > 0) {
+        $i_end       = $tmp2->{b};
+        $open_end    = $tmp2->{open_end};
+    }
+    elsif ($cmp < 0) {
+        $i_end       = $tmp1->{b};
         $open_end    = $tmp1->{open_end};
     }
     else { 
-        $i_end         = $tmp1->{b};
-        $open_end     = ($tmp1->{open_end} or $tmp2->{open_end});
+        $i_end       = $tmp1->{b};
+        $open_end    = ($tmp1->{open_end} || $tmp2->{open_end});
     }
+    $cmp = $i_beg <=> $i_end;
     return 0 if 
-        ( $i_beg > $i_end ) or 
-        ( ($i_beg == $i_end) and ($open_beg or $open_end) ) ;
+        ( $cmp > 0 ) || 
+        ( ($cmp == 0) && ($open_beg || $open_end) ) ;
     return 1;
 }
 
 
 sub _simple_complement {
-    my $self = shift;
+    my $self = $_[0];
     return $simple_everything unless defined $self->{a};
-    my $tmp1 = _simple_fastnew(-$inf, $self->{a}, 1, ! $self->{open_begin} );
+    my $tmp1 = _simple_fastnew($neg_inf, $self->{a}, 1, ! $self->{open_begin} );
     my $tmp2 = _simple_fastnew($self->{b}, $inf, ! $self->{open_end}, 1);
     if ($tmp2->{a} == $inf) {
-        return $simple_null if ($tmp1->{b} == -$inf);
+        return $simple_null if ($tmp1->{b} == $neg_inf);
         return $tmp1;
     }
-    return $tmp2 if ($tmp1->{b} == -$inf);
+    return $tmp2 if ($tmp1->{b} == $neg_inf);
     ($tmp1 , $tmp2);
 }
 
 sub _simple_union {
     my ($tmp2, $tmp1, $tolerance) = @_; 
-    return $tmp1 unless defined $tmp2;
-    return $tmp2 unless defined $tmp1;
     my %tmp1 = %$tmp1;
-    my %tmp2 = %$tmp2; 
+    my %tmp2 = %$tmp2;
+    my $cmp; 
     if ($tolerance) {
         # "integer"
         my $a1_open =  $tmp1{open_begin} ? -$tolerance : $tolerance ;
@@ -165,41 +162,39 @@ sub _simple_union {
     }
     else {
         # "real"
-        my $cmp1b2a = $tmp1{b} <=> $tmp2{a};
-        my $cmp1a2b = $tmp1{a} <=> $tmp2{b};
-        if ( $cmp1b2a < 0 ) {
+        $cmp = $tmp1{b} <=> $tmp2{a};
+        if ( $cmp < 0 ||
+             ( $cmp == 0 && $tmp1{open_end} && $tmp2{open_begin} ) ) {
             return ( $tmp1, $tmp2 );
         }
-        if ( $cmp1a2b > 0) {
-            return ( $tmp2, $tmp1 );
-        }
-        if ( ( $cmp1b2a == 0 ) and $tmp1{open_end} and $tmp2{open_begin}) {
-            return ( $tmp1, $tmp2 );
-        }
-        if ( ( $cmp1a2b == 0 ) and $tmp2{open_end} and $tmp1{open_begin}) {
+        $cmp = $tmp1{a} <=> $tmp2{b};
+        if ( $cmp > 0 || 
+             ( $cmp == 0 && $tmp2{open_end} && $tmp1{open_begin} ) ) {
             return ( $tmp2, $tmp1 );
         }
     }
 
     my %tmp;
-    if ($tmp1{a} > $tmp2{a}) {
+    $cmp = $tmp1{a} <=> $tmp2{a};
+    if ($cmp > 0) {
         $tmp{a} = $tmp2{a};
         $tmp{open_begin} = $tmp2{open_begin};
     }
-    elsif ($tmp1{a} == $tmp2{a}) {
+    elsif ($cmp == 0) {
         $tmp{a} = $tmp1{a};
-        $tmp{open_begin} = $tmp1{open_begin} ? $tmp2{open_begin}: 0;
+        $tmp{open_begin} = $tmp1{open_begin} ? $tmp2{open_begin} : 0;
     }
     else {
         $tmp{a} = $tmp1{a};
         $tmp{open_begin} = $tmp1{open_begin};
     }
 
-    if ($tmp1{b} < $tmp2{b}) {
+    $cmp = $tmp1{b} <=> $tmp2{b};
+    if ($cmp < 0) {
         $tmp{b} = $tmp2{b};
         $tmp{open_end} = $tmp2{open_end};
     }
-    elsif ($tmp1{b} == $tmp2{b}) {
+    elsif ($cmp == 0) {
         $tmp{b} = $tmp1{b};
         $tmp{open_end} = $tmp1{open_end} ? $tmp2{open_end} : 0;
     }
@@ -215,51 +210,38 @@ sub _simple_spaceship {
     my ($tmp1, $tmp2, $inverted) = @_;
     my $cmp;
     if ($inverted) {
-        $cmp = $tmp1->{a} <=> $tmp2->{a};
-        return -$cmp if $cmp;
+        $cmp = $tmp2->{a} <=> $tmp1->{a};
+        return $cmp if $cmp;
         $cmp = $tmp1->{open_begin} <=> $tmp2->{open_begin};
         return $cmp if $cmp;
-        $cmp = $tmp1->{b} <=> $tmp2->{b};
-        return -$cmp if $cmp;
-        $cmp = $tmp1->{open_end} <=> $tmp2->{open_end};
-        return $cmp;
+        $cmp = $tmp2->{b} <=> $tmp1->{b};
+        return $cmp if $cmp;
+        return $tmp1->{open_end} <=> $tmp2->{open_end};
     }
     $cmp = $tmp1->{a} <=> $tmp2->{a};
     return $cmp if $cmp;
-    $cmp = $tmp1->{open_begin} <=> $tmp2->{open_begin};
-    return -$cmp if $cmp;
+    $cmp = $tmp2->{open_begin} <=> $tmp1->{open_begin};
+    return $cmp if $cmp;
     $cmp = $tmp1->{b} <=> $tmp2->{b};
     return $cmp if $cmp;
-    $cmp = $tmp1->{open_end} <=> $tmp2->{open_end};
-    return -$cmp;
+    return $tmp2->{open_end} <=> $tmp1->{open_end};
 }
 
 
 sub _simple_new {
-    my $tmp = shift;
-    return undef unless defined($tmp);
-    return $tmp if ref($tmp) eq 'HASH';
-    my ($tmp2, $type) = @_;
-    my $self;
-    if ($type and (ref($tmp) ne $type) ) { 
-        $tmp = new $type $tmp;
-    }
-    unless (defined $tmp2) {
-        $self->{a} = $self->{b} = $tmp;
-    }
-    else {
-        if ($type and (ref($tmp2) ne $type) ) {
+    my ($tmp, $tmp2, $type) = @_;
+    if ($type) {
+        if ( ref($tmp) ne $type ) { 
+            $tmp = new $type $tmp;
+        }
+        if ( ref($tmp2) ne $type ) {
             $tmp2 = new $type $tmp2;
         }
-        if ($tmp <= $tmp2) {
-            ($self->{a}, $self->{b}) = ($tmp, $tmp2);
-        }
-        else {
-            ($self->{a}, $self->{b}) = ($tmp2, $tmp);
-        }
     }
-    $self->{open_begin} = $self->{open_end} = 0;
-    $self;    
+    if ($tmp > $tmp2) {
+        ($tmp, $tmp2) = ($tmp2, $tmp);
+    }
+    return { a => $tmp , b => $tmp2 , open_begin => 0 , open_end => 0 };
 }
 
 
@@ -268,7 +250,7 @@ sub _simple_fastnew {
 }
 
 sub _simple_as_string {
-    my $self = shift;
+    my $self = $_[0];
     my $s;
     return "" unless defined $self;
     $self->{open_begin} = 1 if ($self->{a} == -$inf );
@@ -340,8 +322,14 @@ sub numeric {
     return $self;
 }
 
+sub _no_cleanup {
+    my ($self) = shift;
+    $self->{cant_cleanup} = 1;
+    return $self;
+}
+
 sub first {
-    my $self = shift;
+    my $self = $_[0];
     if (exists $self->{first} ) {
         return wantarray ? @{$self->{first}} : $self->{first}[0];
     }
@@ -350,14 +338,14 @@ sub first {
     }
     my $first = $self->new( @{$self->{list}} [0] );
     return $first unless wantarray;
-    my $res = $self->new->no_cleanup;
+    my $res = $self->new->_no_cleanup;
     push @{$res->{list}}, @{$self->{list}} [1 .. $#{$self->{list}}];
     return @{$self->{first}} = ($first) if $res->is_null;
     return @{$self->{first}} = ($first, $res);
 }
 
 sub last {
-    my $self = shift;
+    my $self = $_[0];
     if (exists $self->{last} ) {
         return wantarray ? @{$self->{last}} : $self->{last}[0];
     }
@@ -366,16 +354,14 @@ sub last {
     }
     my $last = $self->new( @{$self->{list}} [-1] );
     return $last unless wantarray;  
-    my $res = $self->new->no_cleanup;
+    my $res = $self->new->_no_cleanup;
     push @{$res->{list}}, @{$self->{list}} [0 .. $#{$self->{list}}-1];
     return @{$self->{last}} = ($last) if $res->is_null;
     return @{$self->{last}} = ($last, $res);
 }
 
 sub is_null {
-    my $self = shift;
-    return 0 if @{$self->{list}};
-    return 1;
+    @{$_[0]->{list}} ? 0 : 1;
 }
 
 sub intersects {
@@ -415,7 +401,6 @@ sub iterate {
     my $subroutine = shift;
     foreach $ia (0 .. $#{$a->{list}}) {
         $tmp = &{$subroutine} ( $a->new($a->{list}->[$ia]), @_ );
-        # warn "iterate add ". $tmp->min->ymd;
         $iterate = $iterate->union($tmp) if defined $tmp; 
     }
     return $iterate;    
@@ -483,7 +468,7 @@ sub intersection {
                  ( ($tmp1a != $tmp1b) or 
                    (!$open_beg and !$open_end) or
                    ($tmp1a == $inf) or
-                   ($tmp1a == -$inf)
+                   ($tmp1a == $neg_inf)
                  )
                ) {
                 push @a, 
@@ -506,23 +491,19 @@ sub complement {
         else {
             $a = $self->new(@_);  
         }
-        $a = $a->complement;
-        my $tmp =$self->intersection($a);
-        return $tmp;
+        return $self->intersection( $a->complement );
     }
 
-    my ($ia);
-    my $tmp;
-    if (($#{$self->{list}} < 0) or (not defined ($self->{list}))) {
-        return $self->new($minus_inf, $inf);
+    unless ( @{$self->{list}} ) {
+        return $self->new($neg_inf, $inf);
     }
     my $complement = $self->new();
     @{$complement->{list}} = _simple_complement($self->{list}->[0]); 
 
-    $tmp = $self->new();
-    foreach $ia (1 .. $#{$self->{list}}) {
+    my $tmp = $self->new();
+    foreach my $ia (1 .. $#{$self->{list}}) {
         @{$tmp->{list}} = _simple_complement($self->{list}->[$ia]); 
-        $complement = $complement->intersection($tmp); # if $tmp;
+        $complement = $complement->intersection($tmp); 
     }
     return $complement;    
 }
@@ -637,13 +618,12 @@ sub union {
 
     B: foreach $ib ($ib .. $#{$b_list}) {
         foreach $ia ($ia .. $#{$a1->{list}}) {
-            my @tmp = _simple_union($a1->{list}->[$ia], $b_list->[$ib], $a1->{tolerance});
+            my @tmp = _simple_union($a1->{list}[$ia], $b_list->[$ib], $a1->{tolerance});
             if ($#tmp == 0) {
-                    $a1->{list}->[$ia] = $tmp[0];
+                    $a1->{list}[$ia] = $tmp[0];
                     next B;
             }
-            my %hash = %{$b_list->[$ib]};
-            if ($a1->{list}->[$ia]->{a} >= $hash{a}) {
+            if ($a1->{list}[$ia]{a} >= $b_list->[$ib]{a}) {
                 splice (@{$a1->{list}}, $ia, 0, $b_list->[$ib]);
                 next B;
             }
@@ -689,22 +669,25 @@ sub copy {
 
 sub new {
     my $class = shift;
-    my $class_name = ref($class) ? ref($class) : $class;
-    my ($self) = bless { list => [] }, $class_name;
-    # set up private variables
-    if (ref($class)) {
-        $self->{tolerance} = $class->{tolerance};
-        $self->{type}      = $class->{type};    
-        $self->{fixtype}   = $class->{fixtype};
+    my $self;
+    if ( ref $class ) {
+        $self = bless {
+                    list      => [],
+                    tolerance => $class->{tolerance},
+                    type      => $class->{type},
+                    fixtype   => $class->{fixtype},
+                }, ref($class);
     }
     else {
-        $self->{tolerance} = $tolerance ? $tolerance : 0;
-        $self->{type} =      $class_name->type;
-        $self->{fixtype} =   $fixtype   ? $fixtype : 0;
+        $self = bless { 
+                    list      => [],
+                    tolerance => $tolerance ? $tolerance : 0,
+                    type      => $class->type,
+                    fixtype   => $fixtype   ? $fixtype : 0,
+                }, $class;
     }
     my ($tmp, $tmp2, $ref);
     while (@_) {
-        # return $self unless @_;
         $tmp = shift;
         $ref = ref($tmp);
         if ($ref) {
@@ -723,97 +706,74 @@ sub new {
                 next;
             }
         }
-        $tmp2 = shift;
-        push @{ $self->{list} }, _simple_new($tmp,$tmp2, $self->{type} );
+        $tmp2 = shift || $tmp;
+        push @{ $self->{list} }, _simple_new($tmp,$tmp2, $self->{type} )
     }
     $self;
 }
 
 sub min { 
-    my $tmp;
-    $tmp = ($_[0]->min_a)[0];
-    return $tmp;
+    ($_[0]->min_a)[0];
 }
 
 sub min_a { 
-    my ($self) = shift;
-
-    if (exists $self->{min} ) {
-        return @{$self->{min}};
-    }
-    my $tmp;
-    my $i;
-
-    for($i = 0; $i <= $#{$self->{list}}; $i++) {
-        $tmp = $self->{list}[$i]->{a};
-        my $tmp2 = $self->{list}[$i]{open_begin};
-        if ($tmp2 and $self->{tolerance}) {
+    my $self = $_[0];
+    return @{$self->{min}} if exists $self->{min};
+    return @{$self->{min}} = (undef, 0) unless @{$self->{list}};
+    my $tmp = $self->{list}[0]->{a};
+    my $tmp2 = $self->{list}[0]{open_begin} || 0;
+    if ($tmp2 && $self->{tolerance}) {
             $tmp2 = 0;
             $tmp += $self->{tolerance};
-        }
-        $tmp2 = 0 unless defined $tmp2;
-        return @{$self->{min}} = ($tmp, $tmp2);  
     }
-    return @{$self->{min}} = (undef, 0);   
+    return @{$self->{min}} = ($tmp, $tmp2);  
 };
 
 sub max { 
-    my $tmp = ($_[0]->max_a)[0];
-    return $tmp;
+    ($_[0]->max_a)[0];
 }
 
 sub max_a { 
-    my ($self) = shift;
+    my $self = $_[0];
     return @{$self->{max}} if exists $self->{max};
-    my $tmp;
-    my $i;
-
-    for($i = $#{$self->{list}}; $i >= 0; $i--) {
-        $tmp = $self->{list}[$i]{b};
-        my $tmp2 = $self->{list}[$i]{open_end};
-        if ($tmp2 and $self->{tolerance}) {
+    return @{$self->{max}} = (undef, 0) unless @{$self->{list}};
+    my $tmp = $self->{list}[-1]{b};
+    my $tmp2 = $self->{list}[-1]{open_end} || 0;
+    if ($tmp2 && $self->{tolerance}) {
             $tmp2 = 0;
             $tmp -= $self->{tolerance};
-        }
-        $tmp2 = 0 unless defined $tmp2;
-        return @{$self->{max}} = ($tmp, $tmp2);  
     }
-    return @{$self->{max}} = (undef, 0); 
+    return @{$self->{max}} = ($tmp, $tmp2);  
 };
 
 sub count {
-    my ($self) = shift;
-    return 1 + $#{$self->{list}};
+    1 + $#{$_[0]->{list}};
 }
 
 sub size { 
-    my ($self) = shift;
-    my $tmp;
-    my $size;  # = 0;
-    foreach(0 .. $#{$self->{list}}) {
-        # next unless defined $self->{list}->[$_];
-        # my @tmp = %{ $self->{list}->[$_] };
-        # warn " @tmp  tol=". $self->{tolerance};
+    my $self = $_[0];
+    my $size;  
+    foreach( @{$self->{list}} ) {
         if ( $size ) {
-            $size += $self->{list}->[$_]->{b} - $self->{list}->[$_]->{a};
+            $size += $_->{b} - $_->{a};
         }
         else {
-            $size = $self->{list}->[$_]->{b} - $self->{list}->[$_]->{a};
+            $size = $_->{b} - $_->{a};
         }
         if ( $self->{tolerance} ) {
-            $size += $self->{tolerance} unless $self->{list}->[$_]->{open_end};
-            $size -= $self->{tolerance} if $self->{list}->[$_]->{open_begin};
-            $size -= $self->{tolerance} if $self->{list}->[$_]->{open_end};
+            $size += $self->{tolerance} unless $_->{open_end};
+            $size -= $self->{tolerance} if $_->{open_begin};
+            $size -= $self->{tolerance} if $_->{open_end};
         }
     }
     return $size; 
 };
 
 sub span { 
-    my ($self) = shift;
+    my $self = $_[0];
     my @max = $self->max_a;
     my @min = $self->min_a;
-    return undef unless defined $min[0] and defined $max[0];
+    return undef unless defined $min[0] && defined $max[0];
     my $a1 = $self->new($min[0], $max[0]);
     $a1->{list}[0]{open_end} = $max[1];
     $a1->{list}[0]{open_begin} = $min[1];
@@ -834,7 +794,7 @@ sub spaceship {
         my $cmp = _simple_spaceship($this, $other);
         return $cmp if $cmp;   # this != $other;
     }
-    return $#{$tmp1->{list}} == $#{ $tmp2->{list} } ? 0 : -1;
+    return $#{ $tmp1->{list} } == $#{ $tmp2->{list} } ? 0 : -1;
 }
 
 sub tolerance {
@@ -845,6 +805,7 @@ sub tolerance {
         return $self->{tolerance} unless defined $tmp;
         $self = $self->copy;
         $self->{tolerance} = $tmp;
+        delete $self->{max};  # tolerance may change "max"
         return $self;
     }
     # global

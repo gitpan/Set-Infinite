@@ -7,32 +7,22 @@ TODO
 Makefile.PL
 
 lib/Set/Infinite.pm
-lib/Set/Infinite/Date.pm
 lib/Set/Infinite/Basic.pm
 lib/Set/Infinite/Arithmetic.pm
 
 _todo/bigfloat.t
 _todo/bigint.t
-_todo/simple_bigfloat.t
-_todo/element_inf.t
 
 t/until.t
-t/date.t
 t/infinite.t
 t/first.t
 t/last.t
 t/backtrack.t
-t/quantize_date.t
 t/quantize.t
-t/date_select_offset.t
 t/select.t
 t/select_offset.t
 t/size.t
-
-_eg/month_to_html.pl
-_eg/schedule.dat
-_eg/schedule_check.pl
-_eg/weekly_to_html.pl
-_eg/recurring.pl
+t/basic_intersects.t
 
 META.yml                                Module meta-data (added by MakeMaker)
+
