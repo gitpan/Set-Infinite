@@ -1,8 +1,17 @@
 Set::Infinite TODO 
 
-    - change iterate() to use first() ?
+    no - make separate methods for quantize, quantize-first and quantize-last
 
-    - use wantarray in min; return min_a
+    done - first() of a select/complement should return next interval,
+      instead of 'null'
+
+        [1..2),[2..3)
+              ^      ^should return here
+              returns here
+
+    - finish last()
+
+    - change iterate() to use first() ?
 
     - finish first(n) for unbounded sets
 

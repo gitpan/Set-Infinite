@@ -94,7 +94,7 @@ use strict;
 use warnings;
 use Carp;
 use Time::Local;
-use Set::Infinite::Element_Inf;
+# use Set::Infinite::Element_Inf;
 
 #--- THIS FUNCTION IS (HEAVILY) MODIFIED FROM HTTP::Date -- Copyright 1995-1999, Gisle Aas
 
@@ -255,7 +255,7 @@ sub new {
 
 	if ((not defined $tmp) or ($tmp eq '')) {
 		# print " [date:new:null] ";
-		return Set::Infinite::Element_Inf->null ;
+		return undef;  # Set::Infinite::Element_Inf->null ;
 	}
 
 	if (exists $date_cache{$tmp}) {

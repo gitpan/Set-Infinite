@@ -1,5 +1,58 @@
 Revision history for Perl extension Set::Infinite.
 
+0.37_71
+    trace works on a copy of the variables, so that autovivification
+        and cleanups don't interfere with the program.
+
+0.37_69
+    new method _quantize_span helps some internal calculations
+
+0.37_68
+    fixed a bug in intersection -inf with (-inf..15)
+
+0.37_67
+    t/first.t passes all tests
+    first-select is leaking
+
+0.37_63
+    last-quantize started
+
+0.37_62
+    all tests pass
+    fixed Element_Inf dependency in Set::Infinite::Date.pm
+
+0.37_61
+    tests pass
+    select should use count=> to bound set
+
+0.37_60
+    first/unknown/union recursion fixed
+
+0.37_59
+    first() has a cache
+
+0.37_57
+    new $PRETTY_PRINT global option
+
+0.37_54
+    quantize() is 'first-compatible'
+
+0.37_51
+    min is 'more exact'
+    first-intersection uses limited recursion
+
+0.37_49
+    trace() has 'tab-levels' - trace_open/trace_close
+
+0.37_48
+    first complement/intersection works
+    last() removed 
+
+0.37_47
+    started last()
+    started first/last + complement
+    new t/first.t
+
 0.37_44
     fixed a bug in <=>
 
