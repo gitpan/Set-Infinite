@@ -19,7 +19,7 @@ our %EXPORT_TAGS = ( 'all' => [ qw(type inf new ) ] );
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(type inf new ) );
 our @EXPORT = qw();
 
-our $VERSION = '0.30';
+our $VERSION = '0.31';
 
 our $TRACE = 0;  	# basic trace method execution
 our $DEBUG_BT = 0; 	# backtrack tracer
@@ -1240,6 +1240,11 @@ They change quantize function behaviour to accept time units:
 	print "Quarters of hour in $a: ", join (" ", $a->quantize(unit => 'minutes', quant => 15) );
 
 Quantize units can be years, months, days, weeks, hours, minutes, or seconds.
+To quantize the year to first-week-of-year until last-week-of-year, use 'weekyears':
+
+		->quantize( unit => weekyears, wkst => 1 )
+
+'wkst' parameter is '1' for monday (default), '7' for sunday.
 
 max and min functions will also show in date/time format.
 

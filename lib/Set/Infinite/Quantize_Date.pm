@@ -8,15 +8,12 @@ use strict;
 use warnings;
 
 require Exporter;
-our $VERSION = "0.24";
 
 our @EXPORT = qw();
 our @EXPORT_OK = qw();
-# our @ISA = qw(Set::Infinite::Quantize);
 
 use Time::Local;
 use Set::Infinite qw(type);
-# use Set::Infinite::Quantize;
 use Set::Infinite::Element_Inf qw(inf);
 
 =head2 NAME
@@ -27,11 +24,12 @@ Set::Infinite::Quantize_Date - arrays of date intervals to make calendars
 
 	See Set::Infinite
 
-=head2 TODO
-
-	week(year, week_number); => DATE_SET
-
 =head2 CHANGES
+
+	- added 'weekyears' to return the year from day 1 of first week to day 7 of last week.
+	- uses 'wkst', with default 1 = monday.
+
+		->quantize( unit => weekyears, wkst => 1 )
 
 	- option 'strict' will return intersection($a,quantize). Default: parent set.
 
@@ -48,7 +46,22 @@ our $hour_size = $day_size / 24;
 our $minute_size = $hour_size / 60;
 our $second_size = $minute_size / 60;
 
+our @week_start = ( 0, -1, -2, -3, 3, 2, 1, 0, -1, -2, -3, 3, 2, 1, 0 );
+
 our %subs = (
+	weekyears =>	sub {
+		my ($self, $index) = @_;
+		my $epoch = timegm( 0,0,0, 
+			1,0,$self->{date_begin}[5] + $self->{quant} * $index);
+		my @time = gmtime($epoch);
+		# print " [QT_D:weekyears:$self->{date_begin}[5] + $self->{quant} * $index]\n";
+		# year modulo week
+		# print " [QT:weekyears: ",$self->{date_begin}[5] + $self->{quant} * $index," epoch=$epoch ]\n";
+		# print " [QT:weekyears: time = ",join(";", @time )," ]\n";
+		$epoch += ( $week_start[$time[6] + 7 - $self->{wkst}] ) * $day_size;
+		# print " [QT:weekyears: week=",join(";", gmtime($epoch) )," wkst=$self->{wkst} tbl[",$time[6] + 7 - $self->{wkst},"]=",$week_start[$time[6] + 7 - $self->{wkst}]," ]\n\n";
+		return $epoch;
+	},
 	years => 	sub {
 		my ($self, $index) = @_;
 		# print " [QT_D:YEARS:$self->{date_begin}[5] + $self->{quant} * $index]\n";
@@ -138,6 +151,12 @@ our %init = (
 		my $self = shift;
 		# print " [QT_D:YEARS_INIT]\n";
 		$self->{mult} = 365 * $day_size; },
+	weekyears =>	sub {
+		my $self = shift;
+		# print " [QT_D:WEEKYEARS_INIT]\n";
+		$self->{wkst} = 1 if $self->{wkst} eq '';
+		# print " [QT:$self->{wkst}] \n";
+		$self->{mult} = 365 * $day_size; },
 );
 
 sub new {
@@ -160,6 +179,7 @@ sub new {
 	# my ($class, $parent, %rules) = @_;
 	# my ($self) = bless \%rules, $class;
 	# print " [ PARENT:ISA:", ref($parent), "] ";
+	# print " [ QT:PARAM: ", join(":", %$self), "] ";
 
 	$self->{unit} = 'one' unless $self->{unit};
 	$self->{quant} = 1 unless $self->{quant};

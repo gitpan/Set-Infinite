@@ -234,6 +234,7 @@ sub intersection {
 		$open_end	= $tmp1->{open_end};
 	}
 
+	# print "  [ simple: fastnew($i_beg, $i_end, $open_beg, $open_end ) ]\n";
 	return $simple_null if 
 		( $i_beg > $i_end ) or 
 		( ($i_beg == $i_end) and ($open_beg or $open_end) ) ;
@@ -325,22 +326,24 @@ sub union {
 
 	#print " [SIM:UNION:",ref($tmp1->{a}),"=",$tmp1->{a}," <=> ",ref($tmp1->{b}),"=",$tmp1->{b},"] \n";
 
-	if ($tmp1->{a} > $tmp2->{a}) {
-			$tmp1->{a} = $tmp2->{a};
-			$tmp1->{open_begin} = $tmp2->{open_begin};
+	my $tmp = __PACKAGE__->fastnew($tmp1->{a}, $tmp1->{b}, $tmp1->{open_begin}, $tmp1->{open_end} );
+
+	if ($tmp->{a} > $tmp2->{a}) {
+			$tmp->{a} = $tmp2->{a};
+			$tmp->{open_begin} = $tmp2->{open_begin};
 	}
-	elsif ($tmp1->{a} == $tmp2->{a}) {
-			$tmp1->{open_begin} = $tmp2->{open_begin} if $tmp1->{open_begin};
+	elsif ($tmp->{a} == $tmp2->{a}) {
+			$tmp->{open_begin} = $tmp2->{open_begin} if $tmp->{open_begin};
 	}
 
-	if ($tmp1->{b} < $tmp2->{b}) {
-			$tmp1->{b} = $tmp2->{b};
-			$tmp1->{open_end} = $tmp2->{open_end};
+	if ($tmp->{b} < $tmp2->{b}) {
+			$tmp->{b} = $tmp2->{b};
+			$tmp->{open_end} = $tmp2->{open_end};
 	}
-	elsif ($tmp1->{b} == $tmp2->{b}) {
-			$tmp1->{open_end} = $tmp2->{open_end} if $tmp1->{open_end};
+	elsif ($tmp->{b} == $tmp2->{b}) {
+			$tmp->{open_end} = $tmp2->{open_end} if $tmp->{open_end};
 	}
-	return $tmp1;
+	return $tmp;
 }
 
 sub spaceship {
