@@ -1,98 +1,123 @@
-TODO - version 0.21
+TODO - version 0.22
 
-	ok - select and offset -> return simple_null instead of ''
-	Date::sub -> propagate "mode"
+	extra: offset option "middle"
 
-TODO - version 0.20
+	extra: "indexes" filter to help dealing with sparse lists:
+	(,,10,,12,,14,,,)->indexes gives (2,4,6)
 
-Test examples:
-	example in Set::Infinite::Quantize_Date doesn't work
+	extra: caching for the filters
 
-"quantize" output processors, for RFC2445 processing:
+	internal: it may be good to have a pointer to the "root" object
+	in the filters. Thay already have a "parent" pointer.
+
+	extra: option: Date format iCal compatible; 
+	maybe use iCal engine.
+
+	think about: caching for union, etc  
+
+	check: english: "infinite" x "infinity"
+
+	check: if Set::Infinite->is_null works after quantize
+
+	think about: "push-pop", "dup", "drop" mechanism
+
+	think about: some "if-else" mechanism
+
+	extra: wrappers (like: weekday('thursday') )
+	some tough cases: yearweek(10) monthweek(2)
+
+	remove: HTTP::Date and other dependencies
+
+	extra: multiple offset (like: two days in month) 
+
+	oo: provide a general filter mechanism (quantize, select, etc)
+
+	tie: make "virtual" union, etc ? -- would be new filters
+
+	check: cleanup "type" hack
+
+	optimization: Set::Infinite : assume the list is sorted : union, intersect, etc
+
+	oo-date: check for extensibility
+
+	extra: check if it is working: min and max for quantize, select, offset
+
+	extra: make work with -inf, inf : quantize, select, offset 
+
+	extra: make compact set : quantize, select.
+	offset is ok.
+	will need some kind of internal index.
+
+	extra: syntax for quantize: ...->quantize('years')
+
+	correction: Date::sub -> propagate "mode"
+
+	check: POD formatting 
+
+	check: RFC2445 support completeness
+
+	doc: "select" options: 
+	  "quantize" output processors, for RFC2445 processing:
 	FREQ=YEARLY
-		...->freq('years',1)
-		re-instantiate the Interval, then "quantize" again.
-		"freq" should accept both Intervals and Arrays of Intervals ("quantize" output).
+		->quantize( unit=>'years' )
 
-		Interval(-inf .. inf) ->freq('years',1)
-		- would be a runtime error, unless we don't instantiate. See below.
+		Interval(-inf .. inf) ->quantize( unit=>'years')
+		- would be a runtime error because 
+		Quantize->new needs a "base", and -inf does not work.
+		- unless we don't instantiate ?
 
 	INTERVAL=4
-		...->freq('years',1)->interval(0,4)
+		...->quantize('years',1)->select(freq => 4)
 		"Each four years, starting in the first year"
-		...->freq('years',1)->interval(3,4)
+		...->quantize('years',1)->select(freq=>4,by=>[3])
 		"Each four years, starting in the third year"
 	BYMONTH=11;BYDAY=TU;BYMONTHDAY=2,3,4
-		...->freq('years',1)->freq('months')->interval(11,12)->commit 
-
-		- unit list will be processed as Set unions:
-		...->freq('years',1)->freq('months')->interval(2,31)->commit 
-		...->freq('years',1)->freq('months')->interval(3,31)->commit 
-		...->freq('years',1)->freq('months')->interval(4,31)->commit 
-		- "31" is a problem, unless it doesn't instantiate
-
+		$tmp = $a->quantize('years',1)->offset( .. 'begin', 11 months ... );
+		$thursdays = ...weeks .. offset ..;
+		$days = ...->select( .. by=>[1,2,3] ...);
+		$result = $thursdays->intersection($days);
 
 	FREQ=MONTHLY;COUNT=3
-		...->freq('months',3)
+		rewrite this: 
+		  ...->freq('months',3)
 	FREQ=MINUTELY;INTERVAL=15;COUNT=6
-		...->freq('minutes',15 * 6)->freq('minutes',1)->interval(0,15)->
-		Needs a lot of pre-processing to generate "freq('minutes',15 * 6)"!
+		rewrite this: 
+		  ...->freq('minutes',15 * 6)->freq('minutes',1)->interval(0,15)->
+		  Needs a lot of pre-processing to generate "freq('minutes',15 * 6)"!
 	BYSETPOS=-2
-
+		write about this
 	WKST
-
+		write about this	
 	UNTIL=19970902T170000Z
-		->commit->intersect( -inf .. "19970902T170000Z" )
+		->intersect( -inf .. "19970902T170000Z" )
 
-		...->commit
-		Intersects the input back to the original Interval. Returns an Interval
-	
-"quantize" must accept "quantize" output.
-	simplest workaround is to make a quantize_as_interval output, that is,
-	an "instantiated" output instead of "tied".
-
-	my @days = Set::Infinite->new("2001-04-01 00:00:00")->quantize('months', 1)->quantize('days', 1) ;
-
-	worst cases:
-	my @days = Set::Infinite->new("2001-04-01 00:00:00")->quantize('months', 1)->quantize('weeks', 1) ;
-	my @days = Set::Infinite->new("2001-04-01 00:00:00")->quantize('weeks', 1)->quantize('years', 1) ;
-
-	It may be necessary to change this:
-	|sub new {
-	|	...
-	|	$self->{dates} = Set::Infinite->new(@_); # date
-	because it would instantiate the tied array.
-
-	Maybe "Set::Infinite" should accept "quantize" output too. 
-	However it will be hard to make it not instantiate the array.
-
-Keep a pointer to object in "quantize", such that, if the object is changed,
+	extra: Keep a pointer to object in "quantize", such that, if the object is changed,
 	"quantize" will re-initialize. 
-
 	Make a "object_modified" flag in "quantize",
 	that the object should point back to. Sort of a signal handler.
 
-Make a 'strict' filter for "quantize", that will intersect
+	extra: Make a 'strict' option for "quantize" and other filters, 
+	that will intersect
 	each unit back to the object, that is:
 	Interval:                     [************************]
 	Quantized:                [*********)[*********)[*********)
 	Quantized->Stricted:          [*****)[*********)[******]
 
--------------------------
-TODO - until version 0.20:
+	old: Make a private mode for `type'
 
-Make a private mode for `type'
+	old: Make a global mode for `open_*' 
 
-Make a global mode for `open_*' 
+	old: Create a `dirty' variable so it knows when to cleanup.
 
-Create a `dirty' variable so it knows when to cleanup.
+	old: Find out how to accelerate `type' mode.
 
-Find out how to accelerate `type' mode.
+	old: use `isa' to test parameter types
 
-use `isa' to test parameter types
+	oo: use __PACKAGE__ everywhere
 
-correct syntax problems due to accepting ( [ 1 .. 10 ] ) as input - see POD.
+	old: correct syntax problems due to accepting ( [ 1 .. 10 ] ) as input - see POD.
 
-fix Bigfloat tests
+	old: fix Bigfloat tests
 
-Quantize_Date should care of daylight savings time
+	old: Quantize_Date should care of daylight savings time
+

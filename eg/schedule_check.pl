@@ -2,7 +2,8 @@
 use Set::Infinite;
 Set::Infinite::type('Set::Infinite::Date');
 
-$filename = "schedule.dat";
+$filename = './schedule.dat';
+$filename = './eg/schedule.dat' unless -e $filename;
 open (FILE, $filename);
 
 @event = ();
@@ -42,4 +43,4 @@ foreach $i ( 0 .. $n ) {
 	}
 }
 
-exit(0);
+exit(0);

@@ -72,7 +72,7 @@ print "<table border=1>";
 	foreach $dia (@horario_dia) {
 		if ($dia) {
 			print "<td><pre>";
-			print $dia->min;
+			print $dia->{a};
 			print "</td>\n";
 		}
 	}
@@ -111,4 +111,4 @@ print "<table border=1>";
 print "</table>";
 print "</body>";
 
-1;
+1;

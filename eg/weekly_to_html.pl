@@ -52,7 +52,7 @@ foreach $week ( $horario_mes->quantize('weeks', 1) ) {
 		print "<tr>";
 		foreach $dia ( $week->quantize('days', 1) ) {
 			if ($dia) {
-				print "<td valign=top><b>",$dia->min,"</b><br>";
+				print "<td valign=top><b>",$dia->{a},"</b><br>";
 				foreach $curso (0 .. $n) {
 					if ($horario[$curso]->intersects($dia)) {
 						print "x";
@@ -67,4 +67,4 @@ foreach $week ( $horario_mes->quantize('weeks', 1) ) {
 print "</table>";
 print "</body>";
 
-1;
+1;

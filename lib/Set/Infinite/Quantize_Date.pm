@@ -124,11 +124,15 @@ sub new {
 
 	# my ($class, $parent, %rules) = @_;
 	# my ($self) = bless \%rules, $class;
+	# print " [ PARENT:ISA:", ref($parent), "] ";
 
 	$self->{unit} = 'days' unless $self->{unit};
 	$self->{quant} = 1 unless $self->{quant};
 
-	$self->{dates} = $parent;   # Set::Infinite->new(@_); # date
+	# may be "simple"!
+	$parent = Set::Infinite->new($parent) unless $parent->isa('Set::Infinite');
+	$self->{dates} = $parent;  # date
+
 	$self->{mode}  = $self->{dates}->min->{mode};
 
 	#$self->{last} = 0;
@@ -136,7 +140,7 @@ sub new {
 
 	my $rest;
 
-	# print " [Q-DATE:MIN:",$self->{dates}->min," = ",0+ $self->{dates}->min,"]\n";
+	# print " [Q-DATE:MIN:",$self->{dates}->{a}," = ",0+ $self->{dates}->{a},"]\n";
 	# print " [Q-DATE:MODE:",$self->{mode},"]\n";
 
 	@{$self->{date_begin}} = localtime( 0 + $self->{dates}->min );
@@ -265,7 +269,6 @@ sub FETCH {
 		return $tmp;
 	}
 	return Set::Infinite::Simple->simple_null;
-;
 }
 
 sub STORE {

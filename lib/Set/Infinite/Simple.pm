@@ -33,22 +33,21 @@
 		SCALAR,SCALAR
 		ARRAY of SCALAR
 		Set::Infinite::Simple
+
+	$a = Set::Infinite::Simple->fastnew( object_begin, object_end, open_begin, open_end );	
+
 	$a->real;
 	$a->integer;
 
 	$logic = $a->intersects($b);
 	$logic = $a->contains($b);
-	$logic = $a->is_null;
 
 	$i = $a->union($b);	
 		NOTE: union returns a list if result is ($a, $b)
 	$i = $a->intersection($b);
 	$i = $a->complement($b);
 	$i = $a->complement;
-	$i = $a->min;
-	$i = $a->max;
-	$i = $a->size;   # SCALAR, size of interval.
-	$i = $a->span;   # INTERVAL, (min .. max); has no meaning here
+
 	@b = sort @a;
 	print $a;
 
@@ -57,7 +56,6 @@
 	tie @a, 'Set::Infinite::Simple', 1,2;
 		$a[0], $a[1] are min and max
 		POP, PUSH, SHIFT, UNSHIFT, SPLICE, DELETE, and EXISTS are not defined
-	$i = tied(@a)->size;
 
 	$a->open_end(1)		open-end: elements are < end
 	$a->open_begin(1) 	open-start: elements are > begin
@@ -101,7 +99,7 @@ Internal:
 require Exporter;
 
 package Set::Infinite::Simple;
-$VERSION = "0.19";
+$VERSION = "0.22";
 
 
 @ISA = qw(Exporter);
@@ -110,6 +108,7 @@ $VERSION = "0.19";
 	infinite minus_infinite separators null type inf
 	tolerance integer real quantizer selector offsetter
 	simple_null
+	fastnew
 );
 
 use strict;
@@ -130,6 +129,9 @@ our $selector  = 'Set::Infinite::Select';
 our $offsetter = 'Set::Infinite::Offset';
 
 sub type {
+
+	# this is a hack - waiting for better ideas
+
 	my ($self, $tmp_type) = @_;
 
 	#print " [S:TYPE: $self $tmp_type ] " ;
@@ -234,7 +236,6 @@ sub offsetter {
 
 use overload
 	'<=>' => \&spaceship,
-	'cmp' => \&cmp,
 	qw("" as_string);
 
 our @separators = (
@@ -245,7 +246,10 @@ our @separators = (
 );
 
 our $tolerance = 0;
-our $simple_null = __PACKAGE__->new();
+our $simple_null =           __PACKAGE__->fastnew(null, null, 1, 1);
+our $simple_everything =     __PACKAGE__->fastnew(minus_infinite, infinite, 1, 1);
+our $simple_infinite =       __PACKAGE__->fastnew(infinite, infinite, 1, 1);
+our $simple_minus_infinite = __PACKAGE__->fastnew(minus_infinite, minus_infinite, 1, 1);
 
 sub simple_null {
 	return $simple_null;
@@ -292,14 +296,12 @@ sub open_begin {
 	return $self;	
 }
 
-sub is_null {
-	my $self = shift;
-	return Set::Infinite::Element_Inf::is_null($self->{a});
-}
-
 sub intersects {
 	my ($tmp1, $tmp2) = (shift, shift);
-	$tmp2 = __PACKAGE__->new($tmp2, @_) unless ref($tmp2) and $tmp2->isa(__PACKAGE__); 
+	# $tmp2 = __PACKAGE__->new($tmp2, @_) unless ref($tmp2) and $tmp2->isa(__PACKAGE__); 
+
+	return 0 if Set::Infinite::Element_Inf::is_null($tmp1->{a});
+	return 0 if Set::Infinite::Element_Inf::is_null($tmp2->{a});
 
 	my ($i_beg, $i_end, $open_beg, $open_end);
 
@@ -332,16 +334,19 @@ sub intersects {
 		$open_end	= $tmp1->{open_end};
 	}
 
-	return 0 if ($i_beg > $i_end) or 
-		(($i_beg == $i_end) and ($open_beg or $open_end)) or
-		(not defined($i_beg)) or (not defined($i_end));
+	return 0 if 
+		( $i_beg > $i_end ) or 
+		( ($i_beg == $i_end) and ($open_beg or $open_end) ) ;
 	return 1;
 	
 }
 
 sub intersection {
 	my ($tmp1, $tmp2) = (shift, shift);
-	$tmp2 = __PACKAGE__->new($tmp2, @_) unless ref($tmp2) and $tmp2->isa(__PACKAGE__); 
+	# $tmp2 = __PACKAGE__->new($tmp2, @_) unless ref($tmp2) and $tmp2->isa(__PACKAGE__); 
+
+	return $simple_null if Set::Infinite::Element_Inf::is_null($tmp1->{a});
+	return $simple_null if Set::Infinite::Element_Inf::is_null($tmp2->{a});
 
 	my ($i_beg, $i_end, $open_beg, $open_end);
 
@@ -373,15 +378,10 @@ sub intersection {
 		$open_end	= $tmp1->{open_end};
 	}
 
-	return $simple_null if ($i_beg > $i_end) or 
-		(($i_beg == $i_end) and ($open_beg or $open_end)) or	
-		(not defined($i_beg)) or (not defined($i_end));
-
-	my $tmp = __PACKAGE__->new($i_beg, $i_end);
-	$tmp->{open_begin} = $open_beg;
-	$tmp->{open_end} =   $open_end;
-
-	return $tmp;
+	return $simple_null if 
+		( $i_beg > $i_end ) or 
+		( ($i_beg == $i_end) and ($open_beg or $open_end) ) ;
+	return __PACKAGE__->fastnew($i_beg, $i_end, $open_beg, $open_end );
 }
 
 sub complement {
@@ -390,7 +390,7 @@ sub complement {
 	# do we have a parameter?
 
 	if (@_) {
-		my $a = __PACKAGE__->new(@_);
+		my $a = shift; # __PACKAGE__->new(@_);
 		# $a->{tolerance} = $self->{tolerance} if defined($self->{tolerance});
 		$a = $a->complement;
 		return $self->intersection($a);
@@ -399,39 +399,37 @@ sub complement {
 	# print " [CPL-S:",$self,"] ";
 
 	# we don't have a parameter - just complement the set
-	return __PACKAGE__->new(minus_infinite, infinite) if $self->is_null;
+	return $simple_everything if Set::Infinite::Element_Inf::is_null($self->{a});
 
-	my $tmp1 = __PACKAGE__->new(minus_infinite, $self->{a});
-	$tmp1->open_end(not $self->{open_begin});
+	my $tmp1 = __PACKAGE__->fastnew(minus_infinite, $self->{a}, 1, ! $self->{open_begin} );
 
 	# print " [CPL-S:#1:",$tmp1,"] ";
 
-	my $tmp2 = __PACKAGE__->new($self->{b}, infinite);
-	$tmp2->open_begin(not $self->{open_end});
+	my $tmp2 = __PACKAGE__->fastnew($self->{b}, infinite, ! $self->{open_end}, 1);
 
 	# print " [CPL-S:#2:",__PACKAGE__,":",$tmp2,"=(",$self->{b},", ",infinite,")] ";
 
-	if ($tmp2 == infinite) {
-		return $simple_null if ($tmp1 == minus_infinite);
+	if ($tmp2->{a} == infinite) {
+		return $simple_null if ($tmp1->{b} == minus_infinite);
 		return $tmp1;
 	}
 
-	return $tmp2 if ($tmp1 == minus_infinite);
+	return $tmp2 if ($tmp1->{b} == minus_infinite);
 
-	# print " [CPL-S:RES:",$tmp1 ,";", $tmp2,"] ";
+	#print " [CPL-S:RES:",$tmp1 ,";", $tmp2,"] ";
 
 	return ($tmp1 , $tmp2);
 }
 
 sub union {
 	my $tmp2 = shift;
-	my $tmp1 = __PACKAGE__->new(@_); 
+	my $tmp1 = shift; #  __PACKAGE__->new(@_); 
 
 	#print " [SIM:UNION:@param] \n";
 	#print " [SIM:UNION:$tmp1 U $tmp2] \n";
 
-	return $tmp1 if $tmp2->is_null; # defined($tmp2->{a}) and defined($tmp2->{b});
-	return $tmp2 if $tmp1->is_null; # unless defined($tmp1->{a}) and defined($tmp1->{b});
+	return $tmp1 if Set::Infinite::Element_Inf::is_null($tmp2->{a});
+	return $tmp2 if Set::Infinite::Element_Inf::is_null($tmp1->{a});
 
 
 	if ($tmp2->{tolerance}) {
@@ -491,17 +489,6 @@ sub union {
 	return $tmp1;
 }
 
-sub contains {
-	my $self = shift;
-
-	# do we have a parameter?
-	return 1 unless @_;
-
-	my $a = __PACKAGE__->new(@_);
-	# $a->{tolerance} = $self->{tolerance} if defined($self->{tolerance});
-	return ($self->union($a) == $self) ? 1 : 0;
-}
-
 sub add {
 	my ($self, $tmp, $tmp2) = @_;
 
@@ -555,30 +542,13 @@ sub add {
 	return $self;	
 }
 
-sub min { 
-	my ($self) = shift;
-	return $self->{a}; 
-};
-
-sub max { 
-	my ($self) = shift;
-	return $self->{b}; 
-};
-
-sub size { 
-	my ($self) = shift;
-	return $self->{b} - $self->{a};
-};
-
-sub span { 
-	return shift;
-};
 
 sub spaceship {
 	my ($tmp1, $tmp2, $inverted) = @_;
-	unless (ref($tmp2) and $tmp2->isa(__PACKAGE__)) {
-		$tmp2 = __PACKAGE__->new($tmp2);
-	}
+	# unless (ref($tmp2) and $tmp2->isa(__PACKAGE__)) {
+	#	print " TMP2:isa:", ref(\$tmp2), ":", $tmp2 , ":",caller," ";
+	#	$tmp2 = __PACKAGE__->new($tmp2);
+	# }
 
 	if ($inverted) {
 		return $tmp2->{b} <=> $tmp1->{b} if $tmp1->{a} == $tmp2->{a};
@@ -589,24 +559,14 @@ sub spaceship {
 	return $tmp1->{a} <=> $tmp2->{a};
 }
 
-sub cmp {
-	return spaceship @_;
-}
+# sub cmp {
+#	return spaceship @_;
+# }
 
 sub cleanup {
 	my ($self) = shift;
-	# print " SIMPLE:UNDEF-A " unless defined($self->{a});
-	# print " SIMPLE:UNDEF-B " unless defined($self->{b});
-	# return if $self->is_null;
-	if (Set::Infinite::Element_Inf::is_null($self->{b})) {
-		$self->{a} = null;
-		# print " [NULL-B] ";
-	}
-	if ($self->{a} > $self->{b}) {
-		($self->{a}, $self->{b}) = ($self->{b}, $self->{a});
-	}
 	$self->open_begin(1) 	if ($self->{a} == minus_infinite);
-	$self->open_end(1) 	if ($self->{b} == infinite);
+	$self->open_end(1) 		if ($self->{b} == infinite);
 	return $self;
 }
 
@@ -649,6 +609,13 @@ sub new {
 	# $self->{selector} = $selector;
 	# $self->{offsetter} = $offsetter;
 	$self->add(@_);
+	return $self;
+}
+
+sub fastnew {
+	my ($self) = bless { a => $_[1] , b => $_[2] , open_begin => $_[3] , open_end => $_[4] }, $_[0];
+	$self->{tolerance} = $tolerance; 
+	$self->{type} = $type;
 	return $self;
 }
 

@@ -85,6 +85,7 @@ $VERSION = "0.17";
 my $DEBUG = 1;
 my $package = 'Set::Infinite::Date';
 # @ISA = qw(Set::Infinite::Simple); # DON'T !
+@ISA = qw(Set::Infinite::Element_Inf);  # is_null
 @EXPORT = qw();
 @EXPORT_OK = qw(
 	time2date date2time time2hour hour2time quantizer day_size

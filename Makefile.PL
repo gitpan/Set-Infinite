@@ -4,10 +4,10 @@ use ExtUtils::MakeMaker;
 WriteMakefile(
     'ABSTRACT'          => 'Infinite Sets math',
     'AUTHOR'            => 'Flavio S. Glock - fglock@pucrs.br',
-    'NAME'		=> 'Set::Infinite',
-    'VERSION_FROM'	=> 'lib/Set/Infinite.pm', 
+    'NAME'      		=> 'Set::Infinite',
+    'VERSION_FROM'  	=> 'lib/Set/Infinite.pm', 
     'EXCLUDE_EXT'       => 'Makefile gz LOG',
     'PREREQ_PM'         => { 'HTTP::Date' => 0, 'Time::Local' => 0 },
-    'dist'         	=> { 'COMPRESS' => 'gzip' },
+    'dist'          	=> { 'COMPRESS' => 'gzip' },
 );
 

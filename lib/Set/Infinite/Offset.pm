@@ -1,114 +1,92 @@
 package Set::Infinite::Offset;
-
 # Copyright (c) 2001 Flavio Soibelmann Glock. All rights reserved.
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 
 use strict;
 use warnings;
-
 require Exporter;
-our $VERSION = "0.01";
-
-my $package = 'Set::Infinite::Offset';
+use Set::Infinite::Function;
+our $VERSION = "0.02";
 our @EXPORT = qw();
 our @EXPORT_OK = qw();
-# our @ISA = qw(Set::Infinite); 
-
-use Set::Infinite qw(type);
-
+our @ISA = qw(Set::Infinite::Function); 
 
 =head2 NAME
 
-Set::Infinite::Offset - Offsets subsets
+Set::Infinite::Offset - Offsets a set :)
 
-=head2 USAGE
+=head2 SYNOPSIS
 
-This module is just starting.
+	$a->offset ( value => [1,2] );
 
 =head2 TODO
 
-=head2 DONE
+Use hash to select "mode" funtion.
+
+=head2 CHANGES
+
+0.02
+	uses "Function.pm"
+
+=head2 AUTHOR
+
+Flavio Soibelmann Glock - fglock@pucrs.br
 
 =cut
 
-sub new {
-	my ($class, $parent, %rules) = @_;
-	my ($self) = bless \%rules, $class;
-	$self->{parent} = $parent;
-	$self->{size}   = 1 + $#{ $parent->{list} };
-	# print " [OFFSET:VALUE:", $self->{value} ,"] ";
+sub init {
+	my $self = shift;
+	#print " [offset:init] ";
 	unless (ref($self->{value}) eq 'ARRAY') {
+		#print " [value:scalar:", $self->{value} ,"]\n";
 		$self->{value} = [0 + $self->{value}, 0 + $self->{value}];
 	}
-	# $self->{value}  = [0,0] unless $self->{value};
-	# print " [OFFSET:VALUE:", join(",", @{$self->{value}}),"] ";
+	#print " [value:", join (",", @{$self->{value} }),"]\n";
 	$self->{mode}   = 'offset' unless $self->{mode};
 	return $self;
 }
 
-# TIE
-
-sub TIEARRAY {
-	my $class = shift;
-	my $self = $class->new(@_);
-	return $self;
-}
-
-sub FETCHSIZE {
-	my ($self) = shift;
-	# print " [fetchsize ", $self->{size},"] ";
-	return $self->{size}; 
-}
-
-sub STORESIZE {
-	return @_;
-}
-
-sub CLEAR {
-	my ($self) = shift;
-	return @_;
-}
-
-sub EXTEND {
-	return @_;
-}
-
 sub FETCH {
-	my ($self) = shift;
-	my $index = shift;
+	my ($self, $x) = @_;
+	my ($tmp, $this, $next);
 
-	# print " [fetch:$index=$tmp + $self->{value}] ";
-	my $tmp = $self->{parent}->{list}->[$index];
-	return Set::Infinite::Simple->simple_null unless $tmp;
+	# sub func_begin {
+	# my ($self, $x) = @_;
+	# tmp pointer because perl gets confused with $self->{parent}->{list}->[$x]->{a}
+	my $interval = $self->{parent}->{list}->[$x];
 
-	# print " [fetch:$index=$tmp + ",@{$self->{value}},"] ";
-	# print " [fetch: ", $tmp->{a} , " + 1 = ", $tmp->{a}+1 ,"] ";
-	my $subset = Set::Infinite::Simple->new($tmp);
+	my $open_begin = $interval->{open_begin};
+	my $open_end = $interval->{open_end};
 
-	if ($self->{mode} eq 'begin') {
-		($subset->{a}, $subset->{b}) = ($tmp->{a} + $self->{value}->[0], $tmp->{a} + $self->{value}->[1]);
+	if ( Set::Infinite::Element_Inf::is_null($interval->{a}) ) {
+		$this = $next = $interval->{a} ;
+	}
+	# print " [parent:", $interval->{a},"]\n";
+	#print " [mode:",$self->{mode},"]\n";
+	#print " [value:", join (",", @{$self->{value} }),"]\n";
+	elsif ($self->{mode} eq 'begin') {
+		$this =  $interval->{a} + $self->{value}->[0] ;
+		$next =  $interval->{a} + $self->{value}->[1] ;
 	}
 	elsif ($self->{mode} eq 'end') {
-		($subset->{a}, $subset->{b}) = ($tmp->{b} + $self->{value}->[0], $tmp->{b} + $self->{value}->[1]);
+		$this =  $interval->{b} + $self->{value}->[0] ;
+		$next =  $interval->{b} + $self->{value}->[1] ;
 	}
 	else {     
 		# $self->{mode} eq 'offset') 
-		($subset->{a}, $subset->{b}) = ($tmp->{a} + $self->{value}->[0], $tmp->{b} + $self->{value}->[1]);
+		$this =  $interval->{a} + $self->{value}->[0] ;
+		$next =  $interval->{b} + $self->{value}->[1] ;
 	}
-	if ($subset->{a} > $subset->{b}) { 
+
+	if ($this > $next) { 
 		return Set::Infinite::Simple->simple_null;
 	}
-	return $subset;
+	return Set::Infinite::Simple->
+		fastnew($this,$next)->
+		open_end($open_end)->
+		open_begin($open_begin);
 }
-
-sub STORE {
-	return @_;
-}
-
-sub DESTROY {
-}
-
 
 
 1;

@@ -1,5 +1,13 @@
 Revision history for Perl extension Set::Infinite.
 
+0.22.05
+	put "eg/recurring.pl" in distribution. (should be there since 0.21)
+	new "Function.pm" base class for functions.
+	Used Funtion.pm for "Select.pm" and "Offset.pm" 
+	Much better algorithm for "Select.pm"
+ 	stricter language for "quantize" - only hash allowed.
+	reduced "Simple.pm" - may be deprecated someday
+
 0.21
 	new methods: "select" and "offset".
 	syntax changed: "quantize":

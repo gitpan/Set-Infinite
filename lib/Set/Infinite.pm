@@ -23,7 +23,7 @@ our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(type inf) );
 our @EXPORT = qw(
 );
 
-our $VERSION = '0.21';
+our $VERSION = '0.22.05';
 
 
 # Preloaded methods go here.
@@ -57,13 +57,14 @@ sub quantize {
 	return @a if wantarray; 
 	
 	# object output: can be further "intersection", "union", etc.
-	my $b = Set::Infinite->new($self); # clone myself
+	my $b = __PACKAGE__->new($self); # clone myself
 	$b->{list} = \@a; 	# change data
 	$b->{cant_cleanup} = 1; 	# quantize output is "virtual" (tied) -- can't splice, sort
 	return $b;
 }
 
 # select: position-based selection of subsets
+use Set::Infinite::Function; 	# ???
 use Set::Infinite::Select; 	# ???
 sub select {
 	my $self = shift;
@@ -78,7 +79,7 @@ sub select {
 	return @a if wantarray; 
 	
 	# object output: can be further "intersection", "union", etc.
-	my $b = Set::Infinite->new($self); # clone myself
+	my $b = __PACKAGE__->new($self); # clone myself
 	$b->{list} = \@a; 	# change data
 	$b->{cant_cleanup} = 1; 	# select output is "virtual" (tied) -- can't splice, sort
 	return $b;
@@ -99,7 +100,7 @@ sub offset {
 	return @a if wantarray; 
 	
 	# object output: can be further "intersection", "union", etc.
-	my $b = Set::Infinite->new($self); # clone myself
+	my $b = __PACKAGE__->new($self); # clone myself
 	$b->{list} = \@a; 	# change data
 	$b->{cant_cleanup} = 1; 	# offset output is "virtual" (tied) -- can't splice, sort
 	return $b;
@@ -108,38 +109,82 @@ sub offset {
 
 sub is_null {
 	my $self = shift;
-	return ("$self" eq null) ? 1 : 0;
+	return 1 unless $#{$self->{list}} >= 0;
+	return 1 if Set::Infinite::Element_Inf::is_null($self->{list}->[0]->{a});
+	return 0;
+	# return ("$self" eq null) ? 1 : 0;
 }
 
 sub intersects {
-	my $self = shift;
-	my @param = @_;
+	my $a = shift;
+	my $b;
+	#my @param = @_;
+	#my $b = __PACKAGE__->new(@param); 
 
-	my $b = Set::Infinite->new(@param); 
+	if (ref ($_[0]) eq __PACKAGE__) {
+		$b = shift;
+	} 
+	else {
+		# my @param = @_;
+		$b = __PACKAGE__->new(@_);  
+	}
+
 	my ($ia, $ib);
-	foreach $ib (0 .. $#{  @{ $b->{list} } }) {
-		foreach $ia (0 .. $#{  @{ $self->{list} } }) {
-			return 1 if $self->{list}->[$ia]->intersects($b->{list}->[$ib]);
+	my ($na, $nb) = (0,0);
+	my $intersection = __PACKAGE__->new();
+	B: foreach $ib ($nb .. $#{  @{ $b->{list} } }) {
+		foreach $ia ($na .. $#{  @{ $a->{list} } }) {
+			#next B if Set::Infinite::Element_Inf::is_null($a->{list}->[$ia]->{a});
+			#next B if Set::Infinite::Element_Inf::is_null($b->{list}->[$ib]->{a});
+		#	if ( $a->{list}->[$ia]->{a} > $b->{list}->[$ib]->{b} ) {
+		#		$na = $ia;
+		#		next B;
+		#	}
+			# next B if ($a->{list}->[$ia]->{a} > $b->{list}->[$ib]->{b}) ;
+			return 1 if $a->{list}->[$ia]->intersects($b->{list}->[$ib]);
 		}
 	}
 	return 0;	
 }
 
 sub intersection {
-	my $self = shift;
-	my @param = @_;
+	my $a = shift;
+
+	if (ref ($_[0]) eq __PACKAGE__) {
+		$b = shift;
+	} 
+	else {
+		# my @param = @_;
+		$b = __PACKAGE__->new(@_);  
+	}
+
+	# my @param = @_;
+	# my $b = __PACKAGE__->new(@param);
 
 	my $tmp;
-	my $b = Set::Infinite->new(@param);
-	# print " [intersect ",$self," with ", $b, "] \n";
+	#print " [intersect ",$a,"--",ref($a)," with ", $b, "--",ref($b)," ", caller, "] \n";
 	my ($ia, $ib);
-	my $intersection = Set::Infinite->new();
-	foreach $ib (0 .. $#{  @{ $b->{list} } }) {
-		foreach $ia (0 .. $#{  @{ $self->{list} } }) {
-			# print "   [intersect_simple ",$self->{list}->[$ia]," with ", $b->{list}->[$ib], "] \n";
-			# unless ($self->{list}->[$ia]->is_null) {
-			$tmp = $self->{list}->[$ia]->intersection($b->{list}->[$ib]);
-			$intersection->add($tmp) if defined($tmp); # ->{a},$tmp->{b}) if $tmp;
+	my ($na, $nb) = (0,0);
+	my $intersection = __PACKAGE__->new();
+	B: foreach $ib ($nb .. $#{  @{ $b->{list} } }) {
+		foreach $ia ($na .. $#{  @{ $a->{list} } }) {
+			#	my ($pa, $pb) = ($a->{list}->[$ia], $b->{list}->[$ib]);
+			# print " [intersect ",$ia,"--",$ib," ]\n";
+			# print " [intersect   ",$pa,"--",$pb," ]\n";
+			# print " [intersect     ",%{$a->{list}->[$ia]},"--",%{$b->{list}->[$ib]}," ]\n";
+			#next B if Set::Infinite::Element_Inf::is_null($pa->{a});
+			#next B if Set::Infinite::Element_Inf::is_null($pb->{a});
+			#	if ( $pa->{a} > $pb->{b} ) {
+			#		$na = $ia;
+			#		next B;
+			#	}
+			# print "   [intersect_simple ",$a->{list}->[$ia]," with ", $b->{list}->[$ib], "] \n";
+			# unless ($a->{list}->[$ia]->is_null) {
+
+			$tmp = $a->{list}->[$ia]->intersection($b->{list}->[$ib]);
+			push @{$intersection->{list}}, $tmp unless Set::Infinite::Element_Inf::is_null($tmp->{a}); # ->{a},$tmp->{b}) if $tmp;
+
+			# $intersection->add($tmp) if defined($tmp); # ->{a},$tmp->{b}) if $tmp;
 			# }
 		}
 	}
@@ -152,8 +197,15 @@ sub complement {
 	# do we have a parameter?
 
 	if (@_) {
-		my $a = __PACKAGE__->new(@_);
-		$a->tolerance($self->{tolerance});
+
+		if (ref ($_[0]) eq __PACKAGE__) {
+			$a = shift;
+		} 
+		else {
+			$a = __PACKAGE__->new(@_);  
+			$a->tolerance($self->{tolerance});
+		}
+
 		$a = $a->complement;
 		# print " [CPL:intersect ",$self," with ", $a, "] ";
 		return $self->intersection($a);
@@ -171,14 +223,17 @@ sub complement {
 	my $complement = __PACKAGE__->new();
 	my @tmp = $self->{list}->[0]->complement;
 	# print " [CPL:ADDED:",join(";",@tmp),"] ";
-	foreach(@tmp) {
-		$complement->add($_); 
-	}
+
+	#foreach(@tmp) {
+	# 	$complement->add($_); 
+	#}
+	push @{$complement->{list}}, @tmp; 
 
 	foreach $ia (1 .. $#{  @{ $self->{list} } }) {
 			@tmp = $self->{list}->[$ia]->complement;
-			$tmp = Set::Infinite->new();
-			foreach(@tmp) { $tmp->add($_); }
+			$tmp = __PACKAGE__->new();
+			# foreach(@tmp) { $tmp->add($_); }
+			push @{$tmp->{list}}, @tmp; 
 
 			$complement = $complement->intersection($tmp); # if $tmp;
 	}
@@ -188,39 +243,63 @@ sub complement {
 	return $complement;	
 }
 
+# version 0.22.02 - faster union O(n*n) => O(n)
 sub union {
 	my $self = shift;
 	my $b;
 	# print " [UNION] \n";
 	# print " [union: new b] \n";
-	$b = Set::Infinite->new(@_);  
+	if (ref ($_[0]) eq __PACKAGE__) {
+		$b = shift;
+	} 
+	else {
+		$b = __PACKAGE__->new(@_);  
+	}
 
 	# print " [union: new union] \n";
-	my $union = Set::Infinite->new($self);
-	# print " [union: $union +\n       $b ] \n";
+	my $a = __PACKAGE__->new($self);
+	# print " [union: $a +\n       $b ] \n";
 	my ($ia, $ib);
-	B: foreach $ib (0 .. $#{  @{ $b->{list} } }) {
-		foreach $ia (0 .. $#{  @{ $union->{list} } }) {
-			my @tmp = $union->{list}->[$ia]->union($b->{list}->[$ib]);
+	$ia = 0;
+	$ib = 0;
+	B: foreach $ib ($ib .. $#{  @{ $b->{list} } }) {
+		foreach $ia ($ia .. $#{  @{ $a->{list} } }) {
+			# $self->{list}->[$_ - 1] = $tmp[0];
+			# splice (@{$self->{list}}, $_, 1);
+
+			my @tmp = $a->{list}->[$ia]->union($b->{list}->[$ib]);
 			# print " [+union: $tmp[0] ; $tmp[1] ] \n";
+
 			if ($#tmp == 0) {
-				$union->{list}->[$ia] = $tmp[0];
+					$a->{list}->[$ia] = $tmp[0];
+					next B;
+			}
+
+			if ($a->{list}->[$ia]->{a} >= $b->{list}->[$ib]->{a}) 
+			{
+				# print "+ ";
+				# splice(@array,$index,0,$value)
+				splice (@{$a->{list}}, $ia, 0, $b->{list}->[$ib]);
+				# $a->add($b->{list}->[$ib]);
 				next B;
 			}
+
 		}
-		$union->add($b->{list}->[$ib]);
+		# print "- ";
+		# $a->add($b->{list}->[$ib]);
+		push @{$a->{list}}, $b->{list}->[$ib];
 	}
 	# print " [union: done from ", join(" ", caller), " ] \n";
-	# print " [union: result = $union ] \n";
-	# $union->{cant_cleanup} = 1;
+	# print " [union: result = $a ] \n";
+	# $a->{cant_cleanup} = 1;
 
-	#	foreach $ia (0 .. $#{  @{ $union->{list} } }) {
-	#		my @tmp = $union->{list}->[$ia];
-	#		print " #", $ia, ": ", $union->{list}->[$ia], " is ", join(" ", %{$union->{list}->[$ia]} ) , "\n";
+	#	foreach $ia (0 .. $#{  @{ $a->{list} } }) {
+	#		my @tmp = $a->{list}->[$ia];
+	#		print " #", $ia, ": ", $a->{list}->[$ia], " is ", join(" ", %{$a->{list}->[$ia]} ) , "\n";
 	#	}
-	# print " [union: is ", join(" ", %$union) , " ] \n";
+	# print " [union: is ", join(" ", %$a) , " ] \n";
 
-	return $union;	
+	return $a;	
 }
 
 sub contains {
@@ -229,8 +308,14 @@ sub contains {
 	# do we have a parameter?
 	return 1 unless @_;
 
-	my $a = Set::Infinite->new(@_);
-	$a->tolerance($self->{tolerance});
+	if (ref ($_[0]) eq __PACKAGE__) {
+		$a = shift;
+	} 
+	else {
+		$a = __PACKAGE__->new(@_);  
+		$a->tolerance($self->{tolerance});
+	}
+
 	return ($self->union($a) == $self) ? 1 : 0;
 }
 
@@ -252,7 +337,7 @@ LOOP:
 			# print " INF:ADD:ARRAY:",@tmp," ";
 
 			# Allows arrays of arrays
-			$tmp = Set::Infinite->new(@tmp) ;
+			$tmp = __PACKAGE__->new(@tmp) ;
 			foreach (@{$tmp->{list}}) {
 				push @{ $self->{list} }, Set::Infinite::Simple->new($_) ;
 			}
@@ -294,34 +379,33 @@ LOOP:
 sub min { 
 	my ($self) = shift;
 	my $tmp;
-	my $min = $self->{list}->[0]->min if defined($self->{list}->[0]);
-	foreach(1 .. $#{  @{ $self->{list} } }) {
-		$tmp = $self->{list}->[$_]->min;
-		unless (Set::Infinite::Element_Inf::is_null($tmp)) {
-			$min = $tmp if $tmp < $min;
-		}
+	foreach(0 .. $#{$self->{list}}) {
+		$tmp = $self->{list}->[$_]->{a};
+		#print "min:$tmp ";
+		return $tmp unless Set::Infinite::Element_Inf::is_null($tmp) ;
 	}
-	return $min; 
+	return Set::Infinite::Element_Inf::null; 
 };
 
 sub max { 
 	my ($self) = shift;
 	my $tmp;
-	my $max = $self->{list}->[0]->max if defined($self->{list}->[0]);
-	foreach(1 .. $#{  @{ $self->{list} } }) {
-		$tmp = $self->{list}->[$_]->max;
-		$max = $tmp if $tmp > $max;
+	my $i;
+	for($i = $#{$self->{list}}; $i >= 0; $i--) {
+		$tmp = $self->{list}->[$i]->{b};
+		#print "max:$tmp ";
+		return $tmp unless Set::Infinite::Element_Inf::is_null($tmp) ;
 	}
-	return $max; 
+	return Set::Infinite::Element_Inf::null; 
 };
 
 sub size { 
 	my ($self) = shift;
 	my $tmp;
-	$self->cleanup;
-	my $size = $self->{list}->[0]->size;
+	# $self->cleanup;
+	my $size = $self->{list}->[0]->{b} - $self->{list}->[0]->{a};
 	foreach(1 .. $#{ @{ $self->{list} } }) {
-		$tmp = $self->{list}->[$_]->size;
+		$tmp = $self->{list}->[$_]->{b} - $self->{list}->[$_]->{a};
 		$size += $tmp;
 	}
 	return $size; 
@@ -329,18 +413,23 @@ sub size {
 
 sub span { 
 	my ($self) = shift;
-	return Set::Infinite->new($self->min, $self->max);
+	return __PACKAGE__->new($self->min, $self->max);
 };
 
 sub spaceship {
 	my ($tmp1, $tmp2, $inverted) = @_;
-	bless $tmp1, 'Set::Infinite';
-	$tmp2 = Set::Infinite->new($tmp2);
 
 	if ($inverted) {
+		if (ref ($tmp1) ne __PACKAGE__) {
+			$tmp1 = __PACKAGE__->new($tmp1);  
+		}
 		($tmp2, $tmp1) = ($tmp1, $tmp2);
 	}
-
+	else {
+		if (ref ($tmp1) ne __PACKAGE__) {
+			$tmp2 = __PACKAGE__->new($tmp2);  
+		}
+	}
 
 	return $tmp1->min  <=> $tmp2->min  if ($tmp1->min  != $tmp2->min);
 	return $tmp1->size <=> $tmp2->size if ($tmp1->size != $tmp2->size);
@@ -363,7 +452,10 @@ sub cleanup {
 
 	# $self->tolerance($self->{tolerance});	# ???
 
-	@{ $self->{list} } = sort @{ $self->{list} };
+	# my $debug_optimize = __PACKAGE__->new($self);
+
+	# removed in version 0.22.02 after deprecating "add"
+	# @{ $self->{list} } = sort @{ $self->{list} };
 
 	$_ = 1;
 	while ( $_ <= $#{  @{ $self->{list} } } ) {
@@ -376,13 +468,18 @@ sub cleanup {
 			$_ ++;
 		}
 	}
+
+	# if (join("",@{$debug_optimize->{list}}) ne join("",@{$self->{list}})) {
+	#  	print " [CLEANUP:", join(" ",@{$debug_optimize->{list}}), "\n";
+	# }
+
 	return $self;
 }
 
 sub tolerance {
 	my $class = shift;
 	my $tmp = shift;
-	if (ref($class) eq 'Set::Infinite') {
+	if (ref($class) eq __PACKAGE__) {
 		my ($self) = $class;
 		if ($tmp ne '') {
 			$self->{tolerance} = $tmp;
@@ -558,12 +655,6 @@ Set functions:
 
 		result is INTERVAL, (min .. max)
 
-	$a->add($b);   
-
-		This is a short for:
-
-		$a = $a->union($b);
-
 Scalar functions:
 
 	$i = $a->min;
@@ -679,6 +770,8 @@ Internal functions:
 
 	$a->cleanup;
 
+	$a->add($b);  # Use $a = $a->union($b) instead.
+
 =head1 Notes on Set::Infinite::Date
 
 Set::Infinite::Date is a Date "plugin" for sets.
@@ -727,6 +820,10 @@ they are used with `0 + '.
 	Change: "quantize()" or "quantize( quant => 1)" instead of "quantize(1)".
 	Change: "quantize(unit => 'minutes', quant => 15)" instead of "quantize('minutes',15)"
 	New methods: "select" and "offset"
+
+0.22.02
+	Faster cleanup, max, min
+	Cleaner (faster?) union
 
 =head1 AUTHOR
 

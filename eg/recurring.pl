@@ -1,0 +1,35 @@
+#! perl -w
+
+use Set::Infinite::Date;
+use Set::Infinite::Quantize_Date;
+Set::Infinite->type('Set::Infinite::Date');
+my $day_size = Set::Infinite::Date::day_size();
+my $hour_size = $day_size / 24;
+
+
+
+print "This is a test for: \n    \"This event happens from 13:00 to 14:00 every Tuesday, unless that Tuesday is the 15th of the month.\" (suggested by srl)\n\n";
+
+my $base_date = '2001-05';
+ 
+
+
+my $interval = Set::Infinite->new($base_date . '-01')->quantize(unit=>'months');
+
+# print "Weeks: ", $interval->quantize(unit=>'weeks'), "\n\n";
+
+my $tuesdays = $interval->quantize(unit=>'weeks')->
+	offset( mode => 'begin', value => [ 2 * $day_size, 3 * $day_size] );
+
+print "tuesdays: ", $tuesdays, "\n\n";
+
+my $fifteenth = $interval->quantize(unit=>'months')->
+	offset( mode => 'begin', value => [ 14 * $day_size, 15 * $day_size] );
+
+print "fifteenth: ", $fifteenth, "\n\n";
+
+print "events in $base_date: ", $tuesdays -> complement ( $fifteenth ) ->
+	offset( mode => 'begin', value => [ 13 * $hour_size, 14 * $hour_size] );
+print "\n";
+
+1;
