@@ -46,7 +46,7 @@ sub compact { @_ }
 
 
 BEGIN {
-    $VERSION = 0.5306;
+    $VERSION = 0.5307;
     $TRACE = 0;         # enable basic trace method execution
     $DEBUG_BT = 0;      # enable backtrack tracer
     $PRETTY_PRINT = 0;  # 0 = print 'Too Complex'; 1 = describe functions
@@ -993,7 +993,14 @@ sub _backtrack {
     # quantize() and offset() require special treatment because 
     # they may result in weird min/max values
 
-    if ($my_method eq 'quantize') {
+    if ($my_method eq 'iterate') {
+        my $before = $self->{parent}->intersection( $neg_inf, $arg->min )->max;
+        $before = $arg->min unless $before;
+        my $after = $self->{parent}->intersection( $arg->max, $inf )->min;
+        $after = $arg->max unless $after;
+        $backtrack_arg2 = $arg->new( $before, $after );
+    }
+    elsif ($my_method eq 'quantize') {
         if ($arg->{too_complex}) {
             $backtrack_arg2 = $arg;
         }

@@ -83,7 +83,6 @@ BEGIN {
     $fixtype = 1;
 }
 
-
 # _simple_* set of internal methods: basic processing of "spans"
 
 sub _simple_intersects {
@@ -654,7 +653,7 @@ Makes a new object from the object's data.
 sub copy {
     my $self = shift;
     my $copy = $self->new();
-    return $copy unless ref($self);   # constructor!
+    ## return $copy unless ref($self);   # constructor!
     foreach my $key (keys %{$self}) {
         if ( ref( $self->{$key} ) eq 'ARRAY' ) {
             @{ $copy->{$key} } = @{ $self->{$key} };

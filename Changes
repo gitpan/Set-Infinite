@@ -1,5 +1,8 @@
 Revision history for Perl extension Set::Infinite.
 
+0.5307
+    backtracking "iterate" uses a larger span
+
 0.5306
     fix bug in test "inf" -> "$inf".  Thanks Kingpin
 
