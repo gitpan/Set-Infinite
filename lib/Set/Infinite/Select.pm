@@ -56,9 +56,9 @@ sub init {
 	# estimate size
 	$self->{size}  = (1 + $#{$self->{by}}) * $self->{count};
 
-	$self->{size} = $parent_size if ($self->{size} > $parent_size);
+	$self->{size} = 1 + $parent_size if ($self->{size} > $parent_size);
 
-	# print " [select: size=$self->{size} freq=$self->{freq} parent_size=$parent_size by=",join(",",@{$self->{by}}),"]\n";
+	# print " [select: size=$self->{size} freq=$self->{freq} count=$self->{count} parent=$self->{parent} parent_size=$parent_size by=",join(",",@{$self->{by}}),"]\n";
 
 	$self->{cache} = {};   # empty hash
 	$self->{strict} = 0 unless $self->{strict};
@@ -67,6 +67,7 @@ sub init {
 
 sub FETCHSIZE {
 	my ($self) = shift;
+	# print " [select: size=$self->{size} ]\n";
 	return $self->{size}; 
 }
 

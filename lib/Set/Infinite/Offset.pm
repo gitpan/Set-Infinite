@@ -184,6 +184,11 @@ sub FETCH {
 
 	# print " [ofs($this,$next)] ";
 
+	if ($this == $next) {
+		$open_end = $open_begin;
+		$this = $next;  #  make shure use the same object from cache!
+	}
+
 	$tmp = Set::Infinite::Simple->
 		fastnew($this,$next)->
 		open_end($open_end)->
