@@ -74,7 +74,7 @@ Internal functions:
 
 require Exporter;
 package Set::Infinite::Date;
-$VERSION = "0.009";
+$VERSION = "0.010";
 
 my $package = 'Set::Infinite::Date';
 @EXPORT = qw();

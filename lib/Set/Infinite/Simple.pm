@@ -115,7 +115,7 @@ Internal:
 require Exporter;
 
 package Set::Infinite::Simple;
-$VERSION = "0.009";
+$VERSION = "0.010";
 
 my $package        = 'Set::Infinite::Simple';
 @ISA = qw(Exporter);
@@ -184,7 +184,7 @@ sub intersection {
 	$i_beg 		= $tmp1->{a};
 	$open_beg	= $tmp1->{open_begin};
 	if ($tmp1->{a} == $tmp2->{a}) {
-		$open_beg 	= $tmp1->{open_begin} or $tmp2->{open_begin};
+		$open_beg 	= ($tmp1->{open_begin} or $tmp2->{open_begin});
 	}
 	elsif ($tmp1->{a} < $tmp2->{a}) {
 		$i_beg 		= $tmp2->{a};
@@ -194,7 +194,7 @@ sub intersection {
 	$i_end 		= $tmp1->{b};
 	$open_end	= $tmp1->{open_end};
 	if ($tmp1->{b} == $tmp2->{b}) {
-		$open_end 	= $tmp1->{open_end} or $tmp2->{open_end};
+		$open_end 	= ($tmp1->{open_end} or $tmp2->{open_end});
 	}
 	elsif ($tmp1->{b} > $tmp2->{b}) {
 		$i_end 		= $tmp2->{b};
@@ -334,7 +334,7 @@ sub add {
 	}
 
 	# is it now defined?
-	unless (defined({$param[0]})) {
+	unless (defined($param[0])) {
 		undef $self->{a};
 		undef $self->{b};
 		return $self;
@@ -420,10 +420,10 @@ sub tolerance {
 	my $class = shift;
 	my $tmp = shift;
 	if (ref($class) eq 'Set::Infinite::Simple') {
-		$class->{tolerance} = $tmp if $tmp ne '';
+		$class->{tolerance} = $tmp if ($tmp ne '');
 		return $class;
 	}
-	$tolerance = $tmp if $tmp ne '';
+	$tolerance = $tmp if ($tmp ne '');
 	return $tolerance;
 }
 

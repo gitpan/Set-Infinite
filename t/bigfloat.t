@@ -7,20 +7,27 @@
 # This is work in progress
 #
 
+BEGIN { $| = 1; print "1..74\n"; }
+END {$test++; print "not ok $test\n" unless $loaded;}
+
 use Set::Infinite qw(type);
+$loaded = 1;
 use Math::BigFloat;
 
 my $errors = 0;
+my $test = 0;
+
 
 sub test {
 	my ($header, $sub, $expected) = @_;
-	print "\t$header \t--> ";
+	$test++;
+	print "\t# $header \n";
 	$result = eval $sub;
 	if ("$expected" eq "$result") {
-		print "ok";
+		print "ok $test";
 	}
 	else {
-		print "expected \"$expected\" got \"$result\"";
+		print "not ok $test\n\t# expected \"$expected\" got \"$result\"";
 		$errors++;
 	}
 	print " \n";
@@ -28,23 +35,23 @@ sub test {
 
 sub stats {
 	if ($errors) {
-		print "\nErrors: $errors\n";
+		print "\n\t# Errors: $errors\n";
 	}
 	else {
-		print "\nNo errors.\n";
+		print "\n\t# No errors.\n";
 	}
 }
 
 type('Math::BigFloat');
 Set::Infinite::real;
 
-print "Add element:\n";
+print "\t# Add element:\n";
 
 $a = Set::Infinite->new(1,2);
 $a->add(3,4);
 test (" (1,2) (3,4) : ",'$a',"[1...2.],[3...4.]");
 
-print "Parameter passing:\n";
+print "\t# Parameter passing:\n";
 test (" complement  : ",'$a->complement',"(-inf..1.),(2...3.),(4...inf)");
 test (" complement   (1.5,2.5) : ",'$a->complement(1.5,2.5)',"[1...1.5),[3...4.]");
 test (" union        (1.5,2.5) : ",'$a->union(1.5,2.5)',"[1...2.5],[3...4.]");
@@ -65,14 +72,14 @@ $a->add(6, 7.5);
 $a->cleanup;
 test ("Interval: add (0, 1) (7, 8) (6, 7.5) : $a \n");
 
-print "Integer + cleanup:\n";
+print "\t# Integer + cleanup:\n";
 
 $a->integer;
 $a->cleanup;
 test ("Interval: integer",'$a',"[-1...4.],[6...8.]");
 
-print "Operations on open sets\n";
-$a = Set::Infinite->new(1,inf);
+print "\t# Operations on open sets\n";
+$a = Set::Infinite->new(1,'inf');
 test ("set : ", '$a', "[1...inf)");
 $a = $a->complement;
 test ("[-inf,1) : ", '$a', "(-inf..1.)");
@@ -91,7 +98,7 @@ test ("  complement : ", '$c->complement',"1.");
 test ("union $c [1...inf) ", '$c->union(1,inf)', "(-inf..inf)");
 test ("union $b [1...inf) ", '$b->union(1,inf)', "[1...inf)");
 
-print "Testing 'null' and (0...0)\n";
+print "\t# Testing 'null' and (0...0)\n";
 
 $a = Set::Infinite->new();
 test ("null : ",$a,"null");
@@ -124,19 +131,20 @@ test ("(0,0) intersects to (1,1) : ",$a->intersects(1,1),"0");
 test ("(0,0) intersection to (1,1) : ",$a->intersection(1,1)->as_string,"null");
 
 
-print "New:\n";
+print "\t# New:\n";
 
 $a = Set::Infinite->new(1,2);
 $b = Set::Infinite->new([4,5],[7,8]);
 $x = Set::Infinite->new(10,11);
 $c = Set::Infinite->new($x);
 # <removed!> $d = Set::Infinite->new( a => 13, b => 14 );
-print " a : $a\n b : $b\n c : $c\n d : $d\n";
+#print "\t#  a : $a\n b : $b\n c : $c\n";  # d : $d\n";
+$abcd = ' ';
 $abcd = Set::Infinite->new([$a],[$b],[$c]);
-print " abcd $abcd\n";
+#print " abcd $abcd\n";
 test ("abcd",'$abcd',"[1...2.],[4...5.],[7...8.],[10...11.]");
 
-print "Contains\n";
+print "\t# Contains\n";
 $a = Set::Infinite->new([3,6],[12,18]);
 test ("set : ", '$a', "[3...6.],[12...18.]");
 test ("contains (4,5) : ", '$a->contains(4,5)', "1");
@@ -149,7 +157,7 @@ test ("contains (4,5),(15,20) : ", '$a->contains([4,5],[15,20])', "0");
 
 
 
-print "Intersects:\n";
+print "\t# Intersects:\n";
 
 $a = Set::Infinite->new(2,1);
 test ("Interval:",'$a',"[1...2.]");
@@ -163,7 +171,7 @@ test ("intersects 1.1 ... 2.3 : ", '$a->intersects(Set::Infinite->new(1.1,2.3))'
 test ("intersects 2.1 ... 2.3 : ", '$a->intersects(Set::Infinite->new(2.1,2.3))', "0");
 test ("intersects 0.0 ... 4.0 : ", '$a->intersects(Set::Infinite->new(0.0,4.0))', "1");
 
-print "Other:\n";
+print "\t# Other:\n";
 
 test ("Union 2.0 : ", '$a->union(2.0)', "[1...2.]");
 test ("Union 2.5 ", '$a->union(2.5)', "[1...2.],2.5");

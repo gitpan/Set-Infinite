@@ -52,7 +52,7 @@ Global:
 require Exporter;
 
 package Set::Infinite::Element;
-$VERSION = "0.009";
+$VERSION = "0.010";
 
 my $package        = 'Set::Infinite::Element';
 @ISA = qw(Exporter);
@@ -153,6 +153,7 @@ sub sub {
 sub spaceship {
 	my ($self, $tmp2, $inverted) = @_;
 	my $res;
+	my ($stmp1, $stmp2);
 
 	$tmp2 = Set::Infinite::Element->new($tmp2) unless ref($tmp2) eq 'Set::Infinite::Element';
 	my $tmp1 = $self;
@@ -161,10 +162,10 @@ sub spaceship {
 		($tmp2, $tmp1) = ($tmp1, $tmp2);
 	}
 
-	my $tmp1 = $tmp1->{v};
+	$tmp1 = $tmp1->{v};
 	$tmp2 = $tmp2->{v};
-	my $stmp1 = "$tmp1";
-	my $stmp2 = "$tmp2";
+	$stmp1 = "$tmp1";
+	$stmp2 = "$tmp2";
 
 	if    ($stmp1 eq $stmp2) 		{ $res = 0; }
 	elsif ($stmp2 eq "")    	 	{ $res = 1; }
@@ -207,7 +208,7 @@ sub new {
 		return $self;
 	}
 
-	if (($type) and 
+	if (	($type ne '') and 
 		($val ne '') and 
 		($val ne $null) and  
 		($val ne $infinite) and  

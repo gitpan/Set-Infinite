@@ -10,16 +10,21 @@ use Set::Infinite::Element qw(infinite type);
 use Math::BigFloat;
 
 my $errors = 0;
+my $test = 0;
+
+print "1..6\n";
+
 
 sub test {
 	my ($header, $sub, $expected) = @_;
-	print "\t$header \t--> ";
+	$test++;
+	#print "\t# $header \n";
 	$result = eval $sub;
 	if ("$expected" eq "$result") {
-		print "ok";
+		print "ok $test";
 	}
 	else {
-		print "expected \"$expected\" got \"$result\"";
+		print "not ok $test"; # \n\t# expected \"$expected\" got \"$result\"";
 		$errors++;
 	}
 	print " \n";
@@ -27,14 +32,15 @@ sub test {
 
 sub stats {
 	if ($errors) {
-		print "\nErrors: $errors\n";
+		#print "\n\t# Errors: $errors\n";
 	}
 	else {
-		print "\nNo errors.\n";
+		#print "\n\t# No errors.\n";
 	}
 }
 
-print "Testing sort\n";
+
+#print "Testing sort\n";
 
 $big3 = new Math::BigFloat(3.3333345);
 
@@ -54,7 +60,7 @@ type('Math::BigFloat');
 @b = sort @a;
 test ("Sorted with type", 'join(",", @b)', "-inf,0.,1,2,$big3,4,5,inf,inf");
 
-print "Testing add, sub\n";
+#print "Testing add, sub\n";
 #test ("(infinite is ", infinite, ")\n";
 test ("1 + 2",'Set::Infinite::Element->new(1) + Set::Infinite::Element->new(2)', "3.");
 test ("1 + inf",'Set::Infinite::Element->new(1) + Set::Infinite::Element->new("inf")', "inf");

@@ -12,16 +12,20 @@ use Set::Infinite::Simple qw(infinite minus_infinite type);
 use Math::BigFloat;
 
 my $errors = 0;
+my $test = 0;
+
+print "1..16\n";
 
 sub test {
 	my ($header, $sub, $expected) = @_;
-	print "\t$header \t--> ";
+	$test++;
+	#print "\t# $header \n";
 	$result = eval $sub;
 	if ("$expected" eq "$result") {
-		print "ok";
+		print "ok $test";
 	}
 	else {
-		print "expected \"$expected\" got \"$result\"";
+		print "not ok $test"; # \n\t# expected \"$expected\" got \"$result\"";
 		$errors++;
 	}
 	print " \n";
@@ -29,16 +33,17 @@ sub test {
 
 sub stats {
 	if ($errors) {
-		print "\nErrors: $errors\n";
+		#print "\n\t# Errors: $errors\n";
 	}
 	else {
-		print "\nNo errors.\n";
+		#print "\n\t# No errors.\n";
 	}
 }
 
+
 type('Math::BigFloat');
 
-print "Contains\n";
+#print "Contains\n";
 
 $a = Set::Infinite::Simple->new([new Math::BigFloat(3),new Math::BigFloat(6)]);
 test ("set", '$a', "[3...6.]");
@@ -48,7 +53,7 @@ test ("contains [2..5]  ", $a->contains(2,5),   "0");
 test ("contains [4..15] ", $a->contains(4,15),  "0");
 test ("contains [15..16]", $a->contains(15,16), "0");
 
-print "Operations on open sets\n";
+#print "Operations on open sets\n";
 $a = Set::Infinite::Simple->new(new Math::BigFloat(1),inf);
 test ("set", '$a', "[1...inf)");
 $a = $a->complement;
@@ -57,7 +62,7 @@ $b = $a;
 test ("copy : ", '$b', "(-inf..1.)");
 test ("complement : ",    '$a->complement',  "[1...inf)");
 
-print "Complement:\n";
+#print "Complement:\n";
 test ("(1,1)  ", 'Set::Infinite::Simple->new(new Math::BigFloat(1),new Math::BigFloat(1))->complement', "(1...inf)");
 test ("(null) ", 'Set::Infinite::Simple->new()->complement', "(-inf..inf)");
 test ("(1,infinite)", 'Set::Infinite::Simple->new(1,inf)->complement', "(-inf..1.)");

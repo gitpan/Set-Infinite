@@ -9,16 +9,21 @@
 use Set::Infinite::Element qw(infinite);
 
 my $errors = 0;
+my $test = 0;
+
+print "1..30\n";
+
 
 sub test {
 	my ($header, $sub, $expected) = @_;
-	print "\t$header \t--> ";
+	$test++;
+	#print "\t# $header \n";
 	$result = eval $sub;
 	if ("$expected" eq "$result") {
-		print "ok";
+		print "ok $test";
 	}
 	else {
-		print "expected \"$expected\" got \"$result\"";
+		print "not ok $test"; # \n\t# expected \"$expected\" got \"$result\"";
 		$errors++;
 	}
 	print " \n";
@@ -26,14 +31,15 @@ sub test {
 
 sub stats {
 	if ($errors) {
-		print "\nErrors: $errors\n";
+		#print "\n\t# Errors: $errors\n";
 	}
 	else {
-		print "\nNo errors.\n";
+		#print "\n\t# No errors.\n";
 	}
 }
 
-print "Testing new\n";
+
+#print "Testing new\n";
 
 test ('null',	'Set::Infinite::Element->new()' ,	'');
 test ("null",	'Set::Infinite::Element->new()',		"");
@@ -56,7 +62,7 @@ test ("-infinite", '$a', '-inf');
 $a = - Set::Infinite::Element->new(infinite);
 test ("-infinite", '$a', '-inf');
 
-print "Testing sort\n";
+#print "Testing sort\n";
 
 test ("-infinite cmp infinite", '
   Set::Infinite::Element->new("-$Set::Infinite::Element::infinite") cmp
@@ -103,13 +109,13 @@ test ("Array", 'join(",", @a)', "1,0,inf,3,2,-inf,5,4,inf");
 @b = sort @a;
 test ("Sorted", 'join(",", @b)', "-inf,0,1,2,3,4,5,inf,inf");
 
-print "Testing add, sub\n";
+#print "Testing add, sub\n";
 #test ("(infinite is ", infinite, ")\n";
 test ("1 + 2",'Set::Infinite::Element->new(1) + Set::Infinite::Element->new(2)', "3");
 test ("1 + inf",'Set::Infinite::Element->new(1) + Set::Infinite::Element->new("inf")', "inf");
 test ("1 - inf",'Set::Infinite::Element->new(1) - Set::Infinite::Element->new("inf")', "-inf");
 
-print "Testing literals\n";
+#print "Testing literals\n";
 test ("a + b",'Set::Infinite::Element->new("a") + Set::Infinite::Element->new("b")', "0");
 test ("a + inf",'Set::Infinite::Element->new("a") + Set::Infinite::Element->new("inf")', "inf");
 test ("a - inf",'Set::Infinite::Element->new("a") - Set::Infinite::Element->new("inf")', "-inf");

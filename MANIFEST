@@ -1,0 +1,15 @@
+Changes
+lib/Set/Infinite.pm
+lib/Set/Infinite/Date.pm
+lib/Set/Infinite/Element.pm
+lib/Set/Infinite/Simple.pm
+MANIFEST
+Makefile.PL
+t/bigfloat.t
+t/bigint.t
+t/date.t
+t/element_bigfloat.t
+t/element.t
+t/infinite.t
+t/simple_bigfloat.t
+t/simple.t
