@@ -528,6 +528,19 @@ sub until {
     return $u;    
 }
 
+sub start_set {
+    return $_[0]->iterate(
+        sub { $_[0]->min }
+    );
+}
+
+
+sub end_set {
+    return $_[0]->iterate(
+        sub { $_[0]->max }
+    );
+}
+
 sub union {
     my $a1 = shift;
     my $b1;
@@ -609,6 +622,8 @@ sub copy {
     }
     return $copy;
 }
+
+*clone = \&copy;
 
 
 sub new {
@@ -816,6 +831,8 @@ gives
 Note: this function is still experimental.
 
 =head2 copy
+
+=head2 clone
 
 Makes a new object from the object's data.
 

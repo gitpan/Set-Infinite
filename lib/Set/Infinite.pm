@@ -8,6 +8,7 @@ use 5.005_03;
 
 # These methods are inherited from Set::Infinite::Basic "as-is":
 #   type list fixtype numeric min max integer real new span copy
+#   start_set end_set
 
 use strict;
 use base qw(Set::Infinite::Basic Exporter);
@@ -40,7 +41,7 @@ sub compact { @_ }
 
 
 BEGIN {
-    $VERSION = 0.5502;
+    $VERSION = 0.56;
     $TRACE = 0;         # enable basic trace method execution
     $DEBUG_BT = 0;      # enable backtrack tracer
     $PRETTY_PRINT = 0;  # 0 = print 'Too Complex'; 1 = describe functions
@@ -464,6 +465,13 @@ BEGIN {
                 my $method = $self->{method};
                 $tail = $parent1->$method( $parent2 );
             }
+
+            if ( $first->intersects( $tail ) ) {
+                my $first2;
+                ( $first2, $tail ) = $tail->first;
+                $first = $first->union( $first2 );
+            }
+
             $self->trace_close( arg => "$first $tail" ) if $TRACE;
             return ($first, $tail);
         }, # end: first-union
@@ -676,6 +684,13 @@ BEGIN {
                 my $method = $self->{method};
                 $tail = $parent1->$method( $parent2 );
             }
+
+            if ( $last->intersects( $tail ) ) {
+                my $last2;
+                ( $last2, $tail ) = $tail->last;
+                $last = $last->union( $last2 );
+            }
+
             return ($last, $tail);
         },
     'until' =>
@@ -1101,6 +1116,45 @@ sub intersection {
 }
 
 
+sub intersected_spans {
+    my $a1 = shift;
+    my $b1;
+    if (ref ($_[0]) eq ref($a1) ) {
+        $b1 = shift;
+    }
+    else {
+        $b1 = $a1->new(@_);
+    }
+
+    # try to simplify $b1
+    $b1 = $b1->intersection( $a1 )
+        if $b1->{too_complex} && ! $a1->{too_complex};
+
+    # -- this should be an optimization, but it seems to be slower.
+    # return $a1->iterate(
+    #   # sub { return $_[0] if $b1->intersects( $_[0] ) }
+    #   sub { return $_[0] if $_[0]->intersects( $b1 ) }
+    # ) if ! $a1->{too_complex};
+
+    return $b1->iterate(
+        sub {
+            my $tmp = $a1->intersection( $_[0] );
+            return $tmp unless defined $tmp->max;
+
+            my $before = $a1->intersection( $neg_inf, $tmp->min )->last;
+            my $after =  $a1->intersection( $tmp->max, $inf )->first;
+
+            $tmp = $tmp->union( $before )
+                if defined $before && $tmp->intersects( $before );
+            $tmp = $tmp->union( $after )
+                if defined $after && $tmp->intersects( $after );
+            return $tmp;
+        }
+    );
+
+}
+
+
 sub complement {
     my $self = shift;
     # do we have a parameter?
@@ -1139,20 +1193,6 @@ sub until {
         return $a1->_function2( 'until', $b1 );
     }
     return $a1->SUPER::until( $b1 );
-}
-
-
-sub start_set {
-    return $_[0]->iterate(
-        sub { $_[0]->min }
-    );
-}
-
-
-sub end_set {
-    return $_[0]->iterate(
-        sub { $_[0]->max }
-    );
 }
 
 
@@ -1423,6 +1463,10 @@ This is the recommended way to do it:
     $object_a->set_value( 10 );
 
 
+=head2 clone / copy
+
+Creates a new object, and copy the object data.
+
 =head1 SET FUNCTIONS
 
 =head2 union
@@ -1608,6 +1652,24 @@ start_set is:
 end_set is:
 
     2,6,10
+
+=head2 intersected_spans
+
+    $set = $set1->intersected_spans( $set2 );
+
+The method returns a new set,
+containing all spans that are intersected by the given set.
+
+Unlike the C<intersection> method, the spans are not modified.
+See diagram below:
+
+               set1   [....]   [....]   [....]   [....]
+               set2      [................]
+
+       intersection      [.]   [....]   [.]
+
+  intersected_spans   [....]   [....]   [....]
+
 
 =head2 quantize
 

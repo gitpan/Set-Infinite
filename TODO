@@ -1,9 +1,5 @@
 Set::Infinite TODO 
 
-- New method: intersected_spans
-  Suggested by Reinhold May
-  Name suggested by Dave Rolsky
-
 - New method: clone
 
 - Deprecate min_a()

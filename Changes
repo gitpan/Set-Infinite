@@ -1,5 +1,15 @@
 Revision history for Perl extension Set::Infinite.
 
+0.56  2004-03-17
+- New method: clone (same as "copy")
+- More tests & fixes: intersected_spans
+
+0.5503  2004-03-15
+- New method: intersected_spans
+  Suggested by Reinhold May
+  Name suggested by Dave Rolsky
+- bugfix: first/last() of a union will try harder not to split spans.
+
 0.5502  2004-03-14
 - New methods: start_set / end_set 
   These are the inverse of the "until" method.
