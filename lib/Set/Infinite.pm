@@ -43,7 +43,7 @@ sub compact { @_ }
 
 
 BEGIN {
-    $VERSION = 0.58;
+    $VERSION = 0.59;
     $TRACE = 0;         # enable basic trace method execution
     $DEBUG_BT = 0;      # enable backtrack tracer
     $PRETTY_PRINT = 0;  # 0 = print 'Too Complex'; 1 = describe functions
@@ -952,6 +952,10 @@ BEGIN {
 
         iterate => sub {
             my ($self, $arg) = @_;
+
+            return $arg = $self->{backtrack_callback}->( $arg )
+                if defined $self->{backtrack_callback};
+
             my $before = $self->{parent}->intersection( $neg_inf, $arg->min )->max;
             $before = $arg->min unless $before;
             my $after = $self->{parent}->intersection( $arg->max, $inf )->min;
@@ -1055,12 +1059,27 @@ sub intersects {
 
 sub iterate {
     my $self = shift;
+    my $callback = shift;
+    die "First argument to iterate() must be a subroutine reference"
+        unless ref( $callback ) eq 'CODE';
+    my $backtrack_callback;
+    if ( @_ && $_[0] eq 'backtrack_callback' )
+    {
+        ( undef, $backtrack_callback ) = ( shift, shift );
+    }
+    my $set;
     if ($self->{too_complex}) {
         $self->trace(title=>"iterate:backtrack") if $TRACE;
-        return $self->_function( 'iterate', @_ );
+        $set = $self->_function( 'iterate', $callback, @_ );
     }
-    $self->trace(title=>"iterate") if $TRACE;
-    return $self->SUPER::iterate( @_ );
+    else
+    {
+        $self->trace(title=>"iterate") if $TRACE;
+        $set = $self->SUPER::iterate( $callback, @_ );
+    }
+    $set->{backtrack_callback} = $backtrack_callback;
+    # warn "set backtrack_callback" if defined $backtrack_callback;
+    return $set;
 }
 
 
@@ -1739,6 +1758,13 @@ Returns the union of all partial results.
 The callback argument C<$_[0]> is a span. If there are additional arguments they are passed to the callback.
 
 The callback can return a span, a hashref (see C<Set::Infinite::Basic>), a scalar, an object, or C<undef>.
+
+[EXPERIMENTAL]
+C<iterate> accepts a C<backtrack_callback> argument. This can be used
+when the data needs to be processed in some special way while backtracking.
+The syntax is:
+
+    iterate ( sub { } , backtrack_callback => sub { }, @args )
 
 =head2 first / last
 

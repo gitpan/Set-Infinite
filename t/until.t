@@ -37,7 +37,7 @@ sub test {
 	print " \n";
 }
 
-print "1..38\n";
+print "1..40\n";
 $| = 1;
 
 # $Set::Infinite::TRACE = 1;
@@ -91,6 +91,17 @@ test ("start_set - until unbounded recurrence",
 test ("end_set - until unbounded recurrence",
     '$a->until( $b )->end_set->intersection(5,45)', 
     "10,30");
+
+# iterate with backtracking
+test ("iterate - unbounded recurrence - doesn't need backtracking help",
+    '$a->iterate( sub { { $_[0]->min + 3, $_[0]->max + 3 } } )->intersection(5,45)',
+    "23,43");
+test ("iterate - unbounded recurrence - with backtracking helper",
+    '$a->iterate( sub { { $_[0]->min + 54, $_[0]->max + 54 } },   '. 
+    '             backtrack_callback =>                           '.
+    '                sub { $_[0]->new( $_[0]->min - 54, $_[0]->max - 54 ) }, '.
+    '           )->intersection(5,45)                             ',
+    "14,34");
 
 # intersected_spans
 test ("intersected_spans - simple",

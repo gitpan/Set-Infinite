@@ -1,5 +1,9 @@
 Revision history for Perl extension Set::Infinite.
 
+0.59    2004-07-01
+- added experimental argument "backtrack_callback" to
+  iterate()
+
 0.58    2004-06-14
 - intersected_spans was wrong when intersecting with
   an open set. bug report & tests by Peter Oliver
