@@ -24,7 +24,7 @@ use vars qw( @ISA %EXPORT_TAGS @EXPORT_OK @EXPORT $VERSION
 @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(inf new $inf trace_open trace_close) );
 @EXPORT = qw();
 
-$VERSION = '0.46';
+$VERSION = '0.47';
 
 use Set::Infinite::Arithmetic;
 
@@ -1440,6 +1440,7 @@ sub until {
     if (($a1->{too_complex}) or ($b1->{too_complex})) {
         my $u = $a1->_function2( 'until', $b1 );
         # first() code
+
         $a1->trace( title=>"computing first()" );
         my @first1 = $a1->first;
         my @first2 = $b1->first;
@@ -1447,16 +1448,22 @@ sub until {
         $a1->trace( title=>"first $first1[0]{list}[0]{a} ".$first1[0]{list}[0]{open_end} );
         $a1->trace( title=>"first $first2[0]{list}[0]{a} ".$first2[0]{list}[0]{open_end} );
         my ($first, $tail);
-        if ( $first2[0] < $first1[0] ) {
+        if ( $first2[0] <= $first1[0] ) {
             $first = $a1->new()->until( $first2[0] );
-            $tail = $first1[0]->_function( "until", $first2[1] );
+            $tail = $a1->_function( "until", $first2[1] );
         }
         else {
             $first = $a1->new( $first1[0] )->until( $first2[0] );
-            $tail = $first1[1]->_function( "until", $first2[1] );
+            if ( defined $first1[1] ) {
+                $tail = $first1[1]->_function( "until", $first2[1] );
+            }
+            else {
+                $tail = undef;
+            }
         }
         $u->{first} = [ $first, $tail ];
         $a1->trace_close( arg => $u );
+
         return $u;
     }
     return $a1->SUPER::until( $b1 );

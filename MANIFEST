@@ -1,11 +1,10 @@
 Changes
 MANIFEST
+MANIFEST.SKIP
 LICENSE
 README
 TODO
 Makefile.PL
-make_htmldoc
-make_readme
 
 lib/Set/Infinite.pm
 lib/Set/Infinite/Date.pm
@@ -29,9 +28,9 @@ t/date_select_offset.t
 t/select.t
 t/select_offset.t
 
-eg/month_to_html.pl
-eg/schedule.dat
-eg/schedule_check.pl
-eg/weekly_to_html.pl
-eg/recurring.pl
+_eg/month_to_html.pl
+_eg/schedule.dat
+_eg/schedule_check.pl
+_eg/weekly_to_html.pl
+_eg/recurring.pl
 

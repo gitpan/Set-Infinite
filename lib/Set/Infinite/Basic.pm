@@ -567,7 +567,7 @@ sub until {
     while ( ($ia <= $#{$a1->{list}}) && ($ib <= $#{$b1->{list}})) {
         $begin = $a1->{list}[$ia]{a};
         $end   = $b1->{list}[$ib]{b};
-        if ( $end < $begin ) {
+        if ( $end <= $begin ) {
             push @{$u->{list}}, {
                 a => $last ,
                 b => $end ,

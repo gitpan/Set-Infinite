@@ -1,5 +1,14 @@
 Revision history for Perl extension Set::Infinite.
 
+0.47
+    union allows start_set == end_set
+
+0.46_01
+    upload to perl-date-time CVS
+
+0.46
+    more docs
+
 0.45
     last works, but not for union/quantize/select/offset
 0.44_03

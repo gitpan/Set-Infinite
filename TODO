@@ -1,5 +1,8 @@
 Set::Infinite TODO 
 
+    - refactor "widgets" out of the main code. Maybe create
+      a Set::Infinite::Widgets directory.
+
     - a set with min == inf or max = -inf is an error!
 
     - implement last of select, quantize; enable tests!
@@ -30,7 +33,7 @@ Set::Infinite TODO
     - size() is wrong for open, "integer" sets.
       test!
 
-    - verify POD format and contents; mix POD and program?
+    - verify POD format and contents; un-mix POD and program
 
     - make Set::Infinite::Date inherit Set::Infinite; 
       make Set::Infinite::Date::Element a leaf-node?
