@@ -43,7 +43,7 @@ sub compact { @_ }
 
 
 BEGIN {
-    $VERSION = 0.57;
+    $VERSION = 0.58;
     $TRACE = 0;         # enable basic trace method execution
     $DEBUG_BT = 0;      # enable backtrack tracer
     $PRETTY_PRINT = 0;  # 0 = print 'Too Complex'; 1 = describe functions
@@ -1113,6 +1113,9 @@ sub intersected_spans {
 
             my $before = $a1->intersection( $neg_inf, $tmp->min )->last;
             my $after =  $a1->intersection( $tmp->max, $inf )->first;
+
+            $before = $tmp->union( $before )->first;
+            $after  = $tmp->union( $after )->last;
 
             $tmp = $tmp->union( $before )
                 if defined $before && $tmp->intersects( $before );

@@ -1,4 +1,4 @@
-#/bin/perl -w
+#!/bin/perl -w
 # Copyright (c) 2001 Flavio Soibelmann Glock. All rights reserved.
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
@@ -37,7 +37,7 @@ sub test {
 	print " \n";
 }
 
-print "1..34\n";
+print "1..38\n";
 $| = 1;
 
 # $Set::Infinite::TRACE = 1;
@@ -117,6 +117,23 @@ test ("intersected_spans - span-set",
 test ("intersected_spans - bounded to unbounded",
     '$a->until( $b )->intersection(0,50)->intersected_spans($a)',
     "[0..10),[20..30),[40..50)");
+test ("intersected_spans - half-open interval",
+    '$a->until( $b )->intersected_spans( Set::Infinite->new({ a=>5,
+        open_begin=>1, b=>45, open_end=>0 }) )',
+    "[0..10),[20..30),[40..50)");
+test ("intersected_spans - half-open interval",
+    '$a->until( $b )->intersected_spans( Set::Infinite->new({ a=>5,
+        open_begin=>0, b=>45, open_end=>1 }) )',
+    "[0..10),[20..30),[40..50)");
+test ("intersected_spans - bounded LHS with half-open interval",
+    'Set::Infinite->new([0,20],[30,50],[60,80])->intersected_spans(
+        Set::Infinite->new({ a=>5, open_begin=>1, b=>45, open_end=>0 }) )',
+    "[0..20],[30..50]");
+test ("intersected_spans - bounded LHS with half-open interval",
+    'Set::Infinite->new([0,20],[30,50],[60,80])->intersected_spans(
+        Set::Infinite->new({ a=>5, open_begin=>0, b=>45, open_end=>1 }) )',
+    "[0..20],[30..50]");
+
 
 # let's test if contains() works properly with unbounded recurrences
 # because we'll need that
