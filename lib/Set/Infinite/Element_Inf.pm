@@ -46,7 +46,6 @@ use Carp;
 
 use overload
 	'<=>' => \&spaceship,
-	'cmp' => \&cmp,
 	'+'   => \&add,
 	'-'   => \&sub,
 	qw("" as_string),
@@ -273,14 +272,8 @@ sub spaceship {
 	elsif ($stmp2 eq $minus_infinite) { $res = 1; }
 	else { 
 		$res = ( $tmp1 <=> $tmp2 ); 
-		$res = ( $stmp1 cmp $stmp2 ) unless $res; 
 	}
 	return $res;
 }
-
-sub cmp {
-	return spaceship @_;
-}
-
 
 1;

@@ -12,11 +12,12 @@ our $VERSION = "0.24";
 
 our @EXPORT = qw();
 our @EXPORT_OK = qw();
-our @ISA = qw(Set::Infinite::Quantize);
+# our @ISA = qw(Set::Infinite::Quantize);
 
 use Time::Local;
 use Set::Infinite qw(type);
-use Set::Infinite::Quantize;
+# use Set::Infinite::Quantize;
+use Set::Infinite::Element_Inf qw(inf);
 
 =head2 NAME
 
@@ -46,69 +47,96 @@ our $minute_size = $hour_size / 60;
 our $second_size = $minute_size / 60;
 
 our %subs = (
-	years => 	\&years,
-	months => 	\&months,
-	days => 	\&days,
-	weeks =>	\&weeks,
-	hours =>	\&hours,
-	minutes =>	\&minutes,
-	seconds =>	\&seconds,
+	years => 	sub {
+		my ($self, $index) = @_;
+		# print " [QT_D:YEARS:$self->{date_begin}[5] + $self->{quant} * $index]\n";
+		return timegm( 0,0,0, 
+			1,0,$self->{date_begin}[5] + $self->{quant} * $index); },
+	months => 	sub {
+		my ($self, $index) = @_;
+		my $mon = 	$self->{date_begin}[4] + $self->{quant} * $index; 
+		my $year =	$self->{date_begin}[5];
+		if ($mon > 11) {
+			my $addyear = int($mon / 12);
+			$mon = $mon - 12 * $addyear;
+			$year += $addyear;
+		}
+		return timegm( 0,0,0, 
+			1, $mon, $year); },
+	days => 	sub {
+		my ($self, $index) = @_;
+		return $self->{first} + $self->{quant} * $index * $day_size; },
+	weeks =>	sub {
+		my ($self, $index) = @_;
+		# print " [QD:fn:weeks: $self->{first} + 7 * $self->{quant} * $index * $day_size ]\n";
+		return $self->{first} + 7 * $self->{quant} * $index * $day_size; },
+	hours =>	sub {
+		my ($self, $index) = @_;
+		return $self->{first} + $self->{quant} * $index * $hour_size; },
+	minutes =>	sub {
+		my ($self, $index) = @_;
+		return $self->{first} + $self->{quant} * $index * $minute_size; },
+	seconds =>	sub {
+		my ($self, $index) = @_;
+		return $self->{first} + $self->{quant} * $index * $second_size; },
+	one =>   	sub { 
+		my ($self, $index) = @_;
+		# print " $self->{first} + $self->{quant} * $index \n";
+		return $self->{first} + $self->{quant} * $index; },
 );
 
-# list of full years in a date set
-sub years {
-	my ($self, $index) = @_;
-	return timegm(
-		0,0,0, 
-		1,0,$self->{date_begin}[5] + $self->{quant} * $index);
-}
-
-# list of full months in a date set
-sub months {
-	my ($self, $index) = @_;
-
-	my $mon = 	$self->{date_begin}[4] + $self->{quant} * $index; 
-	my $year =	$self->{date_begin}[5];
-	if ($mon > 11) {
-		my $addyear = int($mon / 12);
-		$mon = $mon - 12 * $addyear;
-		$year += $addyear;
-	}
-	return timegm(
-		0,0,0, 
-		1, $mon, $year);
-}
-
-# list of full days in a date set
-sub days {
-	my ($self, $index) = @_;
-	return $self->{first} + $self->{quant} * $index * $day_size;
-}
-
-# list of full weeks in a date set
-sub weeks {
-	my ($self, $index) = @_;
-	# print " [QD:fn:weeks: $self->{first} + 7 * $self->{quant} * $index * $day_size ]\n";
-	return $self->{first} + 7 * $self->{quant} * $index * $day_size;
-}
-
-# list of full hours in a date set
-sub hours {
-	my ($self, $index) = @_;
-	return $self->{first} + $self->{quant} * $index * $hour_size;
-}
-
-# list of full minutes in a date set
-sub minutes {
-	my ($self, $index) = @_;
-	return $self->{first} + $self->{quant} * $index * $minute_size;
-}
-
-# list of full seconds in a date set
-sub seconds {
-	my ($self, $index) = @_;
-	return $self->{first} + $self->{quant} * $index * $second_size;
-}
+our %init = (
+	one =>  	sub {
+		my $self = shift;
+		# $rest = $self->{date_begin}[0] % $self->{quant};
+		# modulo operation - can't use `%'
+		my $tmp1 = int($self->{parent}->min / $self->{quant});
+		$self->{first} = $tmp1 * $self->{quant};
+		$self->{mult} = 1; },
+	seconds =>	sub {
+		my $self = shift;
+		# $rest = $self->{date_begin}[0] % $self->{quant};
+		# modulo operation - can't use `%'
+		my $tmp1 = int($self->{date_begin}[0] / $self->{quant});
+ 		my $rest = $self->{date_begin}[0] - $tmp1 * $self->{quant};
+		$self->{first} = timegm(
+			$self->{date_begin}[0] - $rest,	$self->{date_begin}[1],	$self->{date_begin}[2], 
+			$self->{date_begin}[3],	$self->{date_begin}[4],$self->{date_begin}[5]);
+		$self->{mult} = $second_size; },
+	minutes =>	sub {
+		my $self = shift;
+		# $rest = $self->{date_begin}[1] % $self->{quant};
+		# modulo operation - can't use `%'
+		my $tmp1 = int($self->{date_begin}[1] / $self->{quant});
+ 		my $rest = $self->{date_begin}[1] - $tmp1 * $self->{quant};
+		$self->{first} = timegm(
+			0,$self->{date_begin}[1] - $rest, $self->{date_begin}[2], 
+			$self->{date_begin}[3], $self->{date_begin}[4],$self->{date_begin}[5]);
+		$self->{mult} = $minute_size; },
+	hours =>	sub {
+		my $self = shift;
+		$self->{first} = timegm( 0,0,$self->{date_begin}[2], 
+			$self->{date_begin}[3],$self->{date_begin}[4],$self->{date_begin}[5]);
+		$self->{mult} = $hour_size; },
+	days => 	sub {
+		my $self = shift;
+		$self->{first} = timegm( 0,0,0, 
+			$self->{date_begin}[3],$self->{date_begin}[4],$self->{date_begin}[5]);
+		$self->{mult} = $day_size; },
+	weeks =>	sub {
+		my $self = shift;
+		$self->{first} = timegm( 0,0,0, 
+			$self->{date_begin}[3],$self->{date_begin}[4],$self->{date_begin}[5]);
+		$self->{first} -= $self->{date_begin}[6] * $day_size;
+		$self->{mult} = 7 * $day_size; },
+	months =>	sub {
+		my $self = shift;
+		$self->{mult} = 31 * $day_size; },
+	years =>	sub {
+		my $self = shift;
+		# print " [QT_D:YEARS_INIT]\n";
+		$self->{mult} = 365 * $day_size; },
+);
 
 sub new {
 	my ($class, $parent, %rules);
@@ -123,98 +151,71 @@ sub new {
 	else {
 		($class, $parent, %rules) = @_;
 	}
+	# print " [QUANTIZE_DATE $class] \n";
 	my ($self) = bless \%rules, $class;
+	# print " [ SELF:ISA:", ref($self), "] ";
 
 	# my ($class, $parent, %rules) = @_;
 	# my ($self) = bless \%rules, $class;
 	# print " [ PARENT:ISA:", ref($parent), "] ";
 
-	$self->{unit} = 'seconds' unless $self->{unit};
+	$self->{unit} = 'one' unless $self->{unit};
 	$self->{quant} = 1 unless $self->{quant};
 
 	# may be "simple"!
 	$parent = Set::Infinite->new($parent) unless $parent->isa('Set::Infinite');
-	$self->{dates} = $parent;  # date
+	$self->{parent} = $parent; 
 
-	$self->{mode}  = $self->{dates}->min->{mode};
+	my $min = $self->{parent}->min;
+	# print " [MIN:$min] \n";
+	if (Set::Infinite::Element_Inf->is_null($min)) {
+		# print " [NULL!]\n";
+		$self->{size} = -1;
+		return $self;	
+	}
+	if (ref($min)) {
+		# mode is 'Date' specific
+		if (exists $min->{mode}) {
+			$self->{mode}  = $min->{mode};
+		}
+	}
 
-	#$self->{last} = 0;
-	#$self->{last_index} = -999;
+	# $self->{last} = 0;
+	# $self->{last_index} = -999;
+	# my $rest;
 
-	my $rest;
-
-	# print " [Q-DATE:MIN:",$self->{dates}->{a}," = ",0+ $self->{dates}->{a},"]\n";
+	# print " [Q-DATE:DATES:",$self->{parent}," ",ref( $self->{parent} ),"]\n";
+	# print " [Q-DATE:MIN:",$self->{parent}->min," ",ref( $self->{parent}->min ),"]\n";
+	# print " [Q-DATE:MIN:",$self->{parent}->{a}," = ",0+ $self->{parent}->{a},"]\n";
 	# print " [Q-DATE:MODE:",$self->{mode},"]\n";
 	# print " [Q-DATE:",join(";",%$self),"]\n";
 
-	@{$self->{date_begin}} = gmtime( 0 + $self->{dates}->min );
+	@{$self->{date_begin}} = gmtime( 0 + $min );
 	$self->{date_begin}[5] += 1900;
 
-	$self->{first} = timegm( @{$self->{date_begin}} );
-	$self->{mult} = 1;
+	$self->{first} = $min;
+
+	# $self->{first} = timegm( @{$self->{date_begin}} );
+	# $self->{mult} = 1;
 
 	#print " [QD:1] ";
 
-	if ($self->{unit} eq 'seconds') {
+	&{ $init{$self->{unit}} } ($self);
 
-		# $rest = $self->{date_begin}[0] % $self->{quant};
-		# modulo operation - can't use `%'
-		my $tmp1 = int($self->{date_begin}[0] / $self->{quant});
- 		$rest = $self->{date_begin}[0] - $tmp1 * $self->{quant};
+	$self->{time2_end} = $self->{parent}->max;
+	# print " [time2_end isa ", ref($self->{time2_end}), "] ";
 
-		$self->{first} = timegm(
-			$self->{date_begin}[0] - $rest,	$self->{date_begin}[1],	$self->{date_begin}[2], 
-			$self->{date_begin}[3],	$self->{date_begin}[4],$self->{date_begin}[5]);
-		$self->{mult} = $second_size;
-	}
-	elsif ($self->{unit} eq 'minutes') {
-		# $rest = $self->{date_begin}[1] % $self->{quant};
-		# modulo operation - can't use `%'
-		my $tmp1 = int($self->{date_begin}[1] / $self->{quant});
- 		$rest = $self->{date_begin}[1] - $tmp1 * $self->{quant};
-
-		$self->{first} = timegm(
-			0,$self->{date_begin}[1] - $rest, $self->{date_begin}[2], 
-			$self->{date_begin}[3], $self->{date_begin}[4],$self->{date_begin}[5]);
-		$self->{mult} = $minute_size;
-	}
-	elsif ($self->{unit} eq 'hours') {
-		$self->{first} = timegm(
-			0,0,$self->{date_begin}[2], 
-			$self->{date_begin}[3],$self->{date_begin}[4],$self->{date_begin}[5]);
-		$self->{mult} = $hour_size;
-	}
-	elsif ($self->{unit} eq 'days') {
-		$self->{first} = timegm(
-			0,0,0, 
-			$self->{date_begin}[3],$self->{date_begin}[4],$self->{date_begin}[5]);
-		$self->{mult} = $day_size;
-	}
-	elsif ($self->{unit} eq 'weeks') {
-		$self->{first} = timegm(
-			0,0,0, 
-			$self->{date_begin}[3],$self->{date_begin}[4],$self->{date_begin}[5]);
-		$self->{first} -= $self->{date_begin}[6] * $day_size;
-		$self->{mult} = 7 * $day_size;
-	}
-	elsif ($self->{unit} eq 'months') {
-		$self->{mult} = 31 * $day_size;
-	}
-	elsif ($self->{unit} eq 'years') {
-		$self->{mult} = 365 * $day_size;
-	}
-
-
-	$self->{time2_end} = 0 + $self->{dates}->max;
-
-	# print " [QUANT: = 2 + ($self->{time2_end} - $self->{first}) /  ($self->{quant} * $self->{mult})]\n";
+	# print " [QD:SIZE: = 2 + ($self->{time2_end} - $self->{first}) /  ($self->{quant} * $self->{mult})]\n";
 
 	$self->{size}  = 2 + ( $self->{time2_end} - $self->{first} ) / 
 				( $self->{quant} * $self->{mult} ) ;
 
-	# print " [QD:new:end] ";
+	# print " [QD:$self->{size}] \n";
+	# print " [QD:new:end] \n";
 	return $self;
 }
+
+
 
 sub FETCH {
 	my ($self) = shift;
@@ -243,16 +244,56 @@ sub FETCH {
 	}
 	# print " [QD:fetch:new($this,$next)] ";
 	my $tmp = Set::Infinite::Simple->new($this,$next)->open_end(1);
-	$tmp->{a}->mode($self->{mode});
-	$tmp->{b}->mode($self->{mode});
+	# my $tmp = Set::Infinite::Simple->fastnew($this,$next)->open_end(1);
+
+	# if ((ref($tmp->{a})) and ($tmp->{a}->can('mode'))) {   
+	if (exists $self->{mode}) {
+		$tmp->{a}->mode($self->{mode});
+		$tmp->{b}->mode($self->{mode});
+	}
 	# print " [QD:fetch:$tmp] ";
-	$tmp = Set::Infinite::Simple->new($tmp);
+
+	# $tmp = Set::Infinite::Simple->new($tmp);  # 0.25 ???
+
 	# slower but necessary:
-	if ($self->{dates}->intersects($tmp)) {
-		# print " [QD:INTER:",$self->{dates}->intersects($tmp),"=",	$self->{dates}->intersection($tmp),"]\n";
+	if ($self->{parent}->intersects($tmp)) {
+		# print " [QD:INTER:",$self->{parent}->intersects($tmp),"=",	$self->{parent}->intersection($tmp),"]\n";
 		return $tmp;
 	}
 	return Set::Infinite::Simple->simple_null;
+}
+
+# TIE
+
+sub TIEARRAY {
+	my $class = shift;
+	my $self = $class->new(@_);
+	return $self;
+}
+
+sub FETCHSIZE {
+	my ($self) = shift;
+	return $self->{size}; 
+}
+
+sub STORESIZE {
+	return @_;
+}
+
+sub CLEAR {
+	my ($self) = shift;
+	return @_;
+}
+
+sub EXTEND {
+	return @_;
+}
+
+sub STORE {
+	return @_;
+}
+
+sub DESTROY {
 }
 
 

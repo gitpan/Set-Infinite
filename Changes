@@ -1,5 +1,25 @@
 Revision history for Perl extension Set::Infinite.
 
+0.25
+	backtracking fully implemented in: intersection, intersects, union, offset. 
+	backtracking partially implemented in: quantize, select
+	backtracking is NOT implemented in: complement, size, span, max, min
+	See: backtrack.t
+
+	'epoch' support in core module. Doesn't need Date or ICal.
+
+	intersection was missing 'my $b;'
+
+	Date::sub propagates {mode}
+
+	use hash-subs to initialize quantize units
+	'quantize_date' uses 'one' as default unit
+	doesn't use Quantize.pm anymore, since Quantize_Date.pm is a superset.
+	doesn't need 'quantizer, selector, offsetter' either.
+
+	remove 'cmp' (thanks Martijn)
+	internal cache for Date and ICal object
+
 0.24
 	offset has 'unit' parameter
  	'epoch' removed. use 0+ instead.

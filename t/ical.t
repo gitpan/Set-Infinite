@@ -53,13 +53,13 @@ sub test {
 
 type('Set::Infinite::ICal');
 
-$a = Set::Infinite->new('19971024T120000', '19971024T130000');
+$a = Set::Infinite->new('19971024T120000Z', '19971024T130000Z');
 
 test('','$a','[19971024T120000Z..19971024T130000Z]');
 
 test('','$a->size','3600');
 
-test('','$a->union(\'19971024T160000\', \'19971024T170000\')','[19971024T120000Z..19971024T130000Z],[19971024T160000Z..19971024T170000Z]');
+test('','$a->union(\'19971024T160000Z\', \'19971024T170000Z\')','[19971024T120000Z..19971024T130000Z],[19971024T160000Z..19971024T170000Z]');
 
 test('','$a->complement','(-inf..19971024T120000Z),(19971024T130000Z..inf)');
 
@@ -76,13 +76,13 @@ my $hour_size = $day_size / 24;
 my $interval = Set::Infinite->new('20010501Z')->quantize(unit=>'months');
 # print "Weeks: ", $interval->quantize(unit=>'weeks'), "\n";
 my $tuesdays = $interval->quantize(unit=>'weeks')->
-	offset( mode => 'begin', value => [ 2 * $day_size, 3 * $day_size] );
+	offset( mode => 'begin', unit=>'days', value => [ 2 , 3 ] );
 # print "tuesdays: ", $tuesdays, "\n";
 my $fifteenth = $interval->quantize(unit=>'months')->
-	offset( mode => 'begin', value => [ 14 * $day_size, 15 * $day_size] );
+	offset( mode => 'begin', unit=>'days', value => [ 14 , 15 ] );
 # print "fifteenth: ", $fifteenth, "\n";
 $events =  $tuesdays -> complement ( $fifteenth ) ->
-	offset( mode => 'begin', value => [ 13 * $hour_size, 14 * $hour_size] );
+	offset( mode => 'begin', unit=>'hours', value => [ 13 , 14 ] );
 # print "events in may 2001: ", $events;
 test (  "offset: ", ' $events ',
 	"[20010501T130000Z..20010501T140000Z),[20010508T130000Z..20010508T140000Z),[20010522T130000Z..20010522T140000Z),[20010529T130000Z..20010529T140000Z)");

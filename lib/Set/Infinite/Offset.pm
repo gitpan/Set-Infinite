@@ -10,7 +10,7 @@ use Set::Infinite::Function;
 use Carp;
 use Time::Local;
 
-our $VERSION = "0.02";
+our $VERSION = "0.03";
 our @EXPORT = qw();
 our @EXPORT_OK = qw();
 our @ISA = qw(Set::Infinite::Function); 
@@ -21,13 +21,12 @@ Set::Infinite::Offset - Offsets a set :)
 
 =head2 SYNOPSIS
 
-	$a->offset ( value => [1,2] );
-
-=head2 TODO
-
-Use hash to select "mode" funtion.
+	$a->offset ( value => [1,2], mode => 'offset', unit => 'days' );
 
 =head2 CHANGES
+
+0.03
+	backtracking
 
 0.02
 	uses "Function.pm"

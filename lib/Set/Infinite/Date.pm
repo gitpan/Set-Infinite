@@ -119,8 +119,8 @@ sub str2time {
 #--- END CODE DERIVED FROM HTTP::Date
 
 use overload
+	'0+' => sub { return $_[0]->{a} },
 	'<=>' => \&spaceship,
-	'cmp' => \&cmp,
 	'-' => \&sub,
 	'+' => \&add,
 	'/' => \&div,
@@ -137,6 +137,9 @@ our $second_size = $minute_size / 60;
 
 our $date_format = "year-month-day hour:min:sec";
 
+our %date_cache = ();
+our %time2date_cache = ();
+
 sub day_size { $day_size }
 
 sub quantizer {
@@ -148,25 +151,35 @@ sub quantizer {
 
 sub date_format {
 	$date_format = pop if @_;
+	# %date_cache = ();
+	%time2date_cache = ();
 	return $date_format;
 }
 
 # export time2date and date2time
+
 sub time2date (;$)  { 
-	my $tmp = shift;
-	my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = gmtime($tmp);
+	my $a = shift;
+	if (exists $time2date_cache{$a}) { 
+		# print "*"; 
+		return $time2date_cache{$a} 
+	};
+	# print " [ttd:$a] ";
+
+	my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = gmtime($a);
 	$year += 1900;
 	$mon++;
 	foreach ($sec,$min,$hour,$mday,$mon,$year) {
 		$_ = '0' . $_ if $_ < 10;
 	}
-	$tmp = $date_format;
+	my $tmp = $date_format;
 	$tmp =~ s/year/$year/;
 	$tmp =~ s/month/$mon/;
 	$tmp =~ s/day/$mday/;
 	$tmp =~ s/sec/$sec/;
 	$tmp =~ s/min/$min/;
 	$tmp =~ s/hour/$hour/;
+	$time2date_cache{$a} = $tmp;
 	return $tmp;
 }
 
@@ -200,13 +213,17 @@ sub div {
 sub sub {
 	# TODO: (since 0.21) keep format ("mode") in result (see: "Date::add")
 	my ($tmp1, $tmp2, $inverted) = @_;
+	my $result;
 	$tmp2 = Set::Infinite::Date->new($tmp2) unless ref($tmp2) and $tmp2->isa(__PACKAGE__);
 	if ($inverted) {
 		return - $tmp1 if $tmp2->is_null;
-		return Set::Infinite::Date->new( $tmp2->{a} - $tmp1->{a} );
+		$result = Set::Infinite::Date->new( $tmp2->{a} - $tmp1->{a} );
+		$result->{mode} = $tmp2->{mode};
 	}
 	return $tmp1 unless defined($tmp2);
-	return Set::Infinite::Date->new( $tmp1->{a} - $tmp2->{a} );
+	$result = Set::Infinite::Date->new( $tmp1->{a} - $tmp2->{a} );
+	$result->{mode} = $tmp1->{mode};
+	return $result;
 }
 
 sub add {
@@ -244,7 +261,14 @@ sub spaceship {
 		# }
 	# }
 
-	$tmp2 = Set::Infinite::Date->new($tmp2) unless ref($tmp2) and $tmp2->isa(__PACKAGE__);
+	# $tmp2 = Set::Infinite::Date->new($tmp2) unless ref($tmp2) and $tmp2->isa(__PACKAGE__);
+
+	unless ( ref($tmp2) and $tmp2->isa(__PACKAGE__) ) {
+		if ($inverted) {
+			return ( $tmp2 <=> $tmp1->{a} );
+		}
+		return ( $tmp1->{a} <=> $tmp2 );
+	}
 
 	if ($inverted) {
 		return ( $tmp2->{a} <=> $tmp1->{a} );
@@ -252,13 +276,18 @@ sub spaceship {
 	return ( $tmp1->{a} <=> $tmp2->{a} );
 }
 
-sub cmp {
-	return spaceship @_;
-}
+# sub cmp {
+#	return spaceship @_;
+# }
 
 sub new {
 	my ($self) = bless {}, shift;
 	my $tmp = shift;
+	if ($tmp and (exists $date_cache{$tmp})) {
+		# print "*";
+		return $date_cache{$tmp};
+	}
+	# print "N";
 	$tmp = '' unless defined $tmp;
 	$self->{string} = '';
 	if ($tmp =~ /\d[\/\.\-]\d/) {
@@ -276,6 +305,7 @@ sub new {
 		$self->{a} = $tmp;
 		$self->{mode} = 0;
 	}
+	$date_cache{$tmp} = $self;
 	return $self;
 }
 
@@ -291,6 +321,7 @@ sub as_string {
 
 	#return '' unless defined($self);
 	#print " [ $self->{string} ] " ;
+	# $self->{string} = '';
 
 	if ($self->{string} ne '') {
 		# done

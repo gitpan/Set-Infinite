@@ -17,12 +17,12 @@ todo/bigint.t
 t/date.t
 t/infinite.t
 t/ical.t
+t/backtrack.t
 todo/simple_bigfloat.t
 t/quantize_date.t
 t/quantize.t
 lib/Set/Infinite/Element_Inf.pm
 lib/Set/Infinite/Offset.pm
-lib/Set/Infinite/Quantize.pm
 lib/Set/Infinite/Quantize_Date.pm
 lib/Set/Infinite/Select.pm
 lib/Set/Infinite/Function.pm

@@ -10,6 +10,7 @@ use warnings;
 
 require Exporter;
 # use AutoLoader qw(AUTOLOAD);
+use Carp;
 
 our @ISA = qw(Exporter);
 
@@ -23,13 +24,14 @@ our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(type inf) );
 our @EXPORT = qw(
 );
 
-our $VERSION = '0.24';
+our $VERSION = '0.25';
 
+our $DEBUG_BT = 0;   # backtrack debugger
 
 # Preloaded methods go here.
 
 use Set::Infinite::Simple qw(
-	infinite minus_infinite separators null type quantizer selector offsetter inf
+	infinite minus_infinite separators null type inf
 ); 
 # ... tolerance integer real
 
@@ -38,6 +40,9 @@ sub infinite();
 sub minus_infinite();
 sub null();
 
+our $too_complex = "Too complex";
+our $backtrack_depth = 0;
+our $max_backtrack_depth = 10;
 
 use overload
 	# '@{}' => \&{ 
@@ -48,7 +53,6 @@ use overload
 	#	return compact_array($_[0]->{list});
 	# },
 	'<=>' => \&spaceship,
-	'cmp' => \&cmp,
 	qw("" as_string),
 ;
 
@@ -68,33 +72,75 @@ sub compact_array {
 	return @b;
 }
 
+
+sub quantizer { return @_ }   # 'selector, offsetter, quantizer' are obsolete after 0.25
+
+use Set::Infinite::Quantize_Date;
+use Set::Infinite::Function; 	# ???
+use Set::Infinite::Select;   	# ???
+use Set::Infinite::Offset;   	# ???
+
 # quantize: splits in same-size subsets
+
 sub quantize {
 	my $self = shift;
+
+	# if ($self->{too_complex}) {
+	#	print " [quantize:complex] \n";
+	#	$self = $self->backtrack();
+	# }
+
+	if (($self->{too_complex}) or ($self->min == -&inf) or ($self->max == &inf)) {
+		my $b = __PACKAGE__->new();
+		$b->{too_complex} = 1;
+		$b->{parent} = $self;
+		$b->{method} = 'quantize';
+		$b->{param}  = \@_;
+		return $b;
+	}
+
 	my (@a);
-	# my $array_ref = shift;
-	my $tmp = $self->{list}->[0]->quantizer or quantizer;
+
+	# my $quantizer = $self->quantizer or quantizer;
+	my $quantizer = 'Set::Infinite::Quantize_Date';
+	# print " [QUANT:$quantizer] \n";
+
 	# print " [INF:QUANT $tmp,",@_,",$self]\n";
-	tie @a, $tmp, $self, @_;
+	tie @a, $quantizer, $self, @_;
 
 	# array output: can be used by "foreach"
-	return compact_array(@a) if wantarray; 
+	if (wantarray) {
+		return compact_array(@a); 
+	}
+	# print " [QUANT:no_ARRAY] ";
 	
 	# object output: can be further "intersection", "union", etc.
 	my $b = __PACKAGE__->new($self); # clone myself
 	$b->{list} = \@a; 	# change data
 	$b->{cant_cleanup} = 1; 	# quantize output is "virtual" (tied) -- can't splice, sort
+
+	# print " [QUANT:returns:",ref($b),"] \n";
 	return $b;
 }
 
+
 # select: position-based selection of subsets
-use Set::Infinite::Function; 	# ???
-use Set::Infinite::Select; 	# ???
+
 sub select {
 	my $self = shift;
+
+	if ($self->{too_complex}) {
+		my $b = __PACKAGE__->new();
+		$b->{too_complex} = 1;
+		$b->{parent} = $self;
+		$b->{method} = 'select';
+		$b->{param}  = \@_;
+		return $b;
+	}
+
 	my (@a);
 	# my $array_ref = shift;
-	my $tmp = $self->{list}->[0]->selector or selector;
+	my $tmp = 'Set::Infinite::Select';  # $self->{list}->[0]->selector or selector;
 	# print " [INF:SELECT $tmp,",@_,",$self FROM:", $self->{list}->[0],"]\n";
 	tie @a, $tmp, $self, @_;
 
@@ -111,20 +157,27 @@ sub select {
 }
 
 # offset: offsets subsets
-use Set::Infinite::Offset; 	# ???
 sub offset {
 	my $self = shift;
+
+	if ($self->{too_complex}) {
+		my $b = __PACKAGE__->new();
+		$b->{too_complex} = 1;
+		$b->{parent} = $self;
+		$b->{method} = 'offset';
+		$b->{param}  = \@_;
+		return $b;
+	}
+
 	my (@a);
 	# my $array_ref = shift;
-	my $tmp = $self->{list}->[0]->offsetter or offsetter;
+	my $tmp = 'Set::Infinite::Offset';   # $self->{list}->[0]->offsetter or offsetter;
 	# print " [INF:OFFSET $tmp,",$self,",",join(",",@_),"]\n";
 	tie @a, $tmp, $self, @_;
 
 	# array output: can be used by "foreach"
-	# if (wantarray) { print " [wantarray] " }
-	# return @a if wantarray; 
 	return compact_array(@a) if wantarray; 
-	
+
 	# object output: can be further "intersection", "union", etc.
 	my $b = __PACKAGE__->new($self); # clone myself
 	$b->{list} = \@a; 	# change data
@@ -141,13 +194,165 @@ sub is_null {
 	# return ("$self" eq null) ? 1 : 0;
 }
 
+sub backtrack {
+	$backtrack_depth++;
+
+	if ($backtrack_depth > $max_backtrack_depth) {
+		carp (__PACKAGE__ . ": Backtrack too deep (more than " . $max_backtrack_depth . " levels)");
+	}
+
+	# print " [BT:depth=",$backtrack_depth,"] \n";
+	print " [BT$backtrack_depth-0:",join(";",@_),"] \n" if $DEBUG_BT;
+
+	my ($self, $method, $arg) = @_;
+
+	my $result;
+
+	print " [bt$backtrack_depth-0-1:self=",join(";",%{$self}),"] \n" if $DEBUG_BT;
+	# print " [bt$backtrack_depth-1:caller:",join(";",caller),"] \n" if $DEBUG_BT;
+	# print " [bt$backtrack_depth-2:parent:",ref($self->{parent})," -- ",join(";",%{$self->{parent}}),"] \n" if $self->{parent} and not (ref($self->{parent}) eq 'ARRAY');
+
+	if ($self->{too_complex}) {
+		# print " [bt$backtrack_depth-3:complex:a,b] \n";
+
+		if (ref($self->{parent}) eq 'ARRAY') {
+			# has 2 parents (intersection, union, ...)
+			# data structure: {method} - method name, {parent} - array, parent list
+
+			# print " [bt$backtrack_depth-3.5:complex: 2-PARENTS ] \n";
+
+			my $result1 = $self->{parent}[0];
+			$result1 = $result1->backtrack($method, $arg) if $result1->{too_complex};
+			# print " [bt$backtrack_depth-3-6:res1:$result] \n";
+			my $result2 = $self->{parent}[1];
+			$result2 = $result2->backtrack($method, $arg) if $result2->{too_complex};
+			# print " [bt$backtrack_depth-3-7:res2:$result] \n";
+
+			# apply {method}
+			my $expr = 'return $result1->' . $self->{method} . '($result2)';
+			# print " [bt$backtrack_depth-3-8:expr: $result1 -- ",$self->{method}," -- $result2 ]\n";
+
+			# $result = $self->intersection($arg);
+			$result = eval $expr;
+			# print " [bt$backtrack_depth-3-9:RESULT ",ref($result), "=",join(";",%{$result}),"] \n";
+			# print " [bt$backtrack_depth-3-10:end:res:$expr = $result] \n";
+			$backtrack_depth--;
+			return $result;
+		}
+		# else
+
+			# has 1 parent and parameters (offset, select, quantize)
+			# data structure: {method} - method name, {param} - array, param list
+
+			print " [bt$backtrack_depth-3-05: 1-PARENT ] \n" if $DEBUG_BT;
+			my $result1 = $self->{parent};
+			my @param = @{$self->{param}};
+			my $my_method = $self->{method};
+
+			my $backtrack_arg2;
+
+			# print " [bt$backtrack_depth-3-06:res1:before_backtrack:$result1] \n";
+
+			# $backtrack_arg must be modified second to method and param
+			print " [bt$backtrack_depth-3-08:BEFORE:$arg;" . $my_method . ";",join(";",@param),"] \n" if $DEBUG_BT;
+
+			# default
+			# $backtrack_arg2 = $arg;
+
+			# quantize - apply quantization without modifying
+			if ($my_method eq 'quantize') {
+
+				# --- OPTIMIZE THIS! ----
+				if (($arg->{too_complex}) or ($arg->min == -&inf) or ($arg->max == &inf)) {
+					# (TODO) ????
+					$backtrack_arg2 = $arg;
+				}
+				else {
+					$backtrack_arg2 = $arg->quantize(@param)->union();
+				}
+				# -----------------------
+
+			}
+			# offset - apply offset with negative values
+			elsif ($my_method eq 'offset') {
+				my %tmp = @param;
+				unless (ref($tmp{value}) eq 'ARRAY') {
+					$tmp{value} = [0 + $tmp{value}, 0 + $tmp{value}];
+				}
+				# $tmp{value}[0] = - $tmp{value}[0]; -- don't do this!
+				# $tmp{value}[1] = - $tmp{value}[1]; -- don't do this!
+				$backtrack_arg2 = $arg->offset( unit => $tmp{unit}, mode => $tmp{mode}, value => [- $tmp{value}[0], - $tmp{value}[1]] );
+			}
+			# select - check "by" behaviour
+			else {    # if ($my_method eq 'select') {
+
+				# -----------------------
+				# (TODO) ????
+				# see: 'BIG, negative select' in backtrack.t
+
+				$backtrack_arg2 = $arg;
+
+				# -----------------------
+
+			}
+
+			print " [bt$backtrack_depth-3-10:AFTER:$backtrack_arg2;" . $my_method . ";",join(";",@param),"] \n" if $DEBUG_BT;
+			# print " [bt$backtrack_depth-3-11:  WAS:$arg] \n";
+
+			$result1 = $result1->backtrack($method, $backtrack_arg2); # if $result1->{too_complex};
+			# print " [bt$backtrack_depth-3-12:res1:after_backtrack:$result1] \n";
+			# apply {method}
+			my $expr = 'return $result1->' . $self->{method} . '(@param)';
+			# print " [bt$backtrack_depth-3-14:expr: $result1 -- ",$self->{method}," -- $result2 ]\n";
+			# print " [bt$backtrack_depth-3-15:expr: $expr ; param: ", @param,"]\n";
+			# $result = $self->intersection($arg);
+			$result = eval $expr;
+			print " [bt$backtrack_depth-3-19:RESULT ",ref($result), "=",join(";",%{$result}),"=$result] \n" if $DEBUG_BT;
+			# print " [bt$backtrack_depth-3-22:  WAS:$arg] \n";
+			# print " [bt$backtrack_depth-3-25:end:res:$expr = $result] \n";
+			$backtrack_depth--;
+			return $result;
+
+	}
+
+	# change the root parameter
+
+	# my $expr = '$result = $self->' . $method . '($arg)';
+	# $expr .= '; print "$arg"; ';
+	# print " [bt$backtrack_depth-5:expr: $self -- $method -- $arg ]\n";
+	# eval "$expr";
+
+	my $expr = 'return $self->' . $method . '($arg)';
+	# print " [bt$backtrack_depth-6:expr: $self -- $method -- $arg ]\n";
+
+	# $result = $self->intersection($arg);
+	$result = eval $expr;
+	# print " [bt$backtrack_depth-6.5:RESULT ",ref($result), "=",join(";",%{$result}),"] \n";
+
+	# print " [bt$backtrack_depth-7:end:res:$expr = $result] \n";
+
+	$backtrack_depth--;
+	return $result;
+}
+
 sub intersects {
 	my $a = shift;
 	my $b;
 	#my @param = @_;
 	#my $b = __PACKAGE__->new(@param); 
 
-	if (ref ($_[0]) eq __PACKAGE__) {
+	# print " [I:", ref ($_[0]), "] ";
+	if (ref ($_[0]) eq 'Set::Infinite::Simple') {
+		# optimized for "quantize"
+		# print "*";
+		# print " n:", $#{  @{ $a->{list} } }, "=$a ";
+		$b = shift;
+		foreach my $ia (0 .. $#{  @{ $a->{list} } }) {
+			return 1 if $a->{list}->[$ia]->intersects($b);
+		}
+		return 0;	
+	} 
+	elsif (ref ($_[0]) eq __PACKAGE__) {
 		$b = shift;
 	} 
 	else {
@@ -155,9 +360,30 @@ sub intersects {
 		$b = __PACKAGE__->new(@_);  
 	}
 
+
+	if ($a->{too_complex}) {
+		print " [int:complex:a] \n" if $DEBUG_BT;
+		$a = $a->backtrack('intersection', $b);
+		# print " [int:WAS:b:", $b, "--",ref($b),"] \n";
+	}  # don't put 'else' here
+	if ($b->{too_complex}) {
+		print " [int:complex:b] \n" if $DEBUG_BT;
+		$b = $b->backtrack('intersection', $a);
+	}
+
+	if (($a->{too_complex}) or ($b->{too_complex})) {
+		print " [int:still too complex !] \n" if $DEBUG_BT;
+		my $intersection = __PACKAGE__->new();
+		$intersection->{too_complex} = 1;
+		$intersection->{parent} = [$a, $b];
+		$intersection->{method} = 'intersects';
+		return $intersection;
+	}
+
+
 	my ($ia, $ib);
 	my ($na, $nb) = (0,0);
-	my $intersection = __PACKAGE__->new();
+	# my $intersection = __PACKAGE__->new();
 	B: foreach $ib ($nb .. $#{  @{ $b->{list} } }) {
 		foreach $ia ($na .. $#{  @{ $a->{list} } }) {
 			#next B if Set::Infinite::Element_Inf::is_null($a->{list}->[$ia]->{a});
@@ -175,20 +401,46 @@ sub intersects {
 
 sub intersection {
 	my $a = shift;
+	my $b;
 
 	if (ref ($_[0]) eq __PACKAGE__) {
 		$b = shift;
+		# print " [int:as_is] \n";
 	} 
 	else {
 		# my @param = @_;
+		# print " [int:isa:",ref($_[0])," (",__PACKAGE__,")] \n";
 		$b = __PACKAGE__->new(@_);  
+		# print " [int:isa:",ref($b)," (",__PACKAGE__,")] \n";
 	}
 
 	# my @param = @_;
 	# my $b = __PACKAGE__->new(@param);
 
 	my $tmp;
-	#print " [intersect ",$a,"--",ref($a)," with ", $b, "--",ref($b)," ", caller, "] \n";
+	# print " [intersect ",$a,"--",ref($a)," with ", $b, "--",ref($b)," ", caller, "] \n";
+
+	if ($a->{too_complex}) {
+		print " [int:complex:a] \n" if $DEBUG_BT;
+		$a = $a->backtrack('intersection', $b);
+		# print " [int:WAS:b:", $b, "--",ref($b),"] \n";
+	}  # don't put 'else' here
+	if ($b->{too_complex}) {
+		print " [int:complex:b] \n" if $DEBUG_BT;
+		$b = $b->backtrack('intersection', $a);
+	}
+
+	if (($a->{too_complex}) or ($b->{too_complex})) {
+		print " [int:still too complex !] \n" if $DEBUG_BT;
+		my $intersection = __PACKAGE__->new();
+		$intersection->{too_complex} = 1;
+		$intersection->{parent} = [$a, $b];
+		$intersection->{method} = 'intersection';
+		return $intersection;
+	}
+
+	# print " [intersect ",$a,"--",ref($a)," with ", $b, "--",ref($b)," ", caller, "] \n";
+
 	my ($ia, $ib);
 	my ($na, $nb) = (0,0);
 	my $intersection = __PACKAGE__->new();
@@ -271,7 +523,7 @@ sub complement {
 
 # version 0.22.02 - faster union O(n*n) => O(n)
 sub union {
-	my $self = shift;
+	my $a = shift;
 	my $b;
 	# print " [UNION] \n";
 	# print " [union: new b] \n";
@@ -282,8 +534,17 @@ sub union {
 		$b = __PACKAGE__->new(@_);  
 	}
 
+	if (($a->{too_complex}) or ($b->{too_complex})) {
+		print " [union: too complex !] \n" if $DEBUG_BT;
+		my $union = __PACKAGE__->new();
+		$union->{too_complex} = 1;
+		$union->{parent} = [$a, $b];
+		$union->{method} = 'union';
+		return $union;
+	}
+
 	# print " [union: new union] \n";
-	my $a = __PACKAGE__->new($self);
+	$a = __PACKAGE__->new($a);
 	# print " [union: $a +\n       $b ] \n";
 	my ($ia, $ib);
 	$ia = 0;
@@ -329,20 +590,21 @@ sub union {
 }
 
 sub contains {
-	my $self = shift;
+	my $a = shift;
+	my $b;
 
 	# do we have a parameter?
 	return 1 unless @_;
 
 	if (ref ($_[0]) eq __PACKAGE__) {
-		$a = shift;
+		$b = shift;
 	} 
 	else {
-		$a = __PACKAGE__->new(@_);  
-		$a->tolerance($self->{tolerance});
+		$b = __PACKAGE__->new(@_);  
+		$b->tolerance($a->{tolerance});
 	}
 
-	return ($self->union($a) == $self) ? 1 : 0;
+	return ($a->union($b) == $a) ? 1 : 0;
 }
 
 sub add {
@@ -471,10 +733,6 @@ sub spaceship {
 	return 0;
 }
 
-sub cmp {
-	return spaceship @_;
-}
-
 sub cleanup {
 	my ($self) = shift;
 	return $self if $self->{cant_cleanup}; 	# quantize output is "virtual", can't be cleaned
@@ -549,6 +807,9 @@ sub new {
 
 sub as_string {
 	my ($self) = shift;
+	if ($self->{too_complex}) {
+		return $too_complex;
+	}
 	$self->cleanup;
 	# print " [s] ";
 	return null unless $#{$self->{list}} >= 0;
@@ -636,7 +897,7 @@ Set::Infinite - Sets of intervals
 
 Set::Infinite is a Set Theory module for infinite sets. 
 
-It works on strings, reals or integers.
+It works on reals or integers.
 You can provide your own objects or let it make them for you
 using the `type'.
 

@@ -1,6 +1,37 @@
 TODO - version 0.25
 
+	check for negative-epoch errors (quantize, select, offset).
+
+	document: quantize extensibility through hash-subs
+
+	backtracking select - see '	# (TODO) ???? ' in Infinite.pm, backtrack.t
+
+	backtracking: should be extensible. Use tables instead of if-else
+	backtracking: change ->{method} to sub-pointer instead of string ?
+	backtracking: define 'backwards' method instead of if-else (near 3-08)
+
+	backtracking: define union, complement, contains...
+
+	backtracking: implement remaining tests in backtrack.t
+	verify results in backtrack.t
+	ok - change backtrack.t to real tests
+
+	ok - backtracking quantize should round up and down values, according to unit, quant.
+		-- check if this is really necessary!
+		-- try using span, or create result directly (faster)
+		-- or: use 'offset' instead
+	ok - backtracking offset should move up and down values, according to value, mode.
+	backtracking select should move up and down values, according to 'by' limits.
+	See: backtrack.t in 'partially null "date"'
+
+	backtracking: document backtracking resolution; document internal object data (partially done)
+
+	remove a lot of debug "print" lines
+
 	verify, document parameter syntax everywhere
+	make 'freq' work with 'days', etc.
+
+	make unit 'years' and 'months' work in 'offset'
 
 	extra: make offset accept ICal times
 

@@ -87,6 +87,11 @@ test ( '', ' $a->select( freq => 2 )->union() ',
   "2001-01-01 00:00:00,2006-06-06 00:00:00");
 
 $a = Set::Infinite->new(['2001-01-01','2004-01-01'],['2007-01-01','2008-01-01']);
+print "\nTEST1: ", $a;
+print "\nTEST2: ", $a->quantize( unit => "years", quant => 1 );
+print "\nTEST3: ", $a->quantize( unit => "years", quant => 1 )->select( freq => 2, by => [1] );
+print "\nTEST4: ", $a->quantize( unit => "years", quant => 1 )->select( freq => 2, by => [1] )->union();
+print "\n";
 test ( '', ' $a->quantize( unit => "years", quant => 1 )->select( freq => 2, by => [1] )->union() ',
   "[2002-01-01 00:00:00..2003-01-01 00:00:00),[2004-01-01 00:00:00..2005-01-01 00:00:00),[2008-01-01 00:00:00..2009-01-01 00:00:00)");
 

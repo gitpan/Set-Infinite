@@ -106,7 +106,7 @@ $VERSION = "0.22";
 @EXPORT = qw();
 @EXPORT_OK = qw(
 	infinite minus_infinite separators null type inf
-	tolerance integer real quantizer selector offsetter
+	tolerance integer real selector offsetter
 	simple_null
 	fastnew
 );
@@ -125,7 +125,7 @@ our $DEBUG_TYPE = 0;
 our $type = '';
 our $infinite  = Set::Infinite::Element_Inf::infinite;
 our $null      = Set::Infinite::Element_Inf::null;
-our $quantizer = 'Set::Infinite::Quantize';
+# our $quantizer = 'Set::Infinite::Quantize';
 our $selector  = 'Set::Infinite::Select';
 our $offsetter = 'Set::Infinite::Offset';
 
@@ -157,21 +157,6 @@ sub type {
 		eval "use " . $tmp_type;
 			carp "Warning: can't start $tmp_type package: $@" if $@;
 
-		my $tmp_quantizer = eval '&' . $tmp_type . '::quantizer';
-		if ($tmp_quantizer) {
-			if (ref($self)) {
-				# local
-				$self->{quantizer} = $tmp_quantizer;
-			}
-			else {
-				# global
-				$quantizer = $tmp_quantizer;
-			}
-			eval "use " . $tmp_quantizer; 
-				carp "Warning: can't start $tmp_type  $tmp_quantizer package: $@" if $@;
-			# print " [ELEM:quantizer $tmp_type $tmp_quantizer]\n";
-		}
-
 		my $tmp_selector = eval '&' . $tmp_type . '::selector';
 		if ($tmp_selector) {
 			if (ref($self)) {
@@ -202,17 +187,14 @@ sub type {
 			# print " [ELEM:offsetter $tmp_type $tmp_offsetter]\n";
 		}
 
-		#my $tmp = &Set::Infinite::Date::quantizer;
-		#print " [ELEM:quantizer " . $self->{type} . " $tmp]\n";
-
-		# TEST for 'cmp' function - enable this to help debug new types
+		# TEST for '<=>' function - enable this to help debug new types
 		if ($DEBUG_TYPE) {
-			if ( (eval "(new " . $tmp_type . " (4)) cmp (new " . $tmp_type . " (3))") != 1) {
+			if ( (eval "(new " . $tmp_type . " (4)) <=> (new " . $tmp_type . " (3))") != 1) {
 				if ((eval "new " . $tmp_type . " (4)") != 4) {
 					carp "Warning: can't start " . $tmp_type . " package";
 				}
 				else {
-					carp "Warning: " . $tmp_type . " can't `cmp'";
+					carp "Warning: " . $tmp_type . " can't `<=>'";
 				}
 			}
 		} # end DEBUG_TYPE
@@ -225,12 +207,6 @@ sub selector {
 	my $self = shift;
 	# print " [selector:",($self->{selector} or $selector),"] ";
 	return ($self->{selector} or $selector);
-}
-
-sub quantizer {
-	my $self = shift;
-	# print " [quantizer:",($self->{quantizer} or $quantizer),"] ";
-	return ($self->{quantizer} or $quantizer);
 }
 
 sub offsetter {
@@ -259,12 +235,12 @@ sub simple_null {
 	return $simple_null;
 }
 
-sub quantize {
-	my $self = shift;
-	my (@a);
-	tie @a, quantizer, $self, @_, ;
-	return @a;
-}
+# sub quantize {
+#	my $self = shift;
+#	my (@a);
+#	tie @a, quantizer, $self, @_, ;
+#	return @a;
+# }
 
 sub select {
 	my $self = shift;
@@ -304,8 +280,16 @@ sub intersects {
 	my ($tmp1, $tmp2) = (shift, shift);
 	# $tmp2 = __PACKAGE__->new($tmp2, @_) unless ref($tmp2) and $tmp2->isa(__PACKAGE__); 
 
-	return 0 if Set::Infinite::Element_Inf::is_null($tmp1->{a});
-	return 0 if Set::Infinite::Element_Inf::is_null($tmp2->{a});
+	# print "I";
+
+	# if (Set::Infinite::Element_Inf::is_null($tmp1->{a}) ) {
+	#	print "1";
+	#	return 0;
+	# }
+	# if (Set::Infinite::Element_Inf::is_null($tmp2->{a}) ) {
+	#	print "2";
+	#	return 0;
+	#}
 
 	my ($i_beg, $i_end, $open_beg, $open_end);
 
@@ -313,29 +297,39 @@ sub intersects {
 	#return 0 if ($tmp2->{b} < $tmp1->{a});
 
 	if ($tmp1->{a} < $tmp2->{a}) {
+		# print "3";
+		if ($tmp1->{b} > $tmp2->{b}) {
+			# print "6";
+			return 1;
+		}
 		$i_beg 		= $tmp2->{a};
 		$open_beg 	= $tmp2->{open_begin};
 	}
 	elsif ($tmp1->{a} == $tmp2->{a}) {
+		# print "4";
 		$i_beg 		= $tmp1->{a};
 		$open_beg 	= ($tmp1->{open_begin} or $tmp2->{open_begin});
 	}
 	else {
+		# print "5";
 		$i_beg 		= $tmp1->{a};
 		$open_beg	= $tmp1->{open_begin};
 	}
 
 	if ($tmp1->{b} > $tmp2->{b}) {
+		# print "6";
 		$i_end 		= $tmp2->{b};
 		$open_end 	= $tmp2->{open_end};
 	}
-	elsif ($tmp1->{b} == $tmp2->{b}) {
-		$i_end 		= $tmp1->{b};
-		$open_end 	= ($tmp1->{open_end} or $tmp2->{open_end});
-	}
-	else {
+	elsif ($tmp1->{b} < $tmp2->{b}) {
+		# print "8";
 		$i_end 		= $tmp1->{b};
 		$open_end	= $tmp1->{open_end};
+	}
+	else {     # if ($tmp1->{b} == $tmp2->{b}) {
+		# print "7";
+		$i_end 		= $tmp1->{b};
+		$open_end 	= ($tmp1->{open_end} or $tmp2->{open_end});
 	}
 
 	return 0 if 
@@ -562,10 +556,6 @@ sub spaceship {
 	return $tmp1->{b} <=> $tmp2->{b} if $tmp1->{a} == $tmp2->{a};
 	return $tmp1->{a} <=> $tmp2->{a};
 }
-
-# sub cmp {
-#	return spaceship @_;
-# }
 
 sub cleanup {
 	my ($self) = shift;
