@@ -24,7 +24,8 @@ sub test {
 		print "ok $test";
 	}
 	else {
-		print "not ok $test"; # \n\t# expected \"$expected\" got \"$result\"";
+		print "not ok $test"; 
+		print "\n\t# expected \"$expected\" got \"$result\"";
 		$errors++;
 	}
 	print " \n";
@@ -45,12 +46,12 @@ Set::Infinite::integer;
 
 # print "Union\n";
 
-$a = Set::Infinite->new(1,inf);
+$a = Set::Infinite->new(1,'inf');
 $a = $a->complement;
 # print " A is ", $a, "\n";
 test ("union A [2..3]  : ", '$a->union(2,3)', "(-inf..+1),[+2..+3]");
 
-$b = Set::Infinite->new(-inf,1)->complement;
+$b = Set::Infinite->new('-inf',1)->complement;
 test ("union $b : ", '$a->union($b)', "(-inf..+1),(+1..inf)");
 
 
@@ -62,56 +63,56 @@ $a = Set::Infinite->new(16, 17);
 test ("$a union (10..13)  ", '$a->union(10, 13)', "[+10..+13],[+16..+17]");
 
 # print "Operations on open sets\n";
-$a = Set::Infinite->new(1,inf);
-test ("set : ", '$a', "[+1..inf)");
+$a = Set::Infinite->new(1,'inf');
+test ("set : ", 	'$a', "[+1..inf)");
 $a = $a->complement;
-test ("[-inf,1) : ", '$a', "(-inf..+1)");
+test ("[-inf,1) : ", 	'$a', "(-inf..+1)");
 $b = $a;
-test ("copy : ",'$b',"(-inf..+1)");
-test ("complement : ",$a->complement,"");
+test ("copy : ",	'$b',"(-inf..+1)");
+test ("complement : ",	'$a->complement',"[+1..inf)");
 test ("union [-1..0] : ", '$a->union(-1,0)', "(-inf..+1)");
 test ("union [0..1]  : ", '$a->union(0,1)', "(-inf..+1]");
 test ("union [1..2]  : ", '$a->union(1,2)', "(-inf..+2]");
 test ("union [2..3]  : ", '$a->union(2,3)', "(-inf..+1),[+2..+3]");
-$b = Set::Infinite->new(-inf,1)->complement;
+$b = Set::Infinite->new('-inf',1)->complement;
 #test ("set : ", '$a, "");
 $c = $a->union($b);
-test ("union $b : ", '$c', "(-inf..+1),(+1..inf)");
-test ("  complement : ", '$c->complement',"+1");
-test ("union $c [1..inf) ", '$c->union(1,inf)', "(-inf..inf)");
-test ("union $b [1..inf) ", '$b->union(1,inf)', "[+1..inf)");
+test ("union $b : ", 		'$c', "(-inf..+1),(+1..inf)");
+test ("  complement : ", 	'$c->complement',"+1");
+test ("union $c [1..inf) ", 	'$c->union(1,"inf")', "(-inf..inf)");
+test ("union $b [1..inf) ", 	'$b->union(1,"inf")', "[+1..inf)");
 
 # print "Testing 'null' and (0..0)\n";
 
 $a = Set::Infinite->new();
-test ("null : ",$a,"null");
+test ("null : ",'$a',"null");
 
 $a = Set::Infinite->new('null');
-test ("null : ",$a,"null");
+test ("null : ",'$a',"null");
 
 $a = Set::Infinite->new(undef);
-test ("null : ",$a,"null");
+test ("null : ",'$a',"null");
 
 $a = Set::Infinite->new();
-test ("(0,0) intersects to null : ",$a->intersects(0,0),"0");
-test ("(0,0) intersection to null : ",$a->intersection(0,0),"null");
+test ("(0,0) intersects to null : ",'$a->intersects(0,0)',"0");
+test ("(0,0) intersection to null : ",'$a->intersection(0,0)',"null");
 
 $a = Set::Infinite->new(0,0);
-test ("(0,0) intersects to null : ",$a->intersects(),"0");
-test ("(0,0) intersection to null : ",$a->intersection(),"null");
+test ("(0,0) intersects to null : ",'$a->intersects()',"0");
+test ("(0,0) intersection to null : ",'$a->intersection()',"null");
 
-test ("(0,0) intersects to 0    : ",$a->intersects(0),"1");
-test ("(0,0) intersection to 0    : ",$a->intersection(0),"0");
+test ("(0,0) intersects to 0    : ",'$a->intersects(0)',"1");
+test ("(0,0) intersection to 0    : ",'$a->intersection(0)',"+0");
 
 $a = Set::Infinite->new();
-test ("(0,0) union to null : ",$a->union(0,0),"0");
+test ("(0,0) union to null : ",'$a->union(0,0)',"+0");
 
 $a = Set::Infinite->new(0,0);
-test ("(0,0) union to null : ",$a->union(),"0");
+test ("(0,0) union to null : ",'$a->union()',"+0");
 
 $a = Set::Infinite->new(0,0);
-test ("(0,0) intersects to (1,1) : ",$a->intersects(1,1),"0");
-test ("(0,0) intersection to (1,1) : ",$a->intersection(1,1)->as_string,"null");
+test ("(0,0) intersects to (1,1) : ",'$a->intersects(1,1)',"0");
+test ("(0,0) intersection to (1,1) : ",'$a->intersection(1,1)->as_string',"null");
 
 
 #print "New:\n";
@@ -125,6 +126,7 @@ $c = Set::Infinite->new($x);
 $abcd = Set::Infinite->new([$a],[$b],[$c]);
 #print " abcd $abcd\n";
 test ("abcd",'$abcd',"[+1..+2],[+4..+5],[+7..+8],[+10..+11]");
+$abcd = '';
 
 #print "Contains\n";
 $a = Set::Infinite->new([3,6],[12,18]);

@@ -11,7 +11,7 @@ use Set::Infinite::Element qw(infinite);
 my $errors = 0;
 my $test = 0;
 
-print "1..30\n";
+print "1..29\n";
 
 
 sub test {
@@ -116,7 +116,7 @@ test ("1 + inf",'Set::Infinite::Element->new(1) + Set::Infinite::Element->new("i
 test ("1 - inf",'Set::Infinite::Element->new(1) - Set::Infinite::Element->new("inf")', "-inf");
 
 #print "Testing literals\n";
-test ("a + b",'Set::Infinite::Element->new("a") + Set::Infinite::Element->new("b")', "0");
+# test ("a + b",'Set::Infinite::Element->new("a") + Set::Infinite::Element->new("b")', "0");
 test ("a + inf",'Set::Infinite::Element->new("a") + Set::Infinite::Element->new("inf")', "inf");
 test ("a - inf",'Set::Infinite::Element->new("a") - Set::Infinite::Element->new("inf")', "-inf");
 

@@ -66,7 +66,7 @@ test ("contains [4..15] ", $a->contains(4,15),  "0");
 test ("contains [15..16]", $a->contains(15,16), "0");
 
 # print "Operations on open sets\n";
-$a = Set::Infinite::Simple->new(1,inf);
+$a = Set::Infinite::Simple->new(1,'inf');
 test ("set", '$a', "[1..inf)");
 $a = $a->complement;
 test ("complement : ", '$a', "(-inf..1)");

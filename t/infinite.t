@@ -128,6 +128,7 @@ $c = Set::Infinite->new($x);
 $abcd = Set::Infinite->new([$a],[$b],[$c]);
 # print " abcd $abcd\n";
 test ("abcd",'$abcd',"[1..2],[4..5],[7..8],[10..11]");
+$abcd = '';
 
 # print "Contains\n";
 $a = Set::Infinite->new([3,6],[12,18]);
