@@ -23,6 +23,7 @@ sub test {
 	$test++;
 	#print "\t# $header \n";
 	$result = eval $sub;
+        $result = '' unless defined $result;
 	if ("$expected" eq "$result") {
 		print "ok $test";
 	}

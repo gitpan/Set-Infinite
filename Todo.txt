@@ -1,5 +1,7 @@
 Set::Infinite TODO 
 
+    - size() is wrong for open, "integer" sets.
+
     - create some "chunk size" estimation, to take elements
       from unbounded sets ("numerically" instead of using equations)
 
@@ -14,11 +16,13 @@ Set::Infinite TODO
       remove ICal.pm
     - move $self->{mode} to "Date" only.
     - rename Set::Infinite::Element_Inf Set::Infinite::Infinity
-    - find out how to use Perl's Infinity
 
     - find out how to compare unbounded sets
 
 BACKTRACK
+
+    backtrack.t:
+        - test max/min after select
 
 	make backtrack_result method
 
@@ -40,12 +44,16 @@ BACKTRACK
 	backtracking: implement remaining tests in backtrack.t
 	verify results in backtrack.t
 
+        backtracking should use new min/max methods (v.45) because they are
+            faster/more correct
+
 	ok - backtracking quantize should round up and down values, according to unit, quant.
 		-- check if this is really necessary!
 		-- try using span, or create result directly (faster)
 		-- or: use 'offset' instead
 	backtracking select should move up and down values, according to 'by' limits.
 	See: backtrack.t in 'partially null "date"'
+    test finding out min/max of integer open sets (see backtrack.t tests 2,3)
 
 	backtracking: document backtracking resolution; document internal object data (partially done)
 
@@ -75,10 +83,6 @@ SYNTAX
 	better DURATION
 	TZID
 
-	This looks wrong - is it?
-	   "FREQ=YEARLY;BYMONTH=1,2" increases the number of days within the
-	   yearly recurrence set from 1 (if BYMONTH tag is not present) to 2.
-
 	'select' switch for negative-index overflow behaviour (end of subset, or end of freq)
 	tests: add test for negative 'by'
 
@@ -94,9 +98,6 @@ SYNTAX
 	extra: make offset accept ICal times
 
 	extra: offset option "middle"
-
-	extra: "indexes" filter to help dealing with sparse lists:
-	(,,10,,12,,14,,,)->indexes gives (2,4,6)
 
 	extra: Make a 'strict' option for "quantize" and other filters, 
 	that will intersect
@@ -135,7 +136,11 @@ DOCUMENTATION
 		iterate
 		no_cleanup
 
-	document '->trace({options})->' method
+        document as "internal":
+                min_a
+                max_a
+                backtrack
+	        trace({options})
 
 	document: quantize extensibility through hash-subs
 
@@ -172,11 +177,4 @@ OTHER
 	old: Make a global mode for `open_*' 
 
 	old: Quantize_Date should care of daylight savings time
-
-NOT-TODO
-
-	Keep a pointer to object in "quantize", such that, if the object is changed,
-	"quantize" will re-initialize. 
-	Make a "object_modified" flag in "quantize",
-	that the object should point back to. Sort of a signal handler.
 

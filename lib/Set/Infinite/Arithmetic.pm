@@ -7,13 +7,15 @@ use strict;
 use warnings;
 require Exporter;
 use Set::Infinite::Function;
-use Set::Infinite::Element_Inf qw(inf minus_inf);
+# use Set::Infinite;
 use Carp;
 use Time::Local;
 
 our @EXPORT = qw();
 our @EXPORT_OK = qw( %subs_offset2 %subs_offset1 %subs_offset1_init );
 
+our $inf = 10**10**10;    # $Set::Infinite::inf;  doesn't work! (why?)
+# carp " INF $inf ".&Set::Infinite::inf;
 
 =head2 NAME
 
@@ -63,7 +65,7 @@ our %subs_offset2 = (
 		# -1 = last saturday from today (not today, even if today were saturday)
 		# -2 = last friday
 		my ($self, $index1, $index2) = @_;
-		return ($self, $self, 0) if $self == &inf;
+		return ($self, $self, 0) if $self == $inf;
 		# my $class = ref($self);
 		my @date = gmtime( $self ); 
 		my $wday = $date[6];
@@ -96,7 +98,7 @@ our %subs_offset2 = (
 	},
 	years => 	sub {
 		my ($self, $index, $index2) = @_;
-		return ($self, $self, 0) if $self == &inf;
+		return ($self, $self, 0) if $self == $inf;
 		# my $class = ref($self);
 		# print " [ofs:year:$self -- $index]\n";
 		my @date = gmtime( $self ); 
@@ -112,8 +114,8 @@ our %subs_offset2 = (
 	},
 	months => 	sub {
 		my ($self, $index, $index2) = @_;
-		# print " [ofs:month:$self -- $index]\n";
-		return ($self, $self, 0) if $self == &inf;
+		# carp " [ofs:month:$self -- $index -- $inf]";
+		return ($self, $self, 0) if $self == $inf;
 		# my $class = ref($self);
 		my @date = gmtime( $self );
 

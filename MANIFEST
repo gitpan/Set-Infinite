@@ -9,7 +9,6 @@ lib/Set/Infinite.pm
 lib/Set/Infinite/Date.pm
 lib/Set/Infinite/_Simple.pm
 
-lib/Set/Infinite/Element_Inf.pm
 lib/Set/Infinite/Offset.pm
 lib/Set/Infinite/Quantize_Date.pm
 lib/Set/Infinite/Select.pm

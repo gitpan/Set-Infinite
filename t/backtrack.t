@@ -8,10 +8,9 @@
 use strict;
 use warnings;
 
-# use Set::Infinite::Quantize;
-use Set::Infinite qw(inf);
+use Set::Infinite qw(inf $inf);
 
-my ($a, $a_quant, $b, $c, $d, $finite, $q);
+my ($a, $a_quant, $b, $c, $d, $finite, $q, $r);
 
 
 my $test = 0;
@@ -34,29 +33,82 @@ sub test {
 }
 
 
-print "1..22\n";
+print "1..40\n";
+    $a = Set::Infinite->new([-&inf,15]);
+    $a_quant = $a->quantize(quant => 1);
+    $finite = Set::Infinite->new([10,20]);
 
- $a = Set::Infinite->new([-&inf,15]);
- $a_quant = $a->quantize(quant => 1);
- $finite = Set::Infinite->new([10,20]);
- $q = $a->quantize(quant => 1);
+    $b = Set::Infinite->new([15,&inf]);
 
- # print "a = $a\n";
+    # print "a = $a\n";
 
 # 1 "too complex"
-	# print "q = ",$q,"\n";
-	test ('', '$q', $Set::Infinite::too_complex);
+    $q = $a->quantize(quant => 1);
+    # print "q = ",$q,"\n";
+    test ('', '$q', $Set::Infinite::too_complex);
 
-# 2-5 quantize has min/max
-    # print " q $q ",$q->min," $q ",$q->max," ", $q->intersection($finite),"\n";        test ('', '$q->min', '-inf');
-        test ('', '$q->max', '16'  );
-        test ('', '$q->span', '(-inf..16]'  );
-        test ('', '$q->size', 'inf'  );
+# 2 quantize has min/max
+    $q = $a->quantize(quant => 1);
+    # print " q $q ",$q->min," $q ",$q->max," ",$q->intersection($finite),"\n";
+    test ('', '$q->min', "-$inf");
+    test ('', '$q->max', '16'  );
+    test ('', '$q->span', "(-$inf..16)"  );
+    test ('', '$q->size', $inf  );
 
+    $q = $b->quantize(quant => 1);
+    test ('', '$q->min', '15');
+
+# 7 min/max with open set
+    $r = $a->copy->complement(15);
+	# print "r = ",$r,"\n";
+    $r = $r->quantize(quant => 1);
+    test ('', '$r->max', '15'  );
+    test ('', '$r->span', "(-$inf..15)"  );
+    test ('', '$r->size', $inf  );
+
+# 10 offset
+    $q = $r->offset( value => [ -10, 10 ] );
+    # print "r = ",$r->intersection(-100,100),"\n";
+    # print "r offset = ... ",$q->intersection(-100,100),"\n";
+    test ('', '$q->max', '25'  );
+    test ('', '$q->span', "(-$inf..25)"  );
+    test ('', '$q->size', $inf  );
+
+# 13 min/max with open "integer" set
+    $r = $r->integer;
+    # print "r = ",$r->intersection(-1000,1000),"\n";
+    # print "r tolerance = ",$r->tolerance,"\n";
+    test ('', '$r->max', '14'  );
+    test ('', '$r->span', "(-$inf..14]"  );
+    test ('', '$r->size', $inf  );
+
+# 16 max with union 
+    $q = Set::Infinite->new([-&inf,15])->quantize;
+    $r = Set::Infinite->new([-&inf,10])->quantize;
+    test ('', '$r->union($q)->max', '16'  );
+# max with intersection
+    test ('', '$r->intersection($q)->max', '11'  );
+# min with union
+    $q = Set::Infinite->new([15,&inf])->quantize;
+    $r = Set::Infinite->new([10,&inf])->quantize;
+    test ('', '$r->union($q)->min', '10'  );
+# min with intersection
+    test ('', '$r->intersection($q)->min', '15'  );
+
+# 20 min/max of complement works
+    $r = Set::Infinite->new([-&inf,15])->complement(15)->integer->quantize(quant => 1);
+	# print "r = ",$r,"\n";
+    $r = $r->complement(15);  # complement doesn't backtrack yet
+	# print "r = ",$r,"\n";
+    test ('', '$r->max', '14'  );
+    $r = $r->complement;
+    test ('', '$r->max', $inf  );
+    test ('', '$r->min', '14'  );
 
 # 6 scalar
-	# print "r = ",$q->intersection(10,20),"\n";
-	test ('', '$q->intersection(10,20)', '[10..16)');
+    $q = $a->quantize(quant => 1);
+    # print "r = ",$q->intersection(10,20),"\n";
+    test ('', '$q->intersection(10,20)', '[10..16)');
 
 # 7 "date"
 	$a = Set::Infinite->new([-&inf,3800]);
@@ -64,7 +116,7 @@ print "1..22\n";
 	test ('', '$a->quantize(quant => 1, unit => \'hours\')->intersection(1000,15000)', 
 		'[1000..7200)');
 
-# 4 almost-intersecting "date"
+# 8 almost-intersecting "date"
 	$a = Set::Infinite->new([-&inf,3800]);
 	# print "t = ",$a->quantize(quant => 1, unit => 'hours')->intersection(3700,15000),"\n";
 	test ('', '$a->quantize(quant => 1, unit => \'hours\')->intersection(3700,15000)', 
@@ -72,12 +124,12 @@ print "1..22\n";
 	test ('', '$a->quantize(quant => 1, unit => \'hours\')->intersection(3900,15000)', 
 		'[3900..7200)');
 
-# 6 null "date"
+# 9 null "date"
 	# print "u = ",$a->quantize(quant => 1, unit => 'hours')->intersection(9000,15000),"\n";
 	test ('', '$a->quantize(quant => 1, unit => \'hours\')->intersection(9000,15000)', 
 		'');
 
-# 7 recursive 
+# 10 recursive 
 	# print "v: ", $a->quantize(quant => 1)->quantize(quant => 1)->intersection(10,20), "\n";
 	test ('', '$a->quantize(quant => 1)->quantize(quant => 1)->intersection(10,20)', 
 		'[10..20]');
@@ -156,15 +208,8 @@ print "1..22\n";
 
 # complement
 	#  (TODO ????)
-
-# min
-	#  (TODO ????)
-
-# max
-	#  (TODO ????)
-
-# span
-	#  (TODO ????)
+        # $Set::Infinite::DEBUG_BT = 1;
+        # test ('', '$a_quant->complement->intersection([0,5])', 'TODO');
 
 # size
 	#  (TODO ????)

@@ -17,7 +17,7 @@ our @EXPORT_OK = qw();
 use Time::Local;
 use Set::Infinite qw(type);
 use Set::Infinite::Arithmetic;
-use Set::Infinite::Element_Inf qw(inf);
+# use Set::Infinite::Element_Inf qw(inf);
 
 =head2 NAME
 
@@ -83,7 +83,7 @@ sub new {
 
 	my $min = $self->{parent}->min;
 	# print " [MIN:$min] \n";
-	if (Set::Infinite::Element_Inf->is_null($min)) {
+	unless (defined $min) {
 		# print " [NULL!]\n";
 		$self->{size} = -1;
 		return $self;	
@@ -118,7 +118,7 @@ sub new {
 	&{ $Set::Infinite::Arithmetic::subs_offset1_init{$self->{unit}} } ($self);
 
 	$self->{time2_end} = $self->{parent}->max;
-	# print " [time2_end isa ", ref($self->{time2_end}), "] ";
+	# print " [time2_end isa ", $self->{time2_end}, "=", ref($self->{time2_end}), "] ";
 
 	# print " [QD:SIZE: = 2 + ($self->{time2_end} - $self->{first}) /  ($self->{quant} * $self->{mult})]\n";
 
@@ -158,7 +158,7 @@ sub FETCH {
 
         # print " FETCH ",%$tmp,":",ref($tmp),"\n";
 	if ($self->{strict} and not $self->{strict}->intersects($tmp)) {
-		$tmp = Set::Infinite::_simple_null;
+		$tmp = undef;
 	}
 	$self->{cache}->{$index} = $tmp;
 	return $tmp;
@@ -169,14 +169,10 @@ sub _FETCH {
 	my $tmp;
 	my ($this, $next);
 
-        # return undef if Set::Infinite::Element_Inf::is_null($this);
-
 	$this = &{ $Set::Infinite::Arithmetic::subs_offset1{$self->{unit}} } ($self, $index);
 	$next = &{ $Set::Infinite::Arithmetic::subs_offset1{$self->{unit}} } ($self, $index + 1);
 
         # print " Q[$this,$next] \n";
-        # return undef if Set::Infinite::Element_Inf::is_null($this);
-
 	return Set::Infinite::_simple_fastnew($this, $next, 0, 1 ) unless $self->{fixtype};
 
 	$tmp = Set::Infinite::_simple_new($this,$next, $self->{type} );

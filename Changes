@@ -1,5 +1,44 @@
 Revision history for Perl extension Set::Infinite.
 
+0.37
+
+0.36_50
+    use warnings in Set::Infinite::_Simple
+
+0.36_49 
+    remove module Set::Infinite::Element_Inf
+
+0.36_48
+    uses native "Infinity" stringification
+
+0.36_47
+    fixed some warnings
+
+0.36_46
+    size return correct value for open integer sets
+    intersects/contains return undef if too_complex
+
+0.36_45
+    min/max are cached
+    min/max work with union/intersection
+        select(), complement() not implemented (should carp!)
+ 
+0.36_43
+    integer/real/tolerance are functions
+    min/max work with integer()
+
+0.36_42
+    min/max work for offset();
+    
+0.36_41
+    min/max fixed for quantize() 
+        t/backtrack.t tests 2,3 fixed; more tests
+    new methods (undocumented):
+        min_a(), max_a() return a list: (value, open-state)
+
+0.36_40
+    internal inf == Perl Inf
+
 0.36_36
     complement backtracks, although not it might fail for some sets
         (not tested at all!)

@@ -86,7 +86,7 @@ package Set::Infinite::Date;
 
 my $DEBUG = 1;
 # @ISA = qw(Set::Infinite::Simple); # DON'T !
-@ISA = qw(Set::Infinite::Element_Inf);  # is_null
+# @ISA = qw(Set::Infinite::Element_Inf);  # is_null
 @EXPORT = qw();
 @EXPORT_OK = qw(
 	time2date date2time time2hour hour2time quantizer day_size
@@ -94,7 +94,7 @@ my $DEBUG = 1;
 
 use strict;
 use Time::Local;
-use Set::Infinite::Element_Inf;
+# use Set::Infinite::Element_Inf;
 
 #--- THIS FUNCTION IS (HEAVILY) MODIFIED FROM HTTP::Date -- Copyright 1995-1999, Gisle Aas
 

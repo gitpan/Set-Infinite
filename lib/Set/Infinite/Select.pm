@@ -6,7 +6,7 @@ package Set::Infinite::Select;
 use strict;
 use warnings;
 use Set::Infinite::Function;
-use Set::Infinite::Element_Inf;
+# use Set::Infinite::Element_Inf;
 require Exporter;
 our @EXPORT = qw();
 our @EXPORT_OK = qw();

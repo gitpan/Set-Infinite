@@ -51,8 +51,8 @@ Global:
 		default are [ ] ( ) '..' ','.
 
 
-	infinite		returns an 'infinity' number.
-	minus_infinite	returns '- infinity' number.
+	inf		returns an 'infinity' number.
+	minus_inf	returns '- infinity' number.
 	# null			returns 'null'.
 
 Internal:
@@ -86,9 +86,10 @@ package Set::Infinite;
 
 
 use strict;
+use warnings;
 use Carp;
 
-use Set::Infinite::Element_Inf qw(infinite minus_infinite null inf elem_undef);
+our $inf = 10**10**10;
 
 our @separators = (
 	'[', ']',	# a closed interval 
@@ -97,15 +98,12 @@ our @separators = (
 	','			# list separator
 );
 
-our $simple_null =           undef;  # _simple_fastnew(null, null, 1, 1);
-our $simple_everything =     _simple_fastnew(minus_infinite, infinite, 1, 1);
-our $simple_infinite =       _simple_fastnew(infinite, infinite, 1, 1);
-our $simple_minus_infinite = _simple_fastnew(minus_infinite, minus_infinite, 1, 1);
+our $simple_null =           undef;  
+our $simple_everything =     _simple_fastnew(-$inf,  $inf, 1, 1);
+our $simple_inf =            _simple_fastnew( $inf,  $inf, 1, 1);
+our $simple_minus_inf =      _simple_fastnew(-$inf, -$inf, 1, 1);
 
-sub _simple_null () {
-	# return $simple_null;
-	undef;
-}
+sub _simple_null () { undef }
 
 sub separators {
 	return $separators[shift] if $#{@_} == 0;
@@ -177,15 +175,15 @@ sub _simple_complement {
 	}
 	# print " [CPL-S:",$self,"] ";
 	return $simple_everything unless defined $self->{a};
-	my $tmp1 = _simple_fastnew(minus_infinite, $self->{a}, 1, ! $self->{open_begin} );
+	my $tmp1 = _simple_fastnew(-$inf, $self->{a}, 1, ! $self->{open_begin} );
 	# print " [CPL-S:#1:",$tmp1,"] ";
-	my $tmp2 = _simple_fastnew($self->{b}, infinite, ! $self->{open_end}, 1);
-	# print " [CPL-S:#2:",__PACKAGE__,":",$tmp2,"=(",$self->{b},", ",infinite,")] ";
-	if ($tmp2->{a} == infinite) {
-		return $simple_null if ($tmp1->{b} == minus_infinite);
+	my $tmp2 = _simple_fastnew($self->{b}, $inf, ! $self->{open_end}, 1);
+	# print " [CPL-S:#2:",__PACKAGE__,":",$tmp2,"=(",$self->{b},", ",inf,")] ";
+	if ($tmp2->{a} == $inf) {
+		return $simple_null if ($tmp1->{b} == -$inf);
 		return $tmp1;
 	}
-	return $tmp2 if ($tmp1->{b} == minus_infinite);
+	return $tmp2 if ($tmp1->{b} == -$inf);
 	#print " [CPL-S:RES:",$tmp1 ,";", $tmp2,"] ";
 	($tmp1 , $tmp2);
 }
@@ -320,17 +318,19 @@ sub _simple_as_string {
 
     return "" unless defined $self;
 
-    $self->{open_begin} = 1 if ($self->{a} == minus_infinite );
-    $self->{open_end}   = 1 if ($self->{b} == infinite );
+    $self->{open_begin} = 1 if ($self->{a} == -$inf );
+    $self->{open_end}   = 1 if ($self->{b} == $inf );
 
-	# return null if $self->is_null;
-	my $tmp1 = "$self->{a}";
-	my $tmp2 = exists($self->{b}) ? "$self->{b}" : $tmp1;
-	return $tmp1 if $tmp1 eq $tmp2;
+    my $tmp1 = $self->{a};
+    $tmp1 = "$tmp1";
+
+    my $tmp2 = $self->{b};
+    $tmp2 = "$tmp2";
+    return $tmp1 if $tmp1 eq $tmp2;
 	$s = $self->{open_begin} ? $separators[2] : $separators[0];
 	$s .= $tmp1 . $separators[4] . $tmp2;
 	$s .= $self->{open_end} ? $separators[3] : $separators[1];
-	return $s;
+    return $s;
 }
 
 

@@ -15,14 +15,14 @@ use Carp;
 our @ISA = qw(Exporter);
 
 # This allows declaration    use Set::Infinite ':all';
-our %EXPORT_TAGS = ( 'all' => [ qw(type inf new ) ] );
-our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(type inf new ) );
+our %EXPORT_TAGS = ( 'all' => [ qw(type inf new $inf) ] );
+our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(type inf new $inf) );
 our @EXPORT = qw();
 
-our $VERSION = '0.36_37';
+our $VERSION = '0.37';
 
 our $TRACE = 0;      # basic trace method execution
-our $DEBUG_BT = 0;     # backtrack tracer
+our $DEBUG_BT = 0;   # backtrack tracer
 
 # Preloaded methods go here.
 
@@ -33,12 +33,16 @@ our $type = '';
 our $tolerance = 0;
 our $fixtype = 1;
 
-sub inf();
-sub infinite();
-sub minus_infinite();
-sub null();
+# Infinity vars
+our $inf            = 10**10**10;
+our $null           = undef;
+our $undef          = undef;
+our $minus_inf      = -$inf;
 
-our $too_complex = "Too complex";
+sub inf ()            { $inf }
+sub minus_inf ()      { $minus_inf }
+
+our $too_complex =    "Too complex";
 our $backtrack_depth = 0;
 our $max_backtrack_depth = 10;
 
@@ -152,9 +156,7 @@ sub compact {
     $self->trace(title=>"compact");
     foreach (@{$self->{list}}) {
         next unless defined $_;
-        unless ( Set::Infinite::Element_Inf::is_null($_->{a}) ) {
-            push @{$b->{list}}, $_;
-        }
+        push @{$b->{list}}, $_;
     }
     $b->{cant_cleanup} = 1; 
     return $b;
@@ -180,7 +182,9 @@ use Set::Infinite::Offset;       # tied
 sub quantize {
     my $self = shift;
     # $self->trace(title=>"quantize"); 
-    if (($self->{too_complex}) or ($self->min == -&inf) or ($self->max == &inf)) {
+    if (($self->{too_complex}) or 
+        ($self->min and $self->min == -&inf) or 
+        ($self->max and $self->max == &inf)) {
         $self->trace(title=>"quantize:backtrack"); 
         # print " [quantize:backtrack] \n" if $DEBUG_BT;
         my $b = $self->new();
@@ -249,12 +253,31 @@ sub offset {
     my @a;
     my %param = @_;
     my $b1 = $self->new();        # $self); # clone myself
+    my ($interval, $ia, $i);
+    $param{mode} = 'offset' unless $param{mode};
+
+    # optimization for 1-parameter offset
+
+    if (($param{mode} eq 'begin') and ($#{$param{value}} == 1) and
+        ($param{value}[0] == $param{value}[1]) and
+        ($param{value}[0] == 0) ) {
+            # offset == zero
+            foreach $i (0 .. $#{ $self->{list} }) {
+                $interval = $self->{list}[$i];
+                next unless defined $interval;  
+                $ia = $interval->{a};
+                push @a, { a => $ia , b => $ia };
+                        # open_begin => $open_begin , open_end => $open_end };
+            }
+            $b1->{list} = \@a;        # change data
+            $b1->{cant_cleanup} = 1;
+            return $b1;
+    }
 
     unless (ref($param{value}) eq 'ARRAY') {
         #print " [value:scalar:", $param{value} ,"]\n";
         $param{value} = [0 + $param{value}, 0 + $param{value}];
     }
-    $param{mode}   =      'offset' unless $param{mode};
     $param{unit}   =      'one'    unless $param{unit};
     my $parts  =      ($#{$param{value}}) / 2;
     # $param{strict} =      0        unless $param{strict};
@@ -266,7 +289,7 @@ sub offset {
 
     # print " [ofs:$param{mode} $param{unit} value:", join (",", @{$param{value} }),"]\n";
 
-    my ($i, $j);
+    my ($j);
     my ($cmp, $this, $next, $ib, $part, $open_begin, $open_end, $tmp);
 
     my @value;
@@ -275,13 +298,12 @@ sub offset {
     }
 
     foreach $i (0 .. $#{ $self->{list} }) {
-        my $interval = $self->{list}[$i];
-        my $ia = $interval->{a};
-
-        next unless defined $ia;   # if Set::Infinite::Element_Inf->is_null($ia);  # skip if interval is null
-        $ib = $interval->{b};
+        $interval = $self->{list}[$i];
+        next unless defined $interval;
+        $ia =         $interval->{a};
+        $ib =         $interval->{b};
         $open_begin = $interval->{open_begin};
-        $open_end = $interval->{open_end};
+        $open_end =   $interval->{open_end};
         # do offset
         foreach $j (0 .. $parts) {
                 # print " ..[ofs:$param{mode}=$param{sub_mode} $param{unit}=$param{sub_unit} value:", $param{value}[$j+$j], ",", $param{value}[$j+$j + 1],"]\n";
@@ -317,14 +339,12 @@ sub offset {
     return $b1;
 }
 
-# note: is_null returns a wrong value if is_too_complex is set.
+# note: is_null might return a wrong value if is_too_complex is set.
 # this is due to the implementation of min()
 
 sub is_null {
     my $self = shift;
-    # return 1 unless $#{$self->{list}} >= 0;
     defined $self->min ? undef : 1;
-    # Set::Infinite::Element_Inf::is_null($self->{list}->[0]->{a});
 }
 
 =head2 is_too_complex
@@ -407,21 +427,20 @@ sub backtrack {
         # $backtrack_arg must be modified second to method and param
         print " [bt$backtrack_depth-3-08:BEFORE:$arg;" . $my_method . ";",join(";",@param),"] \n" if $DEBUG_BT;
  
-            # quantize - apply quantization without modifying
-            if ($my_method eq 'quantize') {
-
-                # -----------------------
+            if ($my_method eq 'complement') {
+                # TODO - this doesn't help solving the equation
+                $backtrack_arg2 = $arg->complement->span;
+            }
+            elsif ($my_method eq 'quantize') {
                 # (TODO) ????
-
-                if (($arg->{too_complex}) or ($arg->min == -&inf) or ($arg->max == &inf)) {
+                if (($arg->{too_complex}) or 
+                    ($arg->min and $arg->min == -&inf) or 
+                    ($arg->max and $arg->max == &inf)) {
                     $backtrack_arg2 = $arg;
                 }
                 else {
                     $backtrack_arg2 = $arg->quantize(@param, strict=>0); # span/union
                 }
-
-                # -----------------------
-
             }
             # offset - apply offset with negative values
             elsif ($my_method eq 'offset') {
@@ -477,23 +496,34 @@ sub backtrack {
 
 sub intersects {
     my $a = shift;
-    my $b;
+    my ($b, $ia, $n);
     # print " [I:", ref ($_[0]), "] ";
     if (ref ($_[0]) eq 'HASH') {
         # optimized for "quantize"
         # $a->trace(title=>"intersects:simple ");
-        # print "*";
         # print " n:", $#{$a->{list}}, "=$a ";
         $b = shift;
-        return 0 unless defined $b;
-        $a->trace(title=>"intersects:simple " . join(':', %$b) );
-        foreach my $ia (0 .. $#{$a->{list}}) {
+        
+        # TODO: make a test for this:
+        return $a->intersects($a->new($b)) if ($a->{too_complex});
+
+        # return 0 unless defined $b;
+        # $a->trace(title=>"intersects:simple " . join(':', %$b) );
+        $n = $#{$a->{list}};
+        if ($n > 4) {
+            foreach $ia ($n, $n-1, 0 .. $n - 2) {
+                return 1 if _simple_intersects($a->{list}->[$ia], $b);
+            }
+            return 0;
+        }
+        foreach $ia (0 .. $n) {
             return 1 if _simple_intersects($a->{list}->[$ia], $b);
         }
         # print "don't\n";
         return 0;    
     } 
-    elsif (ref ($_[0]) ) { 
+
+    if (ref ($_[0]) ) { 
         $b = shift;
     } 
     else {
@@ -514,29 +544,28 @@ sub intersects {
     }
 
     if (($a->{too_complex}) or ($b->{too_complex})) {
-        print " [inter:backtrack] \n" if $DEBUG_BT;
-        my $intersection = $a->new();
-        $intersection->{too_complex} = 1;
-        $intersection->{parent} = [$a, $b];  # [$a->copy, $b->copy];
-        $intersection->{method} = 'intersects';
-        return $intersection;
+        return undef;   # we don't know the answer!
     }
 
     # no difference in time
     # ($a, $b) = ($b, $a) if $#{$a->{list}} > $#{$b->{list}};
 
-    my ($ia, $ib);
+    my $ib;
     my ($na, $nb) = (0,0);
     # my $intersection = $class->new();
-    B: foreach $ib ($nb .. $#{$b->{list}}) {
-        foreach $ia ($na .. $#{$a->{list}}) {
-            #next B if Set::Infinite::Element_Inf::is_null($a->{list}->[$ia]->{a});
-            #next B if Set::Infinite::Element_Inf::is_null($b->{list}->[$ib]->{a});
-        #    if ( $a->{list}->[$ia]->{a} > $b->{list}->[$ib]->{b} ) {
-        #        $na = $ia;
-        #        next B;
-        #    }
-            # next B if ($a->{list}->[$ia]->{a} > $b->{list}->[$ib]->{b}) ;
+
+    $n = $#{$a->{list}};
+    if ($n > 4) {
+        foreach $ib ($nb .. $#{$b->{list}}) {
+            foreach $ia ($n, $n-1, 0 .. $n - 2) {
+                return 1 if _simple_intersects($a->{list}->[$ia], $b->{list}->[$ib]);
+            }
+        }
+        return 0;
+    }
+
+    foreach $ib ($nb .. $#{$b->{list}}) {
+        foreach $ia ($na .. $n) {
             return 1 if _simple_intersects($a->{list}->[$ia], $b->{list}->[$ib]);
         }
     }
@@ -711,7 +740,7 @@ sub complement {
         my $b1 = $self->new();
         $b1->{too_complex} = 1;
         $b1->{parent} = $self;  # ->copy;
-        $b1->{method} = 'offset';
+        $b1->{method} = 'complement';
         $b1->{param}  = \@_;
         return $b1;
     }
@@ -721,7 +750,7 @@ sub complement {
     # print " [CPL:",$self,"] ";
 
     if (($#{$self->{list}} < 0) or (not defined ($self->{list}))) {
-        return $self->new(minus_infinite, infinite);
+        return $self->new(minus_inf, inf);
     }
 
     my $complement = $self->new();
@@ -846,7 +875,10 @@ sub union {
 sub contains {
     my $a = shift;
     $a->trace(title=>"contains");
-    return ($a->union(@_) == $a) ? 1 : 0;
+    return undef if $a->{too_complex};
+    my $b1 = $a->union(@_);
+    return undef if $b1->{too_complex};
+    return ($b1 == $a) ? 1 : 0;
 }
 
 
@@ -863,6 +895,11 @@ sub copy {
     foreach my $key (keys %{$self}) {
         $copy->{$key} = $self->{$key};
     }
+
+    # these are "cache" keys and had better be flushed (test?)
+    # delete $copy->{max} if exists $copy->{max};
+    # delete $copy->{min} if exists $copy->{min};
+
     return $copy;
 }
 
@@ -875,9 +912,9 @@ sub new {
     # print " [INF:new:", ref($self)," - ", join(' - ', caller), " ]\n"; # if $TRACE;
     # set up private variables
     if (ref($class)) {
-        $self->{tolerance} = $class->{tolerance} if $class->{tolerance};
-        $self->{type}      = $class->{type}      if $class->{type};
-        $self->{fixtype}   = $class->{fixtype}   if $class->{fixtype};
+        $self->{tolerance} = $class->{tolerance}; # if $class->{tolerance};
+        $self->{type}      = $class->{type};      # if $class->{type};
+        $self->{fixtype}   = $class->{fixtype};   # if $class->{fixtype};
     }
     else {
         $self->{tolerance} = $tolerance ? $tolerance : 0;
@@ -926,19 +963,65 @@ sub new {
     $self;
 }
 
-sub min { 
+sub min { ($_[0]->min_a)[0] }
+
+sub min_a { 
     my ($self) = shift;
+
+    $self->trace(title=>"min_a"); 
+
+    return @{$self->{min}} if exists $self->{min};
     my $tmp;
     my $i;
 
-    $self->trace(title=>"min"); 
 
     if ($self->{too_complex}) {
-        # print " min ",$self->{method}," ",$self->{parent}->min,"\n";
-        if ($self->{method} eq 'quantize') {
-            $tmp = $self->{parent}->min;
-            return $tmp if ($tmp == &inf) or ($tmp == -&inf);
-            return $self->new( $tmp )->quantize( @{$self->{param}} )->min;
+        my $method = $self->{method};
+        # offset, select, quantize
+        if ( ref $self->{parent} ne 'ARRAY' ) {
+            my @parent;
+            # print " min ",$self->{method}," ",$self->{parent}->min_a,"\n";
+
+            if ($method eq 'complement') {
+                @parent = $self->{parent}->max_a;
+                return @{$self->{min}} = @parent unless defined $parent[0];
+                return @{$self->{min}} = (-&inf, 1) if $parent[0] == &inf;
+                $parent[1] = 1 - $parent[1];  # invert open/close set
+                return @{$self->{min}} = @parent;
+            }
+
+            @parent = $self->{parent}->min_a;
+            return @{$self->{min}} = @parent unless defined $parent[0];
+            #  + 1e-10 is a fixup for open sets
+            $tmp = $parent[0];
+            # print " tol=",$self->{tolerance},"\n";
+            return @{$self->{min}} = ($tmp, 1) if ($tmp == &inf) or ($tmp == -&inf);
+            my $sample = { a => $tmp,
+                     b => $tmp + 1 + $self->{tolerance},
+                     open_begin => $parent[1],
+                     open_end => 0 };
+            # print " tol=",$self->{tolerance}," max=$tmp open=$parent[1]\n";
+            return @{$self->{min}} = $self->new( $sample )->$method( @{$self->{param}} )->min_a;
+        }
+        else {
+            my @p1 = $self->{parent}[0]->min_a;
+            return @{$self->{min}} = @p1 unless defined $p1[0];
+            my @p2 = $self->{parent}[1]->min_a;
+            return @{$self->{min}} = @p2 unless defined $p2[0];
+            if ($method eq 'union') {
+                if ($p1[0] == $p2[0]) {
+                    $p1[1] =  $p1[1] ? $p1[0] : $p1[1] ;
+                    return @{$self->{min}} = @p1;
+                }
+                return @{$self->{min}} = $p1[0] < $p2[0] ? @p1 : @p2;
+            }
+            if ($method eq 'intersection') {
+                if ($p1[0] == $p2[0]) {
+                    $p1[1] =  $p1[1] ? $p1[1] : $p1[0] ;
+                    return @{$self->{min}} = @p1;
+                }
+                return @{$self->{min}} = $p1[0] > $p2[0] ? @p1 : @p2;
+            }
         }
     }
 
@@ -946,32 +1029,78 @@ sub min {
         # foreach(0 .. $#{$self->{list}}) {
         next unless defined $self->{list}[$i];
         $tmp = $self->{list}[$i]->{a};
-        return $tmp;  # unless Set::Infinite::Element_Inf::is_null($tmp) ;
+        my $tmp2 = $self->{list}[$i]{open_begin};
+        if ($tmp2 and $self->{tolerance}) {
+            $tmp2 = 0;
+            $tmp += $self->{tolerance};
+        }
+        #print "max:$tmp ";
+        return @{$self->{min}} = ($tmp, $tmp2);  
     }
-
-    # foreach(@{$self->{list}}) {
-    #    $tmp = $_->{a};
-    #    return $tmp unless Set::Infinite::Element_Inf::is_null($tmp) ;
-    # }
-
-    # print " min:null /min> ";
-    return undef;   # Set::Infinite::Element_Inf::null;  
+    return @{$self->{min}} = (undef, 0);   
 };
 
-sub max { 
+
+
+sub max { ($_[0]->max_a)[0] }
+
+sub max_a { 
     my ($self) = shift;
+    return @{$self->{max}} if exists $self->{max};
     my $tmp;
     my $i;
-    ## my $tmp_ptr;  # perl bug? too deep - maybe due to autovivification
 
-    $self->trace(title=>"max"); 
+    $self->trace(title=>"max_a"); 
 
     if ($self->{too_complex}) {
-        # print " max ",$self->{method}," ",$self->{parent}->max,"\n";
-        if ($self->{method} eq 'quantize') {
-            $tmp = $self->{parent}->max;
-            return $tmp if ($tmp == &inf) or ($tmp == -&inf);
-            return $self->new( $tmp )->quantize( @{$self->{param}} )->max;
+        my $method = $self->{method};
+        # offset, select, quantize
+        if ( ref $self->{parent} ne 'ARRAY' ) {
+            my @parent;
+            # print " max ",$self->{method}," ",$self->{parent}->max_a,"\n";
+
+            if ($method eq 'complement') {
+                @parent = $self->{parent}->min_a;
+                return @{$self->{max}} = @parent unless defined $parent[0];
+                return @{$self->{max}} = (&inf, 1) if $parent[0] == -&inf;
+                $parent[1] = 1 - $parent[1];  # invert open/close set
+                return @{$self->{max}} = @parent;
+            }
+
+            @parent = $self->{parent}->max_a;
+            return @{$self->{max}} = @parent unless defined $parent[0];
+            #  - 1e-10 is a fixup for open sets
+            $tmp = $parent[0];
+            # $tmp -= 1e-10 if $parent[1] and ($method eq 'quantize');
+            return @{$self->{max}} = ($tmp, 1) if ($tmp == &inf) or ($tmp == -&inf);
+
+            my $sample = { a => $tmp - 1 - $self->{tolerance}, 
+                     b => $tmp,
+                     open_begin => 0, 
+                     open_end => $parent[1] };
+
+            # print " tol=",$self->{tolerance}," max=$tmp open=$parent[1]\n";
+            return @{$self->{max}} = $self->new( $sample )->$method( @{$self->{param}} )->max_a;
+        }
+        else {
+            my @p1 = $self->{parent}[0]->max_a;
+            return @{$self->{max}} = @p1 unless defined $p1[0];
+            my @p2 = $self->{parent}[1]->max_a;
+            return @{$self->{max}} = @p2 unless defined $p2[0];
+            if ($method eq 'union') {
+                if ($p1[0] == $p2[0]) {
+                    $p1[1] = $p1[1] ? $p1[0] : $p1[1];
+                    return @{$self->{max}} = @p1;
+                }
+                return @{$self->{max}} = $p1[0] > $p2[0] ? @p1 : @p2;
+            }
+            if ($method eq 'intersection') {
+                if ($p1[0] == $p2[0]) {
+                    $p1[1] = $p1[1] ? $p1[1] : $p1[0];
+                    return @{$self->{max}} = @p1;
+                }
+                return @{$self->{max}} = $p1[0] < $p2[0] ? @p1 : @p2;
+            }
         }
     }
 
@@ -981,11 +1110,15 @@ sub max {
 
         next unless defined $self->{list}[$i];
         $tmp = $self->{list}[$i]{b};
-
-        #print "max:$tmp ";
-        return $tmp;  # unless Set::Infinite::Element_Inf::is_null($tmp) ;
+        my $tmp2 = $self->{list}[$i]{open_end};
+        if ($tmp2 and $self->{tolerance}) {
+            $tmp2 = 0;
+            $tmp -= $self->{tolerance};
+        }
+        # print "max:$tmp open=$tmp2\n";
+        return @{$self->{max}} = ($tmp, $tmp2);  
     }
-    return undef;   # Set::Infinite::Element_Inf::null; 
+    return @{$self->{max}} = (undef, 0); 
 };
 
 sub size { 
@@ -996,27 +1129,42 @@ sub size {
 
     if ($self->{too_complex}) {
         # print " max ",$self->{method}," ",$self->{parent}->max,"\n";
-        if ($self->{method} eq 'quantize') {
-            return $self->max - $self->min;
-        }
+        # if ($self->{method} eq 'quantize') {
+        return undef unless defined $self->max and defined $self->min;
+        return $self->max - $self->min;
+        # }
     }
 
-    my $size = $self->{list}->[0]->{b} - $self->{list}->[0]->{a};
-    foreach(1 .. $#{$self->{list}}) {
+    my $size = 0;
+    foreach(0 .. $#{$self->{list}}) {
         next unless defined $self->{list}->[$_];
         $size += $self->{list}->[$_]->{b} - $self->{list}->[$_]->{a};
-    }
+        $size -= $self->{tolerance} if $self->{list}->[$_]->{open_begin};
+        $size -= $self->{tolerance} if $self->{list}->[$_]->{open_end};
+     }
     return $size; 
 };
 
 sub span { 
     my ($self) = shift;
-    return $self->new($self->min, $self->max);
+    my @max = $self->max_a;
+    my @min = $self->min_a;
+    # print " span: @min -- @max \n";
+
+    # TODO: what happens if max/min is undef
+
+    my $a1 = $self->new($min[0], $max[0]);
+    $a1->{list}[0]{open_end} = $max[1];
+    $a1->{list}[0]{open_begin} = $min[1];
+    return $a1;
 };
 
 sub spaceship {
     my ($tmp1, $tmp2, $inverted) = @_;
     carp "Can't compare unbounded sets" if $tmp1->{too_complex} or $tmp2->{too_complex};
+
+    # TODO: what happens if sets are not 'cleaned-up'
+
     if ($inverted) {
         ($tmp2, $tmp1) = ($tmp1, $tmp2);
     }
@@ -1065,37 +1213,42 @@ sub cleanup {
 
 #-------- tolerance, integer, real
 
-# TODO: make tolerance, integer, real -> function methods
 
 sub tolerance {
-    my $tmp = pop;
     my $self = shift;
+    my $tmp = pop;
+    # my $self = shift;
+    # print " tolerance $self = $tmp \n";
     if (ref($self)) {  
         # local
-        $self->{tolerance} = $tmp if ($tmp ne '');
+
+        return $self->{tolerance} unless defined $tmp;
+
+        if ($self->{too_complex}) {
+            my $b1 = $self->new();
+            $b1->{too_complex} = 1;
+            $b1->{parent} = $self;  
+            $b1->{method} = 'tolerance';
+            $b1->{param}  = [ $tmp ];
+            $b1->{tolerance} = $tmp;   # for max/min processing
+            return $b1;
+        }
+
+        $self = $self->copy;
+        $self->{tolerance} = $tmp;
         return $self;
     }
     # global
-    $tolerance = $tmp if defined($tmp) and ($tmp ne '');
+    $tolerance = $tmp if defined($tmp);
     return $tolerance;
 }
 
-sub integer {
-    if (@_) {
-        my ($self) = shift;
-        $self->tolerance (1);
-        return $self;
-    }
-    return tolerance(1);
+sub integer { 
+    $_[0]->tolerance (1);
 }
 
 sub real {
-    if (@_) {
-        my ($self) = shift;
-        $self->tolerance (0);
-        return $self;
-    }
-    return tolerance(0);
+    $_[0]->tolerance (0);
 }
 
 
