@@ -12,7 +12,7 @@
 use strict;
 use warnings;
 $| = 1;
-use Set::Infinite qw(type $inf);
+use Set::Infinite qw($inf);
 
 # Just to help the warnings:
 use Set::Infinite::Date;
@@ -53,7 +53,7 @@ sub stats {
 	}
 }
 
-type('Set::Infinite::Date');
+Set::Infinite->type('Set::Infinite::Date');
 
 
 

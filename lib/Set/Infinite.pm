@@ -16,11 +16,11 @@ use Data::Dumper;
 our @ISA = qw(Exporter);
 
 # This allows declaration    use Set::Infinite ':all';
-our %EXPORT_TAGS = ( 'all' => [ qw(type inf new $inf) ] );
-our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(type inf new $inf trace_open trace_close) );
+our %EXPORT_TAGS = ( 'all' => [ qw(inf new $inf) ] );
+our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(inf new $inf trace_open trace_close) );
 our @EXPORT = qw();
 
-our $VERSION = '0.41';
+our $VERSION = '0.41_02';
 
 our $TRACE = 0;      # basic trace method execution
 our $DEBUG_BT = 0;   # backtrack tracer
@@ -32,7 +32,7 @@ use Set::Infinite::_Simple;
 use Set::Infinite::Arithmetic;
 
 # global defaults for object private vars
-our $type = '';
+my  $Type = undef;
 our $tolerance = 0;
 our $fixtype = 1;
 
@@ -81,25 +81,21 @@ use overload
 ;
 
 sub type {
-    # this is still a hack - waiting for better ideas
-    my $tmp_type = pop;
-    my $self = shift || __PACKAGE__;
-
-    # print " [TYPE:$tmp_type -- $self] \n";
-
-    if (defined($tmp_type) and ($tmp_type ne '')) {
-        if (ref($self)) {
-            # local
-            $self->{type} = $tmp_type;
-        }
-        else {
-            # global
-            $type = $tmp_type;
-        }
-        eval "use " . $tmp_type; 
-        carp "Warning: can't start $tmp_type : $@" if $@;
-     }
-    return $self;
+    my $self = shift;
+    unless (@_) {
+        return ref($self) ? $self->{type} : $Type;
+    }
+    my $tmp_type = shift;
+    eval "use " . $tmp_type;
+    carp "Warning: can't start $tmp_type : $@" if $@;
+    if (ref($self))  {
+        $self->{type} = $tmp_type;
+        return $self;
+    }
+    else {
+        $Type = $tmp_type;
+        return $Type;
+    }
 }
 
 sub list {
@@ -119,6 +115,7 @@ sub fixtype {
     $self = $self->copy;
     $self->{fixtype} = 1;
     return $self if $self->{too_complex};
+    my $type = $self->type;
     foreach (@{$self->{list}}) {
         # next unless defined $_;
         $_->{a} = $type->new($_->{a}) unless ref($_->{a});
@@ -1800,6 +1797,7 @@ sub until {
             open_end => 1 };
     }
 
+    # warn "until got $u n=". ( 1 + $#{$u->{list}} );
     $a1->trace_close( arg => $u );
     return $u;    
 }
@@ -1987,7 +1985,12 @@ sub copy {
     my $copy = $self->new();
     return $copy unless ref($self);   # constructor!
     foreach my $key (keys %{$self}) {
-        $copy->{$key} = $self->{$key};
+        if ( ref( $self->{$key} ) eq 'ARRAY' ) {
+            @{ $copy->{$key} } = @{ $self->{$key} };
+        }
+        else {
+            $copy->{$key} = $self->{$key};
+        }
     }
 
     # these are "cache" keys and had better be flushed (test?)
@@ -2012,10 +2015,10 @@ sub new {
     }
     else {
         $self->{tolerance} = $tolerance ? $tolerance : 0;
-        $self->{type} =      $type      ? $type : '';
+        $self->{type} =      $class_name->type;
         $self->{fixtype} =   $fixtype   ? $fixtype : 0;
     }
-    # print " [INF:new:$class ", $tolerance, " ",$type," ",$self->{tolerance}," ",$self->{type}," ]\n"; 
+    # warn " [INF:new:$class $class_name tol:$tolerance tol:".$self->{tolerance}." type:".$self->{type}." ]"; 
 
     my ($tmp, $tmp2, $ref);
     while (@_) {

@@ -106,7 +106,7 @@ our $simple_minus_inf =      _simple_fastnew(-$inf, -$inf, 1, 1);
 sub _simple_null () { undef }
 
 sub separators {
-    return $separators[shift] if $#{@_} == 0;
+    return $separators[ $_[0] ] if $#_ == 0;
     @separators = @_ if @_;
     return @separators;
 }

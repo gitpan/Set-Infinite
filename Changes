@@ -1,5 +1,13 @@
 Revision history for Perl extension Set::Infinite.
 
+0.41_02
+    fixed copy() - copying array refs
+
+0.41_01
+    Fixed type() inheritance problems
+    as a side effect, type() must be called with '->' syntax
+    Fixed eg/recurring.pl
+
 0.41
     'todo' directory renamed to _todo for Win* compatibility 
     (clashes with TODO)
