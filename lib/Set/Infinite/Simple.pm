@@ -121,7 +121,7 @@ v0.15
 require Exporter;
 
 package Set::Infinite::Simple;
-$VERSION = "0.15";
+$VERSION = "0.16";
 
 my $package        = 'Set::Infinite::Simple';
 @ISA = qw(Exporter);
@@ -187,7 +187,7 @@ sub open_begin {
 
 sub is_null {
 	my $self = shift;
-	return 1 unless defined($self->{a});
+	# return 1 unless defined($self->{a});
 	return $self->{a}->is_null;
 
 	# my $tmp = $self->{a} . "";
@@ -196,35 +196,57 @@ sub is_null {
 
 sub intersects {
 	my $self = shift;
+
+	#my $tmp2 = shift;
+	#$tmp2 = Set::Infinite::Simple->new($tmp2, @_) unless ref($tmp2) and $tmp2->isa(__PACKAGE__); 
+	#return 0 if $self->{b} < $tmp2->{a};
+	#return 0 if $self->{a} > $tmp2->{b};
+	#return $self->intersection($tmp2)->is_null ? 0 : 1;	
+
 	return $self->intersection(@_)->is_null ? 0 : 1;	
 }
 
 sub intersection {
 	my $tmp1 = shift;
-	my $tmp2 = Set::Infinite::Simple->new(@_); 
+	my $tmp2 = shift;
+	$tmp2 = Set::Infinite::Simple->new($tmp2, @_) unless ref($tmp2) and $tmp2->isa(__PACKAGE__); 
+
+	#return Set::Infinite::Simple->new()  if $tmp1->{b} < $tmp2->{a};
+	#return Set::Infinite::Simple->new()  if $tmp1->{a} > $tmp2->{b};
+
 	my ($i_beg, $i_end, $open_beg, $open_end);
 
-	$i_beg 		= $tmp1->{a};
-	$open_beg	= $tmp1->{open_begin};
+	# $open_beg	= $tmp1->{open_begin};
 	if ($tmp1->{a} == $tmp2->{a}) {
+		$i_beg 		= $tmp1->{a};
 		$open_beg 	= ($tmp1->{open_begin} or $tmp2->{open_begin});
 	}
 	elsif ($tmp1->{a} < $tmp2->{a}) {
 		$i_beg 		= $tmp2->{a};
 		$open_beg 	= $tmp2->{open_begin};
 	}
+	else {
+		$i_beg 		= $tmp1->{a};
+		$open_beg	= $tmp1->{open_begin};
+	}
 
-	$i_end 		= $tmp1->{b};
-	$open_end	= $tmp1->{open_end};
+	# $i_end 		= $tmp1->{b};
+	# $open_end	= $tmp1->{open_end};
 	if ($tmp1->{b} == $tmp2->{b}) {
+		$i_end 		= $tmp1->{b};
 		$open_end 	= ($tmp1->{open_end} or $tmp2->{open_end});
 	}
 	elsif ($tmp1->{b} > $tmp2->{b}) {
 		$i_end 		= $tmp2->{b};
 		$open_end 	= $tmp2->{open_end};
 	}
+	else {
+		$i_end 		= $tmp1->{b};
+		$open_end	= $tmp1->{open_end};
+	}
+
 	return Set::Infinite::Simple->new() if ($i_beg == $i_end) and ($open_beg or $open_end);	
-	return Set::Infinite::Simple->new() if ($i_beg > $i_end) or (not defined($i_beg)) or (not defined($i_end));	
+	return Set::Infinite::Simple->new() if ($i_beg > $i_end) or (not defined($i_beg)) or (not defined($i_end));
 
 	my $tmp = Set::Infinite::Simple->new($i_beg, $i_end);
 	$tmp->open_begin(1) if $open_beg;
@@ -295,31 +317,27 @@ sub union {
 		# open_end touching?
 		if ((($tmp1->{b}+$tmp1->{b}) + $b1_open ) < (($tmp2->{a}+$tmp2->{a}) - $a2_open)) {
 			# self disjuncts b
-			return ( $tmp1, $tmp2 ); # if ( $tmp1->{open_end}) or ( $tmp2->{open_begin});
+			return ( $tmp1, $tmp2 ); 
 		}
 		if ((($tmp1->{a}+$tmp1->{a}) - $a1_open ) > (($tmp2->{b}+$tmp2->{b}) + $b2_open)) {
 			# self disjuncts b
-			return ( $tmp1, $tmp2 ); # if ( $tmp2->{open_end}) or ( $tmp1->{open_begin});
+			return ( $tmp1, $tmp2 ); 
 		}
 	}
 	else {
 		# "real"
 		#print " [SIM:UNION:REAL ",ref($tmp1->{a}),"=",$tmp1->{a}," <=> ",ref($tmp1->{b}),"=",$tmp1->{b},"] \n";
-		if ($tmp1->{b} < $tmp2->{a}) {
+		if (	($tmp1->{b} < $tmp2->{a}) or($tmp2->{b} < $tmp1->{a}) ) {
 			# self disjuncts b
 			return ( $tmp1, $tmp2 );
 		}
-		if ($tmp2->{b} < $tmp1->{a}) {
-			# self disjuncts b
+		if (($tmp1->{b} == $tmp2->{a}) and $tmp1->{open_end} and $tmp2->{open_begin}) {
+			# self disjuncts b?
+			return ( $tmp1, $tmp2 ); 
+		}
+		if (($tmp2->{b} == $tmp1->{a}) and $tmp2->{open_end} and $tmp1->{open_begin}) {
+			# self disjuncts b?
 			return ( $tmp1, $tmp2 );
-		}
-		if ($tmp1->{b} == $tmp2->{a}) {
-			# self disjuncts b
-			return ( $tmp1, $tmp2 ) unless (not $tmp1->{open_end}) or (not $tmp2->{open_begin});
-		}
-		if ($tmp2->{b} == $tmp1->{a}) {
-			# self disjuncts b
-			return ( $tmp1, $tmp2 ) unless (not $tmp2->{open_end}) or (not $tmp1->{open_begin});
 		}
 	}
 
@@ -369,15 +387,15 @@ sub add {
 
 	# is it now defined?
 	unless (defined($param[0])) {
-		undef $self->{a};
-		undef $self->{b};
+		$self->{a} = null;
+		$self->{b} = null;
 		return $self;
 	}
 
 	my $tmp  = shift @param;
 	my $tmp2 = shift @param;
 
-	if (ref($tmp) eq __PACKAGE__) {
+	if (ref($tmp) and $tmp->isa(__PACKAGE__)) {
 		($self->{a}, $self->{b}) =  ($tmp->{a}, $tmp->{b});
 		# $self->{b} = $self->{a} unless $self->{b};
 		$self->tolerance($tmp->{tolerance}) 	if defined $tmp->{tolerance};
@@ -387,11 +405,12 @@ sub add {
 		return $self;	
 	}
 
-	if (ref($tmp) ne 'Set::Infinite::Element') {
+	unless (ref($tmp) and $tmp->isa('Set::Infinite::Element')) {
 		$tmp = Set::Infinite::Element->new($tmp);
 	}
 
-	if (ref($tmp2) ne 'Set::Infinite::Element') {
+
+	unless (ref($tmp2) and $tmp2->isa('Set::Infinite::Element')) {
 		$tmp2 = Set::Infinite::Element->new($tmp2);
 	}
 	
@@ -435,18 +454,22 @@ sub span {
 };
 
 sub spaceship {
-	my ($tmp1) = shift;
-	my $tmp2 = Set::Infinite::Simple->new(shift);
-	my $inverted = shift;
+	my ($tmp1, $tmp2, $inverted) = @_;
+	unless (ref($tmp2) and $tmp2->isa(__PACKAGE__)) {
+		$tmp2 = Set::Infinite::Simple->new($tmp2);
+	}
 
 	if ($inverted) {
+		#return $tmp2->max <=> $tmp1->max if $tmp1->min == $tmp2->min;
+		#return $tmp2->min <=> $tmp1->min;
+
 		($tmp2, $tmp1) = ($tmp1, $tmp2);
 	}
 
-	return 1  if not defined($tmp2->{a});
+	# return 1  if not defined($tmp2->{a});
 
-	return $tmp1->max <=> $tmp2->max if $tmp1->min == $tmp2->min;
-	return $tmp1->min <=> $tmp2->min;
+	return $tmp1->{b} <=> $tmp2->{b} if $tmp1->{a} == $tmp2->{a};
+	return $tmp1->{a} <=> $tmp2->{a};
 }
 
 sub cmp {
@@ -457,8 +480,8 @@ sub cleanup {
 	my ($self) = shift;
 	# print " SIMPLE:UNDEF-A " unless defined($self->{a});
 	# print " SIMPLE:UNDEF-B " unless defined($self->{b});
-	undef $self->{a} unless defined($self->{b});
-	return if $self->is_null;
+	# return if $self->is_null;
+	$self->{a} = null if $self->{b}->is_null;
 	if ($self->{a} > $self->{b}) {
 		($self->{a}, $self->{b}) = ($self->{b}, $self->{a});
 	}
@@ -507,7 +530,7 @@ sub as_string {
 	my ($self) = shift;
 	my $s;
 	$self->cleanup;
-	return null if $self->is_null;
+	# return null if $self->is_null;
 	my $tmp1 = "$self->{a}";
 	my $tmp2 = "$self->{b}";
 	return $tmp1 if $tmp1 eq $tmp2;
@@ -536,8 +559,8 @@ sub STORESIZE {
 
 sub CLEAR {
 	my ($self) = shift;
-	undef $self->{a};
-	undef $self->{b};
+	$self->{a} = null;
+	$self->{b} = null;
 }
 
 sub EXTEND {
@@ -574,7 +597,7 @@ sub STORE {
 		$self->{a} = Set::Infinite::Element->new($data) if $index == 0;
 		$self->{b} = Set::Infinite::Element->new($data) if $index == 1;
 		# print " = $self\n";
-		$self->cleanup if defined($self->{a}) and defined($self->{b});# unless it will become null!
+		$self->cleanup unless $self->{a}->is_null or $self->{b}->is_null;# unless it will become null!
 		# print " = $self\n";
 		return ($data, @_);
 	}

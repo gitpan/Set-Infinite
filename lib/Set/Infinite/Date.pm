@@ -80,7 +80,7 @@ Internal functions:
 
 require Exporter;
 package Set::Infinite::Date;
-$VERSION = "0.13";
+$VERSION = "0.16";
 
 my $package = 'Set::Infinite::Date';
 @EXPORT = qw();
@@ -97,6 +97,7 @@ use overload
 	'cmp' => \&cmp,
 	'-' => \&sub,
 	'+' => \&add,
+	'/' => \&div,
 	qw("" as_string);
 
 our $quantizer = 'Set::Infinite::Quantize_Date';
@@ -161,9 +162,14 @@ sub hour2time {
 	return $tmp * $hour_size + $tmp_min * $minute_size + $tmp_sec * $second_size;
 }
 
+sub div {
+	my ($tmp1, $tmp2) = @_;
+	return $tmp1->{a} / $tmp2;
+}
+
 sub sub {
 	my ($tmp1, $tmp2, $inverted) = @_;
-	$tmp2 = Set::Infinite::Date->new($tmp2) unless ref($tmp2) eq 'Set::Infinite::Date';
+	$tmp2 = Set::Infinite::Date->new($tmp2) unless ref($tmp2) and $tmp2->isa('Set::Infinite::Date');
 	if ($inverted) {
 		return Set::Infinite::Date->new( $tmp2->{a} - $tmp1->{a} );
 	}
@@ -172,14 +178,14 @@ sub sub {
 
 sub add {
 	my ($tmp1, $tmp2, $inverted) = @_;
-	$tmp2 = Set::Infinite::Date->new($tmp2) unless ref($tmp2) eq 'Set::Infinite::Date';
+	$tmp2 = Set::Infinite::Date->new($tmp2) unless ref($tmp2) and $tmp2->isa('Set::Infinite::Date');
 	return Set::Infinite::Date->new( $tmp1->{a} + $tmp2->{a} );
 }
 
 sub spaceship {
 	my ($tmp1, $tmp2, $inverted) = @_;
 	#print " [DATE:CMP:",caller(1),"]\n";
-	$tmp2 = Set::Infinite::Date->new($tmp2) unless ref($tmp2) eq 'Set::Infinite::Date';
+	$tmp2 = Set::Infinite::Date->new($tmp2) unless ref($tmp2) and $tmp2->isa('Set::Infinite::Date');
 	if ($inverted) {
 		return ( $tmp2->{a} <=> $tmp1->{a} );
 	}
@@ -193,15 +199,19 @@ sub cmp {
 sub new {
 	my ($self) = bless {}, shift;
 	my $tmp = shift;
+	$self->{string} = '';
 	if ($tmp =~ /\d[\/\.\-]\d/) {
+		# $self->{string} = $tmp;
 		$self->{a} = date2time($tmp);
 		$self->{mode} = 2;
 	}
 	elsif ($tmp =~ /\d\:\d/) {
+		# $self->{string} = $tmp;
 		$self->{a} = hour2time($tmp);
 		$self->{mode} = 1;
 	}
 	else {
+		# $self->{string} = $tmp;
 		$self->{a} = $tmp;
 		$self->{mode} = 0;
 	}
@@ -211,22 +221,29 @@ sub new {
 sub mode {
 	my ($self) = shift;
 	$self->{mode} = shift;
+	$self->{string} = '';
 	return $self;
 }
 
 sub as_string {
 	my ($self) = shift;
 
-	if (not defined($self->{a})) {
-		return '';
+	if ($self->{string}) {
+		# done
+	}
+	elsif (not defined($self->{a})) {
+		$self->{string} = '';
 	}
 	elsif ($self->{mode} == 0) {
-		return ($self->{a}) ;
+		$self->{string} = $self->{a};
 	}
 	elsif ($self->{mode} == 1) {
-		return time2hour($self->{a}) ;
+		$self->{string} = time2hour($self->{a});
 	}
-	return time2date($self->{a}) ;
+	else {
+		$self->{string} = time2date($self->{a});
+	}
+	return $self->{string};
 }
 
 # TIE

@@ -8,7 +8,7 @@ use strict;
 use warnings;
 
 require Exporter;
-our $VERSION = "0.13";
+our $VERSION = "0.16";
 
 my $package = 'Set::Infinite::Quantize_Date';
 our @EXPORT = qw();
@@ -199,8 +199,10 @@ sub new {
 
 	$self->{time2_end} = 0 + $self->{dates}->max;
 
+	# print " [QUANT: = 2 + ($self->{time2_end} - $self->{first}) /  ($self->{quant} * $self->{mult})]\n";
+
 	$self->{size}  = 2 + ($self->{time2_end} - $self->{first}) / 
-		($self->{quant} * $self->{mult});
+				($self->{quant} * $self->{mult}) ;
 
 	return $self;
 }
@@ -243,8 +245,8 @@ sub FETCH {
 	#$this = Set::Infinite::Date::time2date($this);
 	#$next = Set::Infinite::Date::time2date($next);
 	my $tmp = Set::Infinite::Simple->new($this,$next)->open_end(1);
-	$tmp->{a}->{v}->{mode} = $self->{mode};
-	$tmp->{b}->{v}->{mode} = $self->{mode};
+	$tmp->{a}->{v}->mode($self->{mode});
+	$tmp->{b}->{v}->mode($self->{mode});
 	$tmp = Set::Infinite->new($tmp);
 	if ($self->{dates}->intersects($tmp)) {
 		# print " [QD:INTER:",$self->{dates}->intersects($tmp),"=",	$self->{dates}->intersection($tmp),"]\n";

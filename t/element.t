@@ -43,12 +43,12 @@ sub stats {
 
 #print "Testing new\n";
 
-test ('null',	'Set::Infinite::Element->new()' ,	'');
-test ("null",	'Set::Infinite::Element->new()',		"");
+test ('null',	'Set::Infinite::Element->new()' ,	'null');
+test ("null",	'Set::Infinite::Element->new()',		"null");
 test ("0",		'Set::Infinite::Element->new(0)',	"0");
 
 $a = Set::Infinite::Element->new();
-test ("null",	'$a',	'');
+test ("null",	'$a',	'null');
 $a = Set::Infinite::Element->new(0);
 test ("0",		'$a',	'0');
 

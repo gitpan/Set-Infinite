@@ -63,12 +63,12 @@ v.0.15
 require Exporter;
 
 package Set::Infinite::Element;
-$VERSION = "0.15";
+$VERSION = "0.16";
 
 my $package        = 'Set::Infinite::Element';
 @ISA = qw(Exporter);
 @EXPORT = qw();
-@EXPORT_OK = qw(infinite minus_infinite type null quantizer is_null inf);
+@EXPORT_OK = qw(infinite minus_infinite type null quantizer is_null inf elem_undef);
 
 use strict;
 use Carp;
@@ -78,10 +78,11 @@ use overload
 	'cmp' => \&cmp,
 	'+'   => \&add,
 	'-'   => \&sub,
+	'/'   => \&div,
 	qw("" as_string),
 	fallback => 1;
 
-use Set::Infinite::Element_Inf qw(infinite minus_infinite null inf);
+use Set::Infinite::Element_Inf qw(infinite minus_infinite null inf elem_undef);
 
 sub inf();
 sub infinite();
@@ -139,72 +140,54 @@ sub quantize {
 
 sub is_null {
 	my $self = pop;
-	my $tmp = $self->{v} . "";
-	return Set::Infinite::Element_Inf::is_null($tmp);
+	return Set::Infinite::Element_Inf::is_null($self->{v});
+}
 
-	# return (($tmp eq null) or ($tmp eq "")) ? 1 : 0;
+sub div {
+	my ($tmp1, $tmp2) = @_;
+	return $tmp1->{v} / $tmp2;
 }
 
 sub add {
 	my ($tmp1, $tmp2) = @_;
-
-	$tmp2 = Set::Infinite::Element->new($tmp2); # unless ref($tmp2) eq 'Set::Infinite::Element';
-
-	$tmp2->{v} = $tmp2->{v} + $tmp1->{v};
-	return $tmp2;
+	return $tmp1->{v} + $tmp2;
 }
 
 sub sub {
-	my ($self, $tmp2, $inverted) = @_;
-
-	$tmp2 = Set::Infinite::Element->new($tmp2); # unless ref($tmp2) eq 'Set::Infinite::Element';
-	my $tmp1 = $self;
-
-	if ($inverted) {
-		# ($tmp2, $tmp1) = ($tmp1, $tmp2);
-		$tmp2->{v} = $tmp2->{v} - $tmp1->{v};
-		return $tmp2;
-	}
-
-	$tmp2->{v} = $tmp1->{v} - $tmp2->{v};
-	return $tmp2;
+	my ($tmp1, $tmp2, $inverted) = @_;
+	return $tmp1->{v} - $tmp2 unless $inverted;
+	return $tmp2 - $tmp1->{v};
 }
 
 sub spaceship {
 	my ($tmp1, $tmp2, $inverted) = @_;
 	my $res;
-	my ($stmp1, $stmp2);
+	# my ($stmp1, $stmp2);
 
 	# print " [ELEM:CMP:",ref($tmp1),"=$tmp1 <=> ",ref($tmp2),"=$tmp2] \n";
-	# if (ref($tmp2)) {
 
-	if (ref($tmp2) eq __PACKAGE__) {
+
+	if ( ref($tmp2) and $tmp2->isa(__PACKAGE__) ) {
+
+		#$res = ( $tmp1->{v} <=> $tmp2->{v} ) unless $inverted; 
+		#$res = ( $tmp2->{v} <=> $tmp1->{v} ) if $inverted; 
+		#return $res if $res;
+
 		$tmp2 = $tmp2->{v};
-		# }
+	} 
 
-		# $tmp2 = Set::Infinite::Element->new($tmp2) unless ref($tmp2) eq __PACKAGE__;
-		# $tmp2 = $tmp2->{v};
-	} else {
-		$tmp2 = null unless (defined($tmp2)); 	# keep warnings quiet
-	}
-
-	# my $tmp1 = $self;
 	$tmp1 = $tmp1->{v};
 
 	if ($inverted) {
 		($tmp2, $tmp1) = ($tmp1, $tmp2);
 	}
-
-	$stmp1 = "$tmp1";
-	$stmp2 = "$tmp2";
-
-	# if    ($stmp1 eq $stmp2) { $res = 0; }
-	# else { 
+
 
 	$res = ( $tmp1 <=> $tmp2 ); 
-	$res = ( $stmp1 cmp $stmp2 ) unless $res; 
+	unless ($res) {
+		$res = ( $tmp1 cmp $tmp2 ); 
+	}
 
-	#}
 	# print " [ELEM:CMP:",ref($tmp1),"=$tmp1 <=> ",ref($tmp2),"=$tmp2 = $res] \n";
 	return $res;
 }
@@ -218,21 +201,23 @@ sub new {
 	my $val = shift;
 
 	unless (defined($val)) {
-		$self->{v} = '';
-		return $self;
+		$self->{v} = null;
+		# return $self;
 	}
 
-	if ( ref(\$val) eq 'REF' ) {
-		if ( ref($val) eq __PACKAGE__ ) {
+	elsif (ref($val)) {
+		if ( $val->isa(__PACKAGE__) ) {
 			$self->{v} = $val->{v};
-			return $self;
+			# return $self;
 		}
-		#print " [REF:$val] ";
-		$self->{v} = $val;
-		return $self;
+		else {
+			#print " [REF:$val] ";
+			$self->{v} = $val;
+			# return $self;
+		}
 	}
 
-	if ($type) {
+	elsif ($type) {
 		$self->{v} = new $type $val;
 	}
 	else {

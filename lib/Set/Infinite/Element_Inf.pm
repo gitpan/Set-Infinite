@@ -36,7 +36,7 @@ Global:
 require Exporter;
 
 package Set::Infinite::Element_Inf;
-$VERSION = "0.15";
+$VERSION = "0.16";
 
 my $package        = 'Set::Infinite::Element_Inf';
 @ISA = qw(Exporter);
@@ -110,7 +110,7 @@ our %null = (
 
 sub is_null {
 	my $self = pop;
-	return $null{$self};
+	return $null{$self} ? 1 : 0;
 
 	#my $tmp = "$self";
 	#return (($tmp eq $null) or ($tmp eq "")) ? 1 : 0;

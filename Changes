@@ -1,8 +1,12 @@
 Revision history for Perl extension Set::Infinite.
 
+0.16
+	40% speed improvement in tests over version 0.14.
+
 0.15
 	20% speed improvement in tests over version 0.14.
 	bigint.t fails; moved to 'todo' directory.
+	`Date' fails in OpenBSD. Doesn't fail in linux or Windows.
 
 0.14
 	Problems with Bigfloat tests - can't fix them. Moved to `todo' directory.
