@@ -1,5 +1,7 @@
 Revision history for Perl extension Set::Infinite.
 
+0.45
+    last works, but not for union/quantize/select/offset
 0.44_03
     last() can union/intersect/complement/offset
 0.44_02
