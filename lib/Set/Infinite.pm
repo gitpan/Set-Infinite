@@ -24,7 +24,7 @@ our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(type) );
 our @EXPORT = qw(
 	
 );
-our $VERSION = '0.11';
+our $VERSION = '0.12';
 
 
 # Preloaded methods go here.
@@ -43,7 +43,7 @@ my $package        = 'Set::Infinite';
 #);
 
 use Set::Infinite::Simple qw(
-	infinite minus_infinite separators null type	
+	infinite minus_infinite separators null type quantizer	
 ); 
 # ... tolerance integer real
 
@@ -51,6 +51,16 @@ use overload
 	'<=>' => \&spaceship,
 	'cmp' => \&cmp,
 	qw("" as_string);
+
+sub quantize {
+	my $self = shift;
+	my (@a);
+	# my $array_ref = shift;
+	my $tmp = quantizer;
+	# print " [INF:QUANT $tmp,",@_,",$self]\n";
+	tie @a, $tmp, @_, $self;
+	return \@a;
+}
 
 sub is_null {
 	my $self = shift;
@@ -506,6 +516,21 @@ Global functions:
 
 		returns 'null'.
 
+	quantize($i)
+
+		returns a tied reference to an array of sets.
+		Each array have size $i.
+		In some cases, one or more array members may be empty.
+
+		Example: 
+
+			$a = Set::Infinite->new([1,3]);
+			print join (" ", @{$a->quantize(1)} );
+
+		Gives: 
+
+			[1..2) [2..3) [3..4)
+
 	type($i)
 
 		chooses an object data type. 
@@ -517,7 +542,7 @@ Global functions:
 		type('Math::BigFloat');
 		type('Math::BigInt');
 		type('Set::Infinite::Date');
-		Note: Set::Infinite::Date requires HTTP:Date and Time::Local
+			See notes on Set::Infinite::Date below.
 
 	tolerance(0)	defaults to real sets (default)
 	tolerance(1)	defaults to integer sets
@@ -529,6 +554,29 @@ Global functions:
 Internal functions:
 
 	$a->cleanup;
+
+=head1 Notes on Set::Infinite::Date
+
+Set::Infinite::Date is a Date "plugin" for sets.
+
+It is invoked by:
+
+	type('Set::Infinite::Date');
+
+It requires HTTP:Date and Time::Local
+
+It changes quantize function behavior to accept time units:
+
+	$a = Set::Infinite->new('2001-05-02', '2001-05-13');
+	print "Weeks in $a: ", join (" ", @{$a->quantize('weeks', 1)});
+
+	$a = Set::Infinite->new('09:30', '10:35');
+	print "Quarters of hour in $a: ", join (" ",@{$a->quantize('minutes', 15)});
+
+Units can be years, months, days, weeks, hours, minutes, or	seconds.
+
+max and min functions will show in date/time format, unless
+they are used with `0 + '.
 
 =head1 CAVEATS
 
@@ -554,4 +602,4 @@ Internal functions:
 
 	Flavio Soibelmann Glock <fglock@pucrs.br>
 
-=cut
+=cut

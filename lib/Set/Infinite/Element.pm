@@ -38,6 +38,10 @@ Global:
 	This is a building block for Set::Infinite::Simple.
 	Please use Set::Infinite instead.
 
+=head1 TODO
+
+	Local versions of quantizer, type
+
 =head1 CAVEATS
 
 	BigFloat members sort wrongly when mixed with Real members. 
@@ -52,12 +56,12 @@ Global:
 require Exporter;
 
 package Set::Infinite::Element;
-$VERSION = "0.11";
+$VERSION = "0.12";
 
 my $package        = 'Set::Infinite::Element';
 @ISA = qw(Exporter);
 @EXPORT = qw();
-@EXPORT_OK = qw(infinite minus_infinite type null);
+@EXPORT_OK = qw(infinite minus_infinite type null quantizer);
 
 use strict;
 use Carp;
@@ -73,11 +77,25 @@ use overload
 our $type = '';
 our $infinite  = 'inf';
 our $null      = 'null';
+our $quantizer = 'Set::Infinite::Quantize';
 
 sub type {
 	if (@_) {
 		$type = pop;
 		eval "use $type";
+			carp "Warning: can't start $type package: $@" if $@;
+
+		my $tmp = eval '&' . $type . '::quantizer';
+		if ($tmp) {
+			$quantizer = $tmp;
+			eval "use $quantizer"; 
+				carp "Warning: can't start $type package: $@" if $@;
+			# print " [ELEM:quantizer $type $tmp]\n";
+		}
+
+		#my $tmp = &Set::Infinite::Date::quantizer;
+		#print " [ELEM:quantizer $type $tmp]\n";
+
 		if ( (eval "(new $type (4)) cmp (new $type (3))") != 1) {
 			if ((eval "new $type (4)") != 4) {
 				carp "Warning: can't start $type package";
@@ -88,6 +106,20 @@ sub type {
 		}
 	}
 	return $type;
+}
+
+sub quantizer {
+	# if (@_) {
+	#	$quantizer = pop;
+	# }
+	return $quantizer;
+}
+
+sub quantize {
+	my $self = shift;
+	my (@a);
+	tie @a, $quantizer, @_, $self;
+	return @a;
 }
 
 sub infinite {
@@ -251,4 +283,4 @@ sub STORE {
 sub DESTROY {
 }
 
-1;
+1;

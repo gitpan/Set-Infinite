@@ -115,19 +115,21 @@ Internal:
 require Exporter;
 
 package Set::Infinite::Simple;
-$VERSION = "0.11";
+$VERSION = "0.12";
 
 my $package        = 'Set::Infinite::Simple';
 @ISA = qw(Exporter);
 @EXPORT = qw();
 @EXPORT_OK = qw(
 	infinite minus_infinite separators null type
-	tolerance integer real
+	tolerance integer real quantizer
 );
 
 use strict;
 use Carp;
-use Set::Infinite::Element qw(infinite minus_infinite type null);
+use Set::Infinite::Element qw(infinite minus_infinite type null
+	quantizer
+);
 
 use overload
 	'<=>' => \&spaceship,
@@ -144,6 +146,13 @@ our @separators = (
 our $granularity = 0; # 1e-10; `real' tolerance
 our $tolerance = $granularity;
 
+sub quantize {
+	my $self = shift;
+	my (@a);
+	tie @a, quantizer, @_, $self;
+	return @a;
+}
+
 sub separators {
 	return $separators[shift] if $#{@_} == 0;
 	@separators = @_ if @_;
@@ -152,13 +161,15 @@ sub separators {
 
 sub open_end {
 	my $self = shift;
-	$self->{open_end} = shift;
+	my $tmp = shift;
+	$self->{open_end} = $tmp ? 1 : 0;
 	return $self;	
 }
 
 sub open_begin {
 	my $self = shift;
-	$self->{open_begin} = shift;
+	my $tmp = shift;
+	$self->{open_begin} = $tmp ? 1 : 0;
 	return $self;	
 }
 
@@ -200,7 +211,7 @@ sub intersection {
 		$i_end 		= $tmp2->{b};
 		$open_end 	= $tmp2->{open_end};
 	}
-	return Set::Infinite::Simple->new() if ($i_beg == $i_end) and ($open_beg) and ($open_end);	
+	return Set::Infinite::Simple->new() if ($i_beg == $i_end) and ($open_beg or $open_end);	
 	return Set::Infinite::Simple->new() if ($i_beg > $i_end) or (not defined($i_beg)) or (not defined($i_end));	
 
 	my $tmp = Set::Infinite::Simple->new($i_beg, $i_end);
@@ -531,5 +542,4 @@ sub STORE {
 sub DESTROY {
 }
 
-1;
-
+1;

@@ -5,4 +5,4 @@ WriteMakefile(
     'NAME'		=> 'Set::Infinite',
     'VERSION_FROM'	=> 'lib/Set/Infinite.pm', 
     'dist'         	=> { 'COMPRESS' => 'gzip' },
-);
+);

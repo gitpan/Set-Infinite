@@ -1,4 +1,8 @@
 Changes
+eg/month_to_html.pl
+eg/schedule.dat
+eg/schedule_check.pl
+eg/weekly_to_html.pl
 lib/Set/Infinite.pm
 lib/Set/Infinite/Date.pm
 lib/Set/Infinite/Element.pm
@@ -13,3 +17,5 @@ t/element.t
 t/infinite.t
 t/simple_bigfloat.t
 t/simple.t
+t/quantize_date.t
+t/quantize.t

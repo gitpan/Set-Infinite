@@ -17,3 +17,8 @@ Revision history for Perl extension Set::Infinite.
 	Set::Infinite::Date->date_format
 	use `pop' instead of `shift', or read parameters
 
+0.12
+	Correction in Set::Infinite::Simple::intersection
+	[5..5) is null
+
+	New function: quantize

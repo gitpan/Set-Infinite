@@ -13,7 +13,7 @@ use Set::Infinite::Simple qw(infinite minus_infinite);
 my $errors = 0;
 my $test = 0;
 
-print "1..88\n";
+print "1..92\n";
 
 sub test {
 	my ($header, $sub, $expected) = @_;
@@ -39,6 +39,18 @@ sub stats {
 	}
 }
 
+
+$a = Set::Infinite::Simple->new(1,5)->open_end(1);
+$b = Set::Infinite::Simple->new(5,10);
+test ("intersect", '$a->intersection($b)', "null");
+test ("intersect", '$b->intersection($a)', "null");
+#print $a->intersection($b);
+
+$a = Set::Infinite::Simple->new(1,5);
+$b = Set::Infinite::Simple->new(5,10)->open_begin(1);
+test ("intersect", '$a->intersection($b)', "null");
+test ("intersect", '$b->intersection($a)', "null");
+#print $a->intersection($b);
 
 
 # print "Contains\n";
@@ -240,4 +252,4 @@ test ("complement(10..20) (5,15) ",
 	'Set::Infinite::Simple->new(10,20)->integer->complement(5,15)', "(15..20]");
 
 stats;
-1;
+1;

@@ -35,12 +35,18 @@ Date input format:
 	('2001-02-30 10:00:00', '11:00:00')
 		means day 2001-02-30, from 10:00:00 to 11:00:00
 
-	('10', '11') or
 	('10:00', '11:00') or
 	('10:00:00', '11:00:00') 
 		means from 10:00:00 to 11:00:00; day is not specified
 
+	(10000, 11888) 
+		time-number format (seconds since epoch)
+
 String conversion functions:
+
+	0 + $s	returns the Date as a time-number. 
+			This is faster than	date2time or hour2time.
+
 	time2date 
 	date2time 
 	time2hour 
@@ -74,12 +80,12 @@ Internal functions:
 
 require Exporter;
 package Set::Infinite::Date;
-$VERSION = "0.11";
+$VERSION = "0.12";
 
 my $package = 'Set::Infinite::Date';
 @EXPORT = qw();
 @EXPORT_OK = qw(
-	time2date date2time time2hour hour2time  
+	time2date date2time time2hour hour2time quantizer 
 );
 
 use strict;
@@ -93,12 +99,21 @@ use overload
 	'+' => \&add,
 	qw("" as_string);
 
+our $quantizer = 'Set::Infinite::Quantize_Date';
+
 our $day_size = timelocal(0,0,0,2,3,2001) - timelocal(0,0,0,1,3,2001);
 our $hour_size = $day_size / 24;
 our $minute_size = $hour_size / 60;
 our $second_size = $minute_size / 60;
 
 our $date_format = "year-month-day hour:min:sec";
+
+sub quantizer {
+	# if (@_) {
+	#	$quantizer = pop;
+	# }
+	return $quantizer;
+}
 
 sub date_format {
 	$date_format = pop if @_;
@@ -234,4 +249,4 @@ sub STORE {
 sub DESTROY {
 }
 
-1;
+1;
