@@ -50,16 +50,16 @@ test ( '',
 $a = Set::Infinite->new(-$inf,25);
 test ( '',
   ' $a->quantize(quant=>1)->select( by => [0,2,-2,-1] ) ',
-  "-$inf,[24..25),[25..26)");
+  -$inf . ",[24..25),[25..26)");
 test ( '',
   ' $a->quantize(quant=>1)->select( count => 3 ) ',
-  "-$inf");
+  -$inf . "" );
 test ( '',
   ' $a->quantize(quant=>1)->select( by => [0,2,-2,-1], count => 3 ) ',
-  "-$inf,[24..25),[25..26)");
+  -$inf . ",[24..25),[25..26)");
 test ( '',
   ' $a->quantize(quant=>1)->select( by => [0,20,-20,-1], count => 3 ) ',
-  "-$inf,[6..7),[25..26)");
+  -$inf . ",[6..7),[25..26)");
 
 
 $a = Set::Infinite->new(25,$inf);

@@ -1,6 +1,7 @@
 package Set::Infinite;
 
-# Copyright (c) 2001, 2002, 2003 Flavio Soibelmann Glock. All rights reserved.
+# Copyright (c) 2001, 2002, 2003, 2004 Flavio Soibelmann Glock. 
+# All rights reserved.
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 
@@ -8,7 +9,8 @@ use 5.005_03;
 
 # These methods are inherited from Set::Infinite::Basic "as-is":
 #   type list fixtype numeric min max integer real new span copy
-#   start_set end_set
+#   start_set end_set universal_set empty_set minus difference
+#   simmetric_difference is_empty
 
 use strict;
 use base qw(Set::Infinite::Basic Exporter);
@@ -41,7 +43,7 @@ sub compact { @_ }
 
 
 BEGIN {
-    $VERSION = 0.56;
+    $VERSION = 0.57;
     $TRACE = 0;         # enable basic trace method execution
     $DEBUG_BT = 0;      # enable backtrack tracer
     $PRETTY_PRINT = 0;  # 0 = print 'Too Complex'; 1 = describe functions
@@ -53,7 +55,6 @@ BEGIN {
     $max_intersection_depth = 5;  # first()
 }
 
- 
 sub trace { # title=>'aaa'
     return $_[0] unless $TRACE;
     my ($self, %parm) = @_;
@@ -104,7 +105,7 @@ sub trace_close {
 # creates a 'function' object that can be solved by _backtrack()
 sub _function {
     my ($self, $method) = (shift, shift);
-    my $b = $self->new();
+    my $b = $self->empty_set();
     $b->{too_complex} = 1;
     $b->{parent} = $self;   
     $b->{method} = $method;
@@ -119,7 +120,7 @@ sub _function2 {
     unless ( $self->{too_complex} || $arg->{too_complex} ) {
         return $self->$method($arg, @_);
     }
-    my $b = $self->new();
+    my $b = $self->empty_set();
     $b->{too_complex} = 1;
     $b->{parent} = [ $self, $arg ];
     $b->{method} = $method;
@@ -142,7 +143,7 @@ sub quantize {
 
     my @a;
     my %rule = @_;
-    my $b = $self->new();    
+    my $b = $self->empty_set();    
     my $parent = $self;
 
     $rule{unit} =   'one' unless $rule{unit};
@@ -236,7 +237,7 @@ sub select {
 
     if ($count <= 0) {
         $self->trace_close( arg => $res ) if $TRACE;
-        return $self->new();
+        return $self->empty_set();
     }
 
     my @set;
@@ -290,7 +291,7 @@ sub select {
     }
 
     return $res if $count == $inf;
-    my $count_set = $self->new();
+    my $count_set = $self->empty_set();
     $count_set->{cant_cleanup} = 1;
     if ( ! $self->is_too_complex )
     {
@@ -390,7 +391,7 @@ BEGIN {
                 for my $which1 ( $which, 1 - $which ) {
                   my $tmp_parent = $parent[$which1];
                   ($first1, $parent[$which1]) = @{ $first[$which1] };
-                  if ( $first1->is_null ) {
+                  if ( $first1->is_empty ) {
                     # warn "first1 empty! count $retry_count";
                     # trace_close;
                     # return $first1, undef;
@@ -479,10 +480,13 @@ BEGIN {
         sub {
             my $self = $_[0];
             my $parent = $self->{parent};
-            my @first = $parent->first;
-            $first[0] = $first[0]->iterate( @{$self->{param}} ) if ref($first[0]);
-            $first[1] = $first[1]->_function( 'iterate', @{$self->{param}} ) if ref($first[1]);
-            return @first;
+            my ($first, $tail) = $parent->first;
+            $first = $first->iterate( @{$self->{param}} ) if ref($first);
+            $tail  = $tail->_function( 'iterate', @{$self->{param}} ) if ref($tail);
+            my $more;
+            ($first, $more) = $first->first if ref($first);
+            $tail = $tail->_function2( 'union', $more ) if defined $more;
+            return ($first, $tail);
         },
     'until' =>
         sub {
@@ -494,7 +498,7 @@ BEGIN {
             my ($first, $tail);
             if ( $first2[0] <= $first1[0] ) {
                 # added ->first because it returns 2 spans if $a1 == $a2
-                $first = $a1->new()->until( $first2[0] )->first;
+                $first = $a1->empty_set()->until( $first2[0] )->first;
                 $tail = $a1->_function2( "until", $first2[1] );
             }
             else {
@@ -721,10 +725,13 @@ BEGIN {
         sub {
             my $self = $_[0];
             my $parent = $self->{parent};
-            my @last = $parent->last;
-            $last[0] = $last[0]->iterate( @{$self->{param}} ) if ref($last[0]);
-            $last[1] = $last[1]->_function( 'iterate', @{$self->{param}} ) if ref($last[1]);
-            return @last;
+            my ($last, $tail) = $parent->last;
+            $last = $last->iterate( @{$self->{param}} ) if ref($last);
+            $tail = $tail->_function( 'iterate', @{$self->{param}} ) if ref($tail);
+            my $more;
+            ($last, $more) = $last->last if ref($last);
+            $tail = $tail->_function2( 'union', $more ) if defined $more;
+            return ($last, $tail);
         },
     'offset' =>
         sub {
@@ -820,23 +827,9 @@ sub offset {
 
     my @a;
     my %param = @_;
-    my $b1 = $self->new();    
+    my $b1 = $self->empty_set();    
     my ($interval, $ia, $i);
     $param{mode} = 'offset' unless $param{mode};
-
-    # optimization for 1-parameter offset
-    if (($param{mode} eq 'begin') and ($#{$param{value}} == 1) and
-        ($param{value}[0] == $param{value}[1]) and
-        ($param{value}[0] == 0) ) {
-            # offset == zero
-            $b1->{list} = [ 
-                 map { { a => $_->{a} , b => $_->{a},
-                         open_begin => 0 , open_end => 0 
-                       } }  @{ $self->{list} } ];
-            $b1->{cant_cleanup} = 1;
-            $self->trace_close( arg => $b1 ) if $TRACE;
-            return $b1;
-    }
 
     unless (ref($param{value}) eq 'ARRAY') {
         $param{value} = [0 + $param{value}, 0 + $param{value}];
@@ -869,14 +862,6 @@ sub offset {
             if ($this == $next) {
                 $open_end = $open_begin;
             }
-            # skip this if don't need to "fixtype"
-            if ($self->{fixtype}) {
-                # bless results into 'type' class
-                if (ref($this) ne ref($ia) ) {
-                    $this = $ia->new($this);
-                    $next = $ia->new($next);
-                }
-            } 
             push @a, { a => $this , b => $next ,
                        open_begin => $open_begin , open_end => $open_end };
         }  # parts
@@ -885,6 +870,7 @@ sub offset {
     $b1->{list} = \@a;        # change data
     $b1->{cant_cleanup} = 1; 
     $self->trace_close( arg => $b1 ) if $TRACE;
+    $b1 = $b1->fixtype if $self->{fixtype};
     return $b1;
 }
 
@@ -1050,25 +1036,20 @@ sub _backtrack {
 
 
 sub intersects {
-    my $a = shift;
-    my $b;
-    if (ref ($_[0]) eq ref($a) ) { 
-        $b = shift;
-    } 
-    else {
-        $b = $a->new(@_);  
-    }
-    $a->trace(title=>"intersects");
-    if ($a->{too_complex}) {
-        $a = $a->_backtrack('intersection', $b);
+    my $a1 = shift;
+    my $b1 = (ref ($_[0]) eq ref($a1) ) ? shift : $a1->new(@_);
+
+    $a1->trace(title=>"intersects");
+    if ($a1->{too_complex}) {
+        $a1 = $a1->_backtrack('intersection', $b1);
     }  # don't put 'else' here
-    if ($b->{too_complex}) {
-        $b = $b->_backtrack('intersection', $a);
+    if ($b1->{too_complex}) {
+        $b1 = $b1->_backtrack('intersection', $a1);
     }
-    if (($a->{too_complex}) or ($b->{too_complex})) {
+    if (($a1->{too_complex}) or ($b1->{too_complex})) {
         return undef;   # we don't know the answer!
     }
-    return $a->SUPER::intersects( $b );
+    return $a1->SUPER::intersects( $b1 );
 }
 
 
@@ -1085,19 +1066,14 @@ sub iterate {
 
 sub intersection {
     my $a1 = shift;
-    my $b1;
-    if (ref ($_[0]) eq ref($a1) ) {
-        $b1 = shift;
-    } 
-    else {
-        $b1 = $a1->new(@_);  
-    }
+    my $b1 = (ref ($_[0]) eq ref($a1) ) ? shift : $a1->new(@_);
+
     $a1->trace_open(title=>"intersection", arg => $b1) if $TRACE;
     if (($a1->{too_complex}) or ($b1->{too_complex})) {
         my $arg0 = $a1->_quantize_span;
         my $arg1 = $b1->_quantize_span;
         unless (($arg0->{too_complex}) or ($arg1->{too_complex})) {
-            my $res = $arg0->_quantize_span->intersection( $arg1->_quantize_span );
+            my $res = $arg0->intersection( $arg1 );
             $a1->trace_close( arg => $res ) if $TRACE;
             return $res;
         }
@@ -1118,13 +1094,7 @@ sub intersection {
 
 sub intersected_spans {
     my $a1 = shift;
-    my $b1;
-    if (ref ($_[0]) eq ref($a1) ) {
-        $b1 = shift;
-    }
-    else {
-        $b1 = $a1->new(@_);
-    }
+    my $b1 = (ref ($_[0]) eq ref($a1) ) ? shift : $a1->new(@_);
 
     # try to simplify $b1
     $b1 = $b1->intersection( $a1 )
@@ -1156,39 +1126,30 @@ sub intersected_spans {
 
 
 sub complement {
-    my $self = shift;
+    my $a1 = shift;
     # do we have a parameter?
     if (@_) {
-        if (ref ($_[0]) eq ref($self) ) {
-            $a = shift;
-        } 
-        else {
-            $a = $self->new(@_);  
-        }
-        $self->trace_open(title=>"complement", arg => $a) if $TRACE;
-        $a = $a->complement;
-        my $tmp =$self->intersection($a);
-        $self->trace_close( arg => $tmp ) if $TRACE;
+        my $b1 = (ref ($_[0]) eq ref($a1) ) ? shift : $a1->new(@_);
+
+        $a1->trace_open(title=>"complement", arg => $b1) if $TRACE;
+        $b1 = $b1->complement;
+        my $tmp =$a1->intersection($b1);
+        $a1->trace_close( arg => $tmp ) if $TRACE;
         return $tmp;
     }
-    $self->trace_open(title=>"complement") if $TRACE;
-    if ($self->{too_complex}) {
-        $self->trace_close( ) if $TRACE;
-        return $self->_function( 'complement', @_ );
+    $a1->trace_open(title=>"complement") if $TRACE;
+    if ($a1->{too_complex}) {
+        $a1->trace_close( ) if $TRACE;
+        return $a1->_function( 'complement', @_ );
     }
-    return $self->SUPER::complement;
+    return $a1->SUPER::complement;
 }
 
 
 sub until {
     my $a1 = shift;
-    my $b1;
-    if (ref ($_[0]) eq ref($a1) ) {
-        $b1 = shift;
-    } 
-    else {
-        $b1 = $a1->new(@_);  
-    }
+    my $b1 = (ref ($_[0]) eq ref($a1) ) ? shift : $a1->new(@_);
+
     if (($a1->{too_complex}) or ($b1->{too_complex})) {
         return $a1->_function2( 'until', $b1 );
     }
@@ -1198,13 +1159,8 @@ sub until {
 
 sub union {
     my $a1 = shift;
-    my $b1;
-    if (ref ($_[0]) eq ref($a1) ) {
-        $b1 = shift;
-    } 
-    else {
-        $b1 = $a1->new(@_);  
-    }
+    my $b1 = (ref ($_[0]) eq ref($a1) ) ? shift : $a1->new(@_);  
+    
     $a1->trace_open(title=>"union", arg => $b1) if $TRACE;
     if (($a1->{too_complex}) or ($b1->{too_complex})) {
         $a1->trace_close( ) if $TRACE;
@@ -1222,26 +1178,26 @@ sub union {
 # A CONTAINS B IF B == ( A INTERSECTION B )
 #    - can backtrack = works for unbounded sets
 sub contains {
-    my $a = shift;
-    $a->trace_open(title=>"contains") if $TRACE;
-    if ( $a->{too_complex} ) { 
+    my $a1 = shift;
+    $a1->trace_open(title=>"contains") if $TRACE;
+    if ( $a1->{too_complex} ) { 
         # we use intersection because it is better for backtracking
-        my $b = (ref $_[0] eq ref $a) ? $_[0] : $a->new(@_);
-        my $b1 = $a->intersection($b);
+        my $b0 = (ref $_[0] eq ref $a1) ? shift : $a1->new(@_);
+        my $b1 = $a1->intersection($b0);
         if ( $b1->{too_complex} ) {
             $b1->trace_close( arg => 'undef' ) if $TRACE;
             return undef;
         }
-        $a->trace_close( arg => ($b1 == $b ? 1 : 0) ) if $TRACE;
-        return ($b1 == $b) ? 1 : 0;
+        $a1->trace_close( arg => ($b1 == $b0 ? 1 : 0) ) if $TRACE;
+        return ($b1 == $b0) ? 1 : 0;
     }
-    my $b1 = $a->union(@_);
+    my $b1 = $a1->union(@_);
     if ( $b1->{too_complex} ) {
         $b1->trace_close( arg => 'undef' ) if $TRACE;
         return undef;
     }
-    $a->trace_close( arg => ($b1 == $a ? 1 : 0) ) if $TRACE;
-    return ($b1 == $a) ? 1 : 0;
+    $a1->trace_close( arg => ($b1 == $a1 ? 1 : 0) ) if $TRACE;
+    return ($b1 == $a1) ? 1 : 0;
 }
 
 
@@ -1372,16 +1328,24 @@ Set::Infinite - Sets of intervals
 
   use Set::Infinite;
 
-  $a = Set::Infinite->new(1,2);    # [1..2]
-  print $a->union(5,6);            # [1..2],[5..6]
+  $set = Set::Infinite->new(1,2);    # [1..2]
+  print $set->union(5,6);            # [1..2],[5..6]
 
 
 =head1 DESCRIPTION
 
 Set::Infinite is a Set Theory module for infinite sets.
 
-It works with reals, integers, and objects (such as dates).
+A set is a collection of objects. 
+The objects that belong to a set are called its members, or "elements". 
 
+As objects we allow (almost) anything:  reals, integers, and objects (such as dates).
+
+We allow sets to be infinite.
+
+There is no account for the order of elements. For example, {1,2} = {2,1}.
+
+There is no account for repetition of elements. For example, {1,2,2} = {1,1,1,2} = {1,2}.
 
 =head1 CONSTRUCTOR
 
@@ -1467,15 +1431,29 @@ This is the recommended way to do it:
 
 Creates a new object, and copy the object data.
 
+=head2 empty_set
+
+Creates an empty set.
+
+If called from an existing set, the empty set inherits
+the "type" and "density" characteristics.
+
+=head2 universal_set
+
+Creates a set containing "all" possible elements.
+
+If called from an existing set, the universal set inherits
+the "type" and "density" characteristics.
+
 =head1 SET FUNCTIONS
 
 =head2 union
 
-    $set = $a->union($b);
+    $set = $set->union($b);
 
 Returns the set of all elements from both sets.
 
-This function behaves like a "or" operation.
+This function behaves like an "OR" operation.
 
     $set1 = new Set::Infinite( [ 1, 4 ], [ 8, 12 ] );
     $set2 = new Set::Infinite( [ 7, 20 ] );
@@ -1484,11 +1462,11 @@ This function behaves like a "or" operation.
 
 =head2 intersection
 
-    $set = $a->intersection($b);
+    $set = $set->intersection($b);
 
 Returns the set of elements common to both sets.
 
-This function behaves like a "and" operation.
+This function behaves like an "AND" operation.
 
     $set1 = new Set::Infinite( [ 1, 4 ], [ 8, 12 ] );
     $set2 = new Set::Infinite( [ 7, 20 ] );
@@ -1497,7 +1475,11 @@ This function behaves like a "and" operation.
 
 =head2 complement
 
-    $set = $a->complement;
+=head2 minus
+
+=head2 difference
+
+    $set = $set->complement;
 
 Returns the set of all elements that don't belong to the set.
 
@@ -1507,28 +1489,32 @@ Returns the set of all elements that don't belong to the set.
 
 The complement function might take a parameter:
 
-    $set = $a->complement($b);
+    $set = $set->minus($b);
 
 Returns the set-difference, that is, the elements that don't
 belong to the given set.
 
     $set1 = new Set::Infinite( [ 1, 4 ], [ 8, 12 ] );
     $set2 = new Set::Infinite( [ 7, 20 ] );
-    print $set1->complement( $set2 );
+    print $set1->minus( $set2 );
     # output: [1..4]
 
+=head2 simmetric_difference
 
-=head1 DENSITY FUNCTIONS    
+Returns a set containing elements that are in either set,
+but not in both. This is the "set" version of "XOR".
+
+=head1 DENSITY METHODS    
 
 =head2 real
 
-    $a->real;
+    $set1 = $set->real;
 
 Returns a set with density "0".
 
 =head2 integer
 
-    $a->integer;
+    $set1 = $set->integer;
 
 Returns a set with density "1".
 
@@ -1536,15 +1522,42 @@ Returns a set with density "1".
 
 =head2 intersects
 
-    $logic = $a->intersects($b);
+    $logic = $set->intersects($b);
 
 =head2 contains
 
-    $logic = $a->contains($b);
+    $logic = $set->contains($b);
+
+=head2 is_empty
 
 =head2 is_null
 
-    $logic = $a->is_null;
+    $logic = $set->is_null;
+
+=head2 is_nonempty 
+
+This set that has at least 1 element.
+
+=head2 is_span 
+
+This set that has a single span or interval.
+
+=head2 is_singleton
+
+This set that has a single element.
+
+=head2 is_subset( $set )
+
+Every element of this set is a member of the given set.
+
+=head2 is_proper_subset( $set )
+
+Every element of this set is a member of the given set.
+Some members of the given set are not elements of this set.
+
+=head2 is_disjoint( $set )
+
+The given set has no elements in common with this set.
 
 =head2 is_too_complex
 
@@ -1554,27 +1567,27 @@ This happens with sets that represent infinite recurrences, such as
 when you ask for a quantization on a
 set bounded by -inf or inf.
 
-See also: C<count>.
+See also: C<count> method.
 
 =head1 SCALAR FUNCTIONS
 
 =head2 min
 
-    $i = $a->min;
+    $i = $set->min;
 
 =head2 max
 
-    $i = $a->max;
+    $i = $set->max;
 
 =head2 size
 
-    $i = $a->size;  
+    $i = $set->size;  
 
 =head2 count
 
-    $i = $a->count;
+    $i = $set->count;
 
-=head1 OVERLOADED LANGUAGE OPERATORS
+=head1 OVERLOADED OPERATORS
 
 =head2 stringification
 
@@ -1590,11 +1603,11 @@ See also: C<as_string>.
 
     > < == >= <= <=> 
 
-See also: C<spaceship>.
+See also: C<spaceship> method.
 
 =head1 CLASS METHODS
 
-    separators(@i)
+    Set::Infinite->separators(@i)
 
         chooses the interval separators for stringification. 
 
@@ -1610,20 +1623,20 @@ See also: C<spaceship>.
 
 =head2 type
 
-    type($i)
+    type( "My::Class::Name" )
 
 Chooses a default object data type.
 
-default is none (a normal Perl SCALAR).
+Default is none (a normal Perl SCALAR).
 
 
-=head1 SPECIAL SET FUNCTIONS (WIDGETS)
+=head1 SPECIAL SET FUNCTIONS
 
 =head2 span
 
-    $i = $a->span;
+    $set1 = $set->span;
 
-        result is INTERVAL, (min .. max)
+Returns the set span.
 
 =head2 until
 
@@ -1681,8 +1694,8 @@ See diagram below:
 
         Example: 
 
-            $a = Set::Infinite->new([1,3]);
-            print join (" ", $a->quantize( quant => 1 ) );
+            $set = Set::Infinite->new([1,3]);
+            print join (" ", $set->quantize( quant => 1 ) );
 
         Gives: 
 
@@ -1692,7 +1705,7 @@ See diagram below:
 
     select( parameters )
 
-Selects set members based on their ordered positions
+Selects set spans based on their ordered positions
 
 C<select> has a behaviour similar to an array C<slice>.
 
@@ -1733,9 +1746,11 @@ In scalar context returns the first or last interval of a set.
 In list context returns the first or last interval of a set, 
 and the remaining set (the 'tail').
 
+See also: C<min>, C<max>, C<min_a>, C<max_a> methods.
+
 =head2 type
 
-    type($i)
+    type( "My::Class::Name" )
 
 Chooses a default object data type. 
 
@@ -1746,7 +1761,7 @@ default is none (a normal perl SCALAR).
 
 =head2 _cleanup
 
-    $a->_cleanup;
+    $set->_cleanup;
 
 Internal function to fix the internal set representation.
 This is used after operations that might return invalid
@@ -1754,13 +1769,13 @@ values.
 
 =head2 _backtrack
 
-    $a->_backtrack( 'intersection', $b );
+    $set->_backtrack( 'intersection', $b );
 
 Internal function to evaluate recurrences.
 
 =head2 numeric
 
-    $a->numeric;
+    $set->numeric;
 
 Internal function to ignore the set "type".
 It is used in some internal optimizations, when it is
@@ -1768,15 +1783,15 @@ possible to use scalar values instead of objects.
 
 =head2 fixtype
 
-    $a->fixtype;
+    $set->fixtype;
 
 Internal function to fix the result of operations
 that use the numeric() function.
 
 =head2 tolerance
 
-    $a->tolerance(0)    # defaults to real sets (default)
-    $a->tolerance(1)    # defaults to integer sets
+    $set = $set->tolerance(0)    # defaults to real sets (default)
+    $set = $set->tolerance(1)    # defaults to integer sets
 
 Internal function for changing the set "density".
 
@@ -1809,15 +1824,15 @@ Comparison of unbounded recurrences is not implemented.
 
 =over 4
 
-=item * "span" notation
+=item * constructor "span" notation
 
-    $a = Set::Infinite->new(10,1);
+    $set = Set::Infinite->new(10,1);
 
 Will be interpreted as [1..10]
 
-=item * "multiple-span" notation
+=item * constructor "multiple-span" notation
 
-    $a = Set::Infinite->new(1,2,3,4);
+    $set = Set::Infinite->new(1,2,3,4);
 
 Will be interpreted as [1..2],[3..4] instead of [1,2,3,4].
 You probably want ->new([1],[2],[3],[4]) instead,
@@ -1825,7 +1840,7 @@ or maybe ->new(1,4)
 
 =item * "range operator"
 
-    $a = Set::Infinite->new(1..3);
+    $set = Set::Infinite->new(1..3);
 
 Will be interpreted as [1..2],3 instead of [1,2,3].
 You probably want ->new(1,3) instead.
@@ -1841,7 +1856,7 @@ one or two I<parent objects>, and extra arguments.
 The C<list> key is set to an empty array, and the
 C<too_complex> key is set to C<1>.
 
-This is a structure that holds a union of two "complex sets":
+This is a structure that holds the union of two "complex sets":
 
   {
     too_complex => 1,             # "this is a recurrence"
@@ -1864,10 +1879,9 @@ This is a structure that holds the complement of a "complex set":
 
 =head1 SEE ALSO
 
-See modules DateTime::Set, DateTime::Event::Recurrence, and
-DateTime::Event::ICal for up-to-date information on date-sets.
-
-C<DateTime::Set>
+See modules DateTime::Set, DateTime::Event::Recurrence, 
+DateTime::Event::ICal, DateTime::Event::Cron
+for up-to-date information on date-sets.
 
 The perl-date-time project <http://datetime.perl.org> 
 

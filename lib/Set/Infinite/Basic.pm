@@ -6,24 +6,22 @@ package Set::Infinite::Basic;
 
 require 5.005_03;
 use strict;
-# use warnings;
 
 require Exporter;
 use Carp;
 use Data::Dumper; 
 use vars qw( @ISA @EXPORT_OK @EXPORT );
-# use vars qw( $VERSION );
-use vars qw( $Type $tolerance $fixtype $inf $minus_inf @separators $neg_inf );
+use vars qw( $Type $tolerance $fixtype $inf $minus_inf @Separators $neg_inf );
 
 @ISA = qw(Exporter);
 @EXPORT_OK = qw( INFINITY NEG_INFINITY );
 @EXPORT = qw();
-# $VERSION = $Set::Infinite::VERSION;
 
-$inf       = 100**100**100;
-$minus_inf = $neg_inf = -$inf;
-use constant INFINITY => $inf;
-use constant NEG_INFINITY => $minus_inf;
+use constant INFINITY => 100**100**100;
+use constant NEG_INFINITY => - INFINITY;
+
+$inf       = INFINITY;
+$minus_inf = $neg_inf = NEG_INFINITY;
 
 use overload
     '<=>' => \&spaceship,
@@ -34,17 +32,19 @@ use overload
 # TODO: make this an object _and_ class method
 # TODO: POD
 sub separators {
-    return $separators[ $_[1] ] if $#_ == 1;
-    @separators = @_ if @_;
-    return @separators;
+    shift;
+    return $Separators[ $_[0] ] if $#_ == 0;
+    @Separators = @_ if @_;
+    return @Separators;
 }
 
 BEGIN {
-    separators (
+    __PACKAGE__->separators (
         '[', ']',    # a closed interval
         '(', ')',    # an open interval
         '..',        # number separator
-        ','          # list separator
+        ',',         # list separator
+        '', '',      # set delimiter  '{' '}'
     );
     # global defaults for object private vars
     $Type = undef;
@@ -95,13 +95,28 @@ sub _simple_intersects {
 sub _simple_complement {
     my $self = $_[0];
     if ($self->{b} == $inf) {
-        return { a => $neg_inf, b => $self->{a}, open_begin => 1, open_end => ! $self->{open_begin} };
+        return { a => $neg_inf, 
+                 b => $self->{a}, 
+                 open_begin => 1, 
+                 open_end => ! $self->{open_begin} };
     }
-    elsif ($self->{a} == $neg_inf) {
-        return { a => $self->{b}, b => $inf,  open_begin => ! $self->{open_end}, open_end => 1 };
+    if ($self->{a} == $neg_inf) {
+        return { a => $self->{b}, 
+                 b => $inf,  
+                 open_begin => ! $self->{open_end}, 
+                 open_end => 1 };
     }
-    ( { a => $neg_inf, b => $self->{a}, open_begin => 1, open_end => ! $self->{open_begin} },
-      { a => $self->{b}, b => $inf,  open_begin => ! $self->{open_end}, open_end => 1 } );
+    ( { a => $neg_inf, 
+        b => $self->{a}, 
+        open_begin => 1, 
+        open_end => ! $self->{open_begin} 
+      },
+      { a => $self->{b}, 
+        b => $inf,  
+        open_begin => ! $self->{open_end}, 
+        open_end => 1 
+      }
+    );
 }
 
 sub _simple_union {
@@ -212,6 +227,7 @@ sub _simple_new {
 
 
 sub _simple_as_string {
+    my $set = shift;
     my $self = $_[0];
     my $s;
     return "" unless defined $self;
@@ -224,9 +240,9 @@ sub _simple_as_string {
     $tmp2 = $tmp2->datetime if UNIVERSAL::can( $tmp2, 'datetime' );
     $tmp2 = "$tmp2";
     return $tmp1 if $tmp1 eq $tmp2;
-    $s = $self->{open_begin} ? $separators[2] : $separators[0];
-    $s .= $tmp1 . $separators[4] . $tmp2;
-    $s .= $self->{open_end} ? $separators[3] : $separators[1];
+    $s = $self->{open_begin} ? $set->separators(2) : $set->separators(0);
+    $s .= $tmp1 . $set->separators(4) . $tmp2;
+    $s .= $self->{open_end} ? $set->separators(3) : $set->separators(1);
     return $s;
 }
 
@@ -265,9 +281,10 @@ sub fixtype {
     $self = $self->copy;
     $self->{fixtype} = 1;
     my $type = $self->type;
+    return $self unless $type;
     foreach (@{$self->{list}}) {
-        $_->{a} = $type->new($_->{a}) unless ref($_->{a});
-        $_->{b} = $type->new($_->{b}) unless ref($_->{b});
+        $_->{a} = $type->new($_->{a}) unless ref($_->{a}) eq $type;
+        $_->{b} = $type->new($_->{b}) unless ref($_->{b}) eq $type;
     }
     return $self;
 }
@@ -326,30 +343,86 @@ sub is_null {
     @{$_[0]->{list}} ? 0 : 1;
 }
 
-sub intersects {
-    my $a = shift;
-    my ($b, $ia, $n);
-    if (ref ($_[0]) eq ref($a) ) { 
-        $b = shift;
+sub is_empty {
+    $_[0]->is_null;
+}
+
+sub is_nonempty {
+    ! $_[0]->is_null;
+}
+
+sub is_span {
+    ( $#{$_[0]->{list}} == 0 ) ? 1 : 0;
+}
+
+sub is_singleton {
+    ( $#{$_[0]->{list}} == 0 &&
+      $_[0]->{list}[0]{a} == $_[0]->{list}[0]{b} ) ? 1 : 0;
+}
+
+sub is_subset {
+    my $a1 = shift;
+    my $b1;
+    if (ref ($_[0]) eq ref($a1) ) { 
+        $b1 = shift;
     } 
     else {
-        $b = $a->new(@_);  
+        $b1 = $a1->new(@_);  
+    }
+    return $b1->contains( $a1 );
+}
+
+sub is_proper_subset {
+    my $a1 = shift;
+    my $b1;
+    if (ref ($_[0]) eq ref($a1) ) { 
+        $b1 = shift;
+    } 
+    else {
+        $b1 = $a1->new(@_);  
+    }
+
+    my $contains = $b1->contains( $a1 );
+    return $contains unless $contains;
+     
+    my $equal = ( $a1 == $b1 );
+    return $equal if !defined $equal || $equal;
+
+    return 1;
+}
+
+sub is_disjoint {
+    my $intersects = shift->intersects( @_ );
+    return ! $intersects if defined $intersects;
+    return $intersects;
+}
+
+sub intersects {
+    my $a1 = shift;
+    my ($b1, $ia, $m, $n);
+    if (ref ($_[0]) eq ref($a) ) { 
+        $b1 = shift;
+    } 
+    else {
+        $b1 = $a1->new(@_);  
     }
     my $ib;
     my ($na, $nb) = (0,0);
 
-    $n = $#{$a->{list}};
+    $m = $#{$b1->{list}};
+    $n = $#{$a1->{list}};
     if ($n > 4) {
-        foreach $ib ($nb .. $#{$b->{list}}) {
+        foreach $ib ($m, $m-1, 0 .. $m - 2) {
             foreach $ia ($n, $n-1, 0 .. $n - 2) {
-                return 1 if _simple_intersects($a->{list}[$ia], $b->{list}[$ib]);
+                return 1 if _simple_intersects($a1->{list}[$ia], $b1->{list}[$ib]);
             }
         }
         return 0;
     }
-    foreach $ib ($nb .. $#{$b->{list}}) {
+
+    foreach $ib ($nb .. $#{$b1->{list}}) {
         foreach $ia ($na .. $n) {
-            return 1 if _simple_intersects($a->{list}[$ia], $b->{list}[$ib]);
+            return 1 if _simple_intersects($a1->{list}[$ia], $b1->{list}[$ib]);
         }
     }
     0;    
@@ -357,13 +430,13 @@ sub intersects {
 
 sub iterate {
     # TODO: options 'no-sort', 'no-merge', 'keep-null' ...
-    my $a = shift;
-    my $iterate = $a->new();
-    my ($tmp, $ia);
+    my $a1 = shift;
+    my $iterate = $a1->empty_set();
+    my (@tmp, $ia);
     my $subroutine = shift;
-    foreach $ia (0 .. $#{$a->{list}}) {
-        $tmp = &{$subroutine} ( $a->new($a->{list}[$ia]), @_ );
-        $iterate = $iterate->union($tmp) if defined $tmp; 
+    foreach $ia (0 .. $#{$a1->{list}}) {
+        @tmp = $subroutine->( $a1->new($a1->{list}[$ia]), @_ );
+        $iterate = $iterate->union(@tmp) if @tmp; 
     }
     return $iterate;    
 }
@@ -379,7 +452,7 @@ sub intersection {
     }
     my ($ia, $ib);
     my ($ma, $mb) = ($#{$a1->{list}}, $#{$b1->{list}});
-    my $intersection = $a1->new();
+    my $intersection = $a1->empty_set();
     # for-loop optimization (makes little difference)
     if ($ma < $mb) { 
         ($ma, $mb) = ($mb, $ma);
@@ -447,24 +520,25 @@ sub intersection {
 sub complement {
     my $self = shift;
     if (@_) {
+        my $a1;
         if (ref ($_[0]) eq ref($self) ) {
-            $a = shift;
+            $a1 = shift;
         } 
         else {
-            $a = $self->new(@_);  
+            $a1 = $self->new(@_);  
         }
-        return $self->intersection( $a->complement );
+        return $self->intersection( $a1->complement );
     }
 
     unless ( @{$self->{list}} ) {
-        return $self->new($neg_inf, $inf);
+        return $self->universal_set;
     }
-    my $complement = $self->new();
+    my $complement = $self->empty_set();
     @{$complement->{list}} = _simple_complement($self->{list}[0]); 
 
-    my $tmp = $self->new();
+    my $tmp = $self->empty_set();    
     foreach my $ia (1 .. $#{$self->{list}}) {
-        @{$tmp->{list}} = _simple_complement($self->{list}[$ia]); 
+        @{$tmp->{list}} = _simple_complement($self->{list}[$ia]);
         $complement = $complement->intersection($tmp); 
     }
     return $complement;    
@@ -602,15 +676,15 @@ sub union {
 # A CONTAINS B IF B == ( A INTERSECTION B )
 #    - can backtrack = works for unbounded sets
 sub contains {
-    my $a = shift;
-    my $b1 = $a->union(@_);
-    return ($b1 == $a) ? 1 : 0;
+    my $a1 = shift;
+    my $b1 = $a1->union(@_);
+    return ($b1 == $a1) ? 1 : 0;
 }
 
 
 sub copy {
     my $self = shift;
-    my $copy = $self->new();
+    my $copy = $self->empty_set();
     ## return $copy unless ref($self);   # constructor!
     foreach my $key (keys %{$self}) {
         if ( ref( $self->{$key} ) eq 'ARRAY' ) {
@@ -674,6 +748,32 @@ sub new {
         push @{ $self->{list} }, _simple_new($tmp,$tmp2, $self->{type} )
     }
     $self;
+}
+
+sub empty_set {
+    $_[0]->new;
+}
+
+sub universal_set {
+    $_[0]->new( NEG_INFINITY, INFINITY );
+}
+
+*minus = \&complement;
+
+*difference = \&complement;
+
+sub simmetric_difference {
+    my $a1 = shift;
+    my $b1;
+    if (ref ($_[0]) eq ref($a1) ) {
+        $b1 = shift;
+    }
+    else {
+        $b1 = $a1->new(@_);
+    }
+
+    return $a1->complement( $b1 )->union(
+           $b1->complement( $a1 ) );
 }
 
 sub min { 
@@ -787,7 +887,10 @@ sub real {
 
 sub as_string {
     my $self = shift;
-    return join( __PACKAGE__->separators(5), map { _simple_as_string($_) } @{$self->{list}} );
+    return $self->separators(6) . 
+           join( $self->separators(5), 
+                 map { $self->_simple_as_string($_) } @{$self->{list}} ) .
+           $self->separators(7),;
 }
 
 
@@ -800,13 +903,13 @@ __END__
 =head1 NAME
 
 Set::Infinite::Basic - Sets of intervals
-
+6
 =head1 SYNOPSIS
 
   use Set::Infinite::Basic;
 
-  $a = Set::Infinite::Basic->new(1,2);    # [1..2]
-  print $a->union(5,6);            # [1..2],[5..6]
+  $set = Set::Infinite::Basic->new(1,2);    # [1..2]
+  print $set->union(5,6);            # [1..2],[5..6]
 
 =head1 DESCRIPTION
 
@@ -817,6 +920,20 @@ It works on reals, integers, and objects.
 This module does not support recurrences. Recurrences are implemented in Set::Infinite.
 
 =head1 METHODS
+
+=head2 empty_set
+
+Creates an empty_set.
+
+If called from an existing set, the empty set inherits
+the "type" and "density" characteristics.
+
+=head2 universal_set
+
+Creates a set containing "all" possible elements.
+
+If called from an existing set, the universal set inherits
+the "type" and "density" characteristics.
 
 =head2 until
 
@@ -838,40 +955,42 @@ Makes a new object from the object's data.
 
 =head2 Mode functions:    
 
-    $a->real;
+    $set = $set->real;
 
-    $a->integer;
+    $set = $set->integer;
 
 =head2 Logic functions:
 
-    $logic = $a->intersects($b);
+    $logic = $set->intersects($b);
 
-    $logic = $a->contains($b);
+    $logic = $set->contains($b);
 
-    $logic = $a->is_null;
+    $logic = $set->is_null;  # also called "is_empty"
 
 =head2 Set functions:
 
-    $i = $a->union($b);    
+    $set = $set->union($b);    
 
-    $i = $a->intersection($b);
+    $set = $set->intersection($b);
 
-    $i = $a->complement;
-    $i = $a->complement($b);
+    $set = $set->complement;
+    $set = $set->complement($b);   # can also be called "minus" or "difference"
 
-    $i = $a->span;   
+    $set = $set->simmetric_difference( $b );
+
+    $set = $set->span;   
 
         result is (min .. max)
 
 =head2 Scalar functions:
 
-    $i = $a->min;
+    $i = $set->min;
 
-    $i = $a->max;
+    $i = $set->max;
 
-    $i = $a->size;  
+    $i = $set->size;  
 
-    $i = $a->count;  # number of spans
+    $i = $set->count;  # number of spans
 
 =head2 Overloaded Perl functions:
 
@@ -931,21 +1050,21 @@ Makes a new object from the object's data.
 
 =head2 Internal functions:
 
-    $a->fixtype; 
+    $set->fixtype; 
 
-    $a->numeric;
+    $set->numeric;
 
 =head1 CAVEATS
 
-    $a = Set::Infinite->new(10,1);
+    $set = Set::Infinite->new(10,1);
         Will be interpreted as [1..10]
 
-    $a = Set::Infinite->new(1,2,3,4);
+    $set = Set::Infinite->new(1,2,3,4);
         Will be interpreted as [1..2],[3..4] instead of [1,2,3,4].
         You probably want ->new([1],[2],[3],[4]) instead,
         or maybe ->new(1,4) 
 
-    $a = Set::Infinite->new(1..3);
+    $set = Set::Infinite->new(1..3);
         Will be interpreted as [1..2],3 instead of [1,2,3].
         You probably want ->new(1,3) instead.
 

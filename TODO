@@ -1,20 +1,48 @@
 Set::Infinite TODO 
 
-- New method: clone
+- document the "separators" method - use example from t/infinite.t
+
+- quantize() should use "iterate"
+  (unless this breaks _quantize_span)
+  Find out how to unify "quantize" and the "_recurrence" module (DT::Set)
+
+- spaceship should return "undef" if the sets can't be compared.
+- "contains" should test the result of "==" for undef.
+
+- test new methods
+
+- methods:
+  is_infinite
+  exists( sub ) / any / ...
 
 - Deprecate min_a()
   min() should check "wantarray", instead.
+  This can generate confusion in some cases - verify this.
 
 - New methods: map / grep
   From a discussion with Andrew Pimlott and Dave Rolsky
+  Find out how to implement "block" syntax 
+  (" {} " instead of " sub{} ") -- use '&' prototype
+  - test under 5.005_03
+  
+  update: It looks like this is not possible:
+  http://www.perlmonks.org/index.pl?node_id=312978
+  from perlsub:
+  "Pretty much the exclusive domain of prototypes is to 
+  make a perl sub act like a builtin. Once you call it 
+  via $subref-> or &subname, you are no longer treating 
+  it as a builtin and prototypes are ignored."
+
+- Redo POD
+- difference between "size" and "count"
+
+- Change syntax: from Class::method to Class->method
 
 Old TODO:
 
-    - parser
+    - parser (another module)
 
     - _quantize_span should only be used inside backtrack()
-
-    - provide a constructor to build open sets
 
     - provide a constructor that allow for un-ordered and overlapping spans
 
@@ -33,6 +61,7 @@ Old TODO:
     - a set with first == inf or last = -inf is an error!
 
     - tests for "iterate" min/max/first/last
+      These may fail if "iterate" returns >= 2 elements
     - more tests for min/max/span/size on too_complex sets
 
     - find out how to compare "<=>" unbounded sets
@@ -46,18 +75,16 @@ BACKTRACK
     backtrack.t:
 
 	test backtrack on:
-		iterate
+		iterate -- returning more than 1 element
 		compact
 		no_cleanup
                 tolerance
                 complement
 
-	change $backtrack_arg2 = $arg->quantize(@param)->union(); to span()
-
 	backtracking: implement remaining tests in backtrack.t
 	verify results in backtrack.t
 
-	backtracking: document backtracking resolution
+    backtracking: document backtracking resolution
 
 SYNTAX
 

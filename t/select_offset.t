@@ -83,7 +83,6 @@ test ( "iterate",
 	'$a->quantize(quant=>10)->iterate( sub { my $x = shift; return $x; } )',
 	'[20..110)');
 
-
 # "This event happens from 13:00 to 14:00 every Tuesday, unless that Tuesday is the 15th of the month."
 
 # $a->quantize('weeks')->offset('begin', tuesday,wednesday)->offset('begin',13:00,14:00) # tuesdays 13:00 to 14:00

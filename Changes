@@ -1,5 +1,28 @@
 Revision history for Perl extension Set::Infinite.
 
+0.5602  2004-03-25
+- fixed a test in t/select.t -  Reported by David Dyck.
+- simplified "offset"; fixed "fixtype"
+- added "separators" test in t/infinite.t
+- is_proper_subset / is_disjoint may return 'undef'
+- variables $a, $b renamed
+
+0.5601  2004-03-20
+- iterate() first/last can deal with multiple spans
+- removed todo: "provide a constructor to build open sets"
+  because this is already documented in new().
+- fixed "separators" OO
+- New methods:
+  is_span
+  is_singleton
+  is_subset
+  is_proper_subset
+  is_disjoint
+  universal_set
+  empty_set
+  minus / difference (same as "complement")
+  simmetric_difference
+
 0.56  2004-03-17
 - New method: clone (same as "copy")
 - More tests & fixes: intersected_spans
