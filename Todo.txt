@@ -1,17 +1,20 @@
 TODO - version 0.22
 
+	make offset accept ICal times
+
+	change recurring.pl because offset supports 'Date' hours
+
+	make offset support days, etc.
+
 	extra: offset option "middle"
 
 	extra: "indexes" filter to help dealing with sparse lists:
 	(,,10,,12,,14,,,)->indexes gives (2,4,6)
 
-	extra: caching for the filters
+	extra: caching for the filters. Try "Memoize".
 
 	internal: it may be good to have a pointer to the "root" object
 	in the filters. Thay already have a "parent" pointer.
-
-	extra: option: Date format iCal compatible; 
-	maybe use iCal engine.
 
 	think about: caching for union, etc  
 
@@ -25,8 +28,6 @@ TODO - version 0.22
 
 	extra: wrappers (like: weekday('thursday') )
 	some tough cases: yearweek(10) monthweek(2)
-
-	remove: HTTP::Date and other dependencies
 
 	extra: multiple offset (like: two days in month) 
 

@@ -9,11 +9,9 @@
 
 =head1 USAGE
 
-
-
 Global:
-	infinite		returns an 'infinite' number.
-	minus_infinite	returns '-infinite' number.
+	infinite		returns an 'infinity' number.
+	minus_infinite	returns '-infinity' number.
 	null			returns 'null'.
 
 =head1 DESCRIPTION
@@ -23,7 +21,7 @@ Global:
 
 =head1 TODO
 
-	infinite($i)	chooses 'infinite' name. default is 'inf'
+	infinite($i)	chooses 'infinity' name. default is 'inf'
 
 	null($i)		chooses 'null' name. default is 'null'
 
@@ -67,7 +65,6 @@ our $o_null =    	bless \$null,   	__PACKAGE__;
 our $o_elem_undef =   	bless \$undef,  	__PACKAGE__;
 
 sub infinite () {
-
 	return $o_infinite;
 }
 
@@ -252,6 +249,7 @@ sub spaceship {
 	my $res;
 	my ($stmp1, $stmp2);
 
+	# print " [inf:cmp:", $tmp1, "<=>", $tmp2, "] ";
 	$tmp2 = "" unless defined($tmp2);
 
 	if ($inverted) {

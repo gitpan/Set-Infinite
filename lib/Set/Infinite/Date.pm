@@ -13,7 +13,7 @@ Set::Infinite::Date - a 'date' scalar
 
 	$a = Set::Infinite::Date->new("10:00");
 
-	This module requires HTTP:Date and Time::Local
+	This module requires Time::Local
 
 =head1 USAGE
 
@@ -44,6 +44,7 @@ Date input format:
 
 String conversion functions:
 
+	epoch
 	0 + $s	returns the Date as a time-number. 
 			This is faster than	date2time or hour2time.
 
@@ -92,8 +93,32 @@ my $package = 'Set::Infinite::Date';
 );
 
 use strict;
-use HTTP::Date qw(str2time);
+# use HTTP::Date qw(str2time);
 use Time::Local;
+use Set::Infinite::Element_Inf;
+
+#--- THIS FUNCTION IS (HEAVILY) MODIFIED FROM HTTP::Date -- Copyright 1995-1999, Gisle Aas
+
+sub str2time {
+    my $str = shift;    # '1996-02-29 12:00:00' 
+    my @d = $str =~ 
+	/(\d{4})-(\d\d?)-(\d\d?)
+     (?:
+	       (?:\s+)  # separator before clock
+	    (\d\d?):?(\d\d)    # hour:min
+	    (?::?(\d\d(?:\.\d*)?))?  # optional seconds (and fractional)
+	 )?                    # optional clock
+	/x; 
+    $d[0] -= 1900;  # year
+    $d[1]--;        # month
+    $d[3] = 0 unless $d[3];
+    $d[4] = 0 unless $d[4];
+    $d[5] = 0 unless $d[5];
+	# print " # $str == ", join(";",@d), " \n";
+    return timegm(reverse @d);
+}
+
+#--- END CODE DERIVED FROM HTTP::Date
 
 use overload
 	'<=>' => \&spaceship,
@@ -107,7 +132,7 @@ our $quantizer = 'Set::Infinite::Quantize_Date';
 our $selector  = 'Set::Infinite::Select';
 our $offsetter = 'Set::Infinite::Offset';
 
-our $day_size = timelocal(0,0,0,2,3,2001) - timelocal(0,0,0,1,3,2001);
+our $day_size = timegm(0,0,0,2,3,2001) - timegm(0,0,0,1,3,2001);
 our $hour_size = $day_size / 24;
 our $minute_size = $hour_size / 60;
 our $second_size = $minute_size / 60;
@@ -131,7 +156,7 @@ sub date_format {
 # export time2date and date2time
 sub time2date (;$)  { 
 	my $tmp = shift;
-	my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime($tmp);
+	my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = gmtime($tmp);
 	$year += 1900;
 	$mon++;
 	foreach ($sec,$min,$hour,$mday,$mon,$year) {
@@ -147,7 +172,7 @@ sub time2date (;$)  {
 	return $tmp;
 }
 
-sub date2time ($;$) { return HTTP::Date::str2time (shift) }
+sub date2time ($;$) { return str2time (shift) }
 
 sub time2hour {
 	my $a = shift;
@@ -288,6 +313,10 @@ sub as_string {
 		$self->{string} = time2date($self->{a});
 	}
 	return $self->{string};
+}
+
+sub epoch {
+	return 0 + $_[0]->{a};
 }
 
 # TIE

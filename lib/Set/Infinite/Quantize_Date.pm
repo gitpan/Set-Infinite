@@ -38,7 +38,8 @@ Set::Infinite::Quantize_Date - arrays of date intervals to make calendars
 
 =cut
 
-our $day_size = timelocal(0,0,0,2,3,2001) - timelocal(0,0,0,1,3,2001);
+
+our $day_size = timegm(0,0,0,2,3,2001) - timegm(0,0,0,1,3,2001);
 our $hour_size = $day_size / 24;
 our $minute_size = $hour_size / 60;
 our $second_size = $minute_size / 60;
@@ -56,7 +57,7 @@ our %subs = (
 # list of full years in a date set
 sub years {
 	my ($self, $index) = @_;
-	return timelocal(
+	return timegm(
 		0,0,0, 
 		1,0,$self->{date_begin}[5] + $self->{quant} * $index);
 }
@@ -72,7 +73,7 @@ sub months {
 		$mon = $mon - 12 * $addyear;
 		$year += $addyear;
 	}
-	return timelocal(
+	return timegm(
 		0,0,0, 
 		1, $mon, $year);
 }
@@ -86,6 +87,7 @@ sub days {
 # list of full weeks in a date set
 sub weeks {
 	my ($self, $index) = @_;
+	# print " [QD:fn:weeks: $self->{first} + 7 * $self->{quant} * $index * $day_size ]\n";
 	return $self->{first} + 7 * $self->{quant} * $index * $day_size;
 }
 
@@ -142,12 +144,15 @@ sub new {
 
 	# print " [Q-DATE:MIN:",$self->{dates}->{a}," = ",0+ $self->{dates}->{a},"]\n";
 	# print " [Q-DATE:MODE:",$self->{mode},"]\n";
+	# print " [Q-DATE:",join(";",%$self),"]\n";
 
-	@{$self->{date_begin}} = localtime( 0 + $self->{dates}->min );
+	@{$self->{date_begin}} = gmtime( $self->{dates}->min->epoch );
 	$self->{date_begin}[5] += 1900;
 
-	$self->{first} = timelocal( @{$self->{date_begin}} );
+	$self->{first} = timegm( @{$self->{date_begin}} );
 	$self->{mult} = 1;
+
+	#print " [QD:1] ";
 
 	if ($self->{unit} eq 'seconds') {
 
@@ -156,7 +161,7 @@ sub new {
 		my $tmp1 = int($self->{date_begin}[0] / $self->{quant});
  		$rest = $self->{date_begin}[0] - $tmp1 * $self->{quant};
 
-		$self->{first} = timelocal(
+		$self->{first} = timegm(
 			$self->{date_begin}[0] - $rest,	$self->{date_begin}[1],	$self->{date_begin}[2], 
 			$self->{date_begin}[3],	$self->{date_begin}[4],$self->{date_begin}[5]);
 		$self->{mult} = $second_size;
@@ -167,25 +172,25 @@ sub new {
 		my $tmp1 = int($self->{date_begin}[1] / $self->{quant});
  		$rest = $self->{date_begin}[1] - $tmp1 * $self->{quant};
 
-		$self->{first} = timelocal(
+		$self->{first} = timegm(
 			0,$self->{date_begin}[1] - $rest, $self->{date_begin}[2], 
 			$self->{date_begin}[3], $self->{date_begin}[4],$self->{date_begin}[5]);
 		$self->{mult} = $minute_size;
 	}
 	elsif ($self->{unit} eq 'hours') {
-		$self->{first} = timelocal(
+		$self->{first} = timegm(
 			0,0,$self->{date_begin}[2], 
 			$self->{date_begin}[3],$self->{date_begin}[4],$self->{date_begin}[5]);
 		$self->{mult} = $hour_size;
 	}
 	elsif ($self->{unit} eq 'days') {
-		$self->{first} = timelocal(
+		$self->{first} = timegm(
 			0,0,0, 
 			$self->{date_begin}[3],$self->{date_begin}[4],$self->{date_begin}[5]);
 		$self->{mult} = $day_size;
 	}
 	elsif ($self->{unit} eq 'weeks') {
-		$self->{first} = timelocal(
+		$self->{first} = timegm(
 			0,0,0, 
 			$self->{date_begin}[3],$self->{date_begin}[4],$self->{date_begin}[5]);
 		$self->{first} -= $self->{date_begin}[6] * $day_size;
@@ -199,13 +204,14 @@ sub new {
 	}
 
 
-	$self->{time2_end} = 0 + $self->{dates}->max;
+	$self->{time2_end} = $self->{dates}->max->epoch;
 
 	# print " [QUANT: = 2 + ($self->{time2_end} - $self->{first}) /  ($self->{quant} * $self->{mult})]\n";
 
 	$self->{size}  = 2 + ( $self->{time2_end} - $self->{first} ) / 
 				( $self->{quant} * $self->{mult} ) ;
 
+	# print " [QD:new:end] ";
 	return $self;
 }
 
@@ -241,6 +247,7 @@ sub FETCH {
 
 	my ($this, $next);
 
+	# print " [QD:fetch:$index] ";
 	$this = &{ $subs{$self->{unit}} } ($self, $index);
 
 	# test cache
@@ -259,9 +266,11 @@ sub FETCH {
 		$self->{size} = $index if $self->{size} > $index;
 		return Set::Infinite::Simple->simple_null;
 	}
+	# print " [QD:fetch:new($this,$next)] ";
 	my $tmp = Set::Infinite::Simple->new($this,$next)->open_end(1);
 	$tmp->{a}->mode($self->{mode});
 	$tmp->{b}->mode($self->{mode});
+	# print " [QD:fetch:$tmp] ";
 	$tmp = Set::Infinite::Simple->new($tmp);
 	# slower but necessary:
 	if ($self->{dates}->intersects($tmp)) {

@@ -67,8 +67,8 @@ Global:
 		default are [ ] ( ) '..' ','.
 
 
-	infinite		returns an 'infinite' number.
-	minus_infinite	returns '- infinite' number.
+	infinite		returns an 'infinity' number.
+	minus_infinite	returns '- infinity' number.
 	null			returns 'null'.
 
 	type($i)	chooses an object data type. 
@@ -116,11 +116,12 @@ use Carp;
 
 use Set::Infinite::Element_Inf qw(infinite minus_infinite null inf elem_undef);
 
-sub inf();
-sub infinite();
-sub minus_infinite();
-sub null();
+# sub inf();
+# sub infinite();
+# sub minus_infinite();
+# sub null();
 
+our $DEBUG_TYPE = 0;
 our $type = '';
 our $infinite  = Set::Infinite::Element_Inf::infinite;
 our $null      = Set::Infinite::Element_Inf::null;
@@ -204,15 +205,18 @@ sub type {
 		#my $tmp = &Set::Infinite::Date::quantizer;
 		#print " [ELEM:quantizer " . $self->{type} . " $tmp]\n";
 
-		if ( (eval "(new " . $tmp_type . " (4)) cmp (new " . $tmp_type . " (3))") != 1) {
-			if ((eval "new " . $tmp_type . " (4)") != 4) {
-				carp "Warning: can't start " . $tmp_type . " package";
+		# TEST for 'cmp' function - enable this to help debug new types
+		if ($DEBUG_TYPE) {
+			if ( (eval "(new " . $tmp_type . " (4)) cmp (new " . $tmp_type . " (3))") != 1) {
+				if ((eval "new " . $tmp_type . " (4)") != 4) {
+					carp "Warning: can't start " . $tmp_type . " package";
+				}
+				else {
+					carp "Warning: " . $tmp_type . " can't `cmp'";
+				}
 			}
-			else {
-				carp "Warning: " . $tmp_type . " can't `cmp'";
-			}
-		}
-	}
+		} # end DEBUG_TYPE
+ 	}
 
 	return $self;
 }
@@ -565,8 +569,10 @@ sub spaceship {
 
 sub cleanup {
 	my ($self) = shift;
+	# print " [simple:cleanup:",ref($self->{a}),"] ";
 	$self->open_begin(1) 	if ($self->{a} == minus_infinite);
 	$self->open_end(1) 		if ($self->{b} == infinite);
+	# print " [cleanup:end] ";
 	return $self;
 }
 
@@ -622,6 +628,7 @@ sub fastnew {
 sub as_string {
 	my ($self) = shift;
 	my $s;
+	# print " [simple:string] ";
 	$self->cleanup;
 	# return null if $self->is_null;
 	my $tmp1 = "$self->{a}";

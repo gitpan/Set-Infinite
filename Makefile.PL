@@ -7,7 +7,7 @@ WriteMakefile(
     'NAME'      		=> 'Set::Infinite',
     'VERSION_FROM'  	=> 'lib/Set/Infinite.pm', 
     'EXCLUDE_EXT'       => 'Makefile gz LOG',
-    'PREREQ_PM'         => { 'HTTP::Date' => 0, 'Time::Local' => 0 },
+    'PREREQ_PM'         => { 'Time::Local' => 0 },
     'dist'          	=> { 'COMPRESS' => 'gzip' },
 );
 

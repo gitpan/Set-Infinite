@@ -23,7 +23,7 @@ our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(type inf) );
 our @EXPORT = qw(
 );
 
-our $VERSION = '0.22.05';
+our $VERSION = '0.23';
 
 
 # Preloaded methods go here.
@@ -772,17 +772,23 @@ Internal functions:
 
 	$a->add($b);  # Use $a = $a->union($b) instead.
 
-=head1 Notes on Set::Infinite::Date
+=head1 Notes on Dates
 
-Set::Infinite::Date is a Date "plugin" for sets.
+Set::Infinite::Date and Set::Infinite::ICal are Date "plugins" for sets.
 
-It is invoked by:
+** NOTE ** Set::Infinite::ICal is still experimental
 
-	type('Set::Infinite::Date');
+use:
 
-It requires HTTP:Date and Time::Local
+	type('Set::Infinite::Date');  # 2001-05-02 10:00:00   
+	# or
+	type('Set::Infinite::ICal');  # 20010502T100000Z
 
-It changes quantize function behaviour to accept time units:
+
+Both require Time::Local.
+Set::Infinite::ICal requires Date::ICal.
+
+Thay change quantize function behaviour to accept time units:
 
 	use Set::Infinite;
 	use Set::Infinite::Quantize_Date;
@@ -797,8 +803,8 @@ It changes quantize function behaviour to accept time units:
 
 Units can be years, months, days, weeks, hours, minutes, or seconds.
 
-max and min functions will show in date/time format, unless
-they are used with `0 + '.
+max and min functions will also show in date/time format, unless
+they are printed with '->epoch'.
 
 =head1 CAVEATS
 
@@ -813,17 +819,6 @@ they are used with `0 + '.
 	$a = Set::Infinite->new(1..3);
 		Will be interpreted as [1..2],3 instead of [1,2,3].
 		You probably want ->new(1,3) instead.
-
-=head1 CHANGES
-
-0.21
-	Change: "quantize()" or "quantize( quant => 1)" instead of "quantize(1)".
-	Change: "quantize(unit => 'minutes', quant => 15)" instead of "quantize('minutes',15)"
-	New methods: "select" and "offset"
-
-0.22.02
-	Faster cleanup, max, min
-	Cleaner (faster?) union
 
 =head1 AUTHOR
 
