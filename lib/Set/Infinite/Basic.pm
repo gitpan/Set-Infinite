@@ -1,6 +1,6 @@
 package Set::Infinite::Basic;
 
-# Copyright (c) 2001, 2002 Flavio Soibelmann Glock. All rights reserved.
+# Copyright (c) 2001, 2002, 2003 Flavio Soibelmann Glock. All rights reserved.
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 
@@ -11,56 +11,25 @@ use strict;
 require Exporter;
 use Carp;
 use Data::Dumper; 
-use vars qw( @ISA @EXPORT_OK @EXPORT $VERSION );
+use vars qw( @ISA @EXPORT_OK @EXPORT );
+# use vars qw( $VERSION );
 use vars qw( $Type $tolerance $fixtype $inf $minus_inf @separators $neg_inf );
 
 @ISA = qw(Exporter);
 @EXPORT_OK = qw( INFINITY NEG_INFINITY );
 @EXPORT = qw();
-$VERSION = '0.00_01';
+# $VERSION = $Set::Infinite::VERSION;
 
-$inf            = 100**100**100;
+$inf       = 100**100**100;
 $minus_inf = $neg_inf = -$inf;
 use constant INFINITY => $inf;
 use constant NEG_INFINITY => $minus_inf;
-
-=head1 NAME
-
-Set::Infinite::Basic - Sets of intervals
-
-=head1 SYNOPSIS
-
-  use Set::Infinite::Basic;
-
-  $a = Set::Infinite::Basic->new(1,2);    # [1..2]
-  print $a->union(5,6);            # [1..2],[5..6]
-
-=head1 DESCRIPTION
-
-Set::Infinite::Basic is a Set Theory module for infinite sets. 
-
-It works on reals, integers, and objects.
-
-This module does not support recurrences. Recurrences are implemented in Set::Infinite.
-
-=head1 METHODS
-
-=cut
-
 
 use overload
     '<=>' => \&spaceship,
     qw("" as_string),
 ;
 
-
-#  _simple_* - an interval of 2 scalars
-use vars qw( $simple_null $simple_everything $simple_inf $simple_minus_inf );
-$simple_null =           undef;  
-$simple_everything =     _simple_fastnew(-$inf,  $inf, 1, 1);
-$simple_inf =            _simple_fastnew( $inf,  $inf, 1, 1);
-$simple_minus_inf =      _simple_fastnew(-$inf, -$inf, 1, 1);
-sub _simple_null () { undef }
 
 # TODO: make this an object _and_ class method
 # TODO: POD
@@ -125,83 +94,80 @@ sub _simple_intersects {
 
 sub _simple_complement {
     my $self = $_[0];
-    return $simple_everything unless defined $self->{a};
-    my $tmp1 = _simple_fastnew($neg_inf, $self->{a}, 1, ! $self->{open_begin} );
-    my $tmp2 = _simple_fastnew($self->{b}, $inf, ! $self->{open_end}, 1);
-    if ($tmp2->{a} == $inf) {
-        return $simple_null if ($tmp1->{b} == $neg_inf);
-        return $tmp1;
+    if ($self->{b} == $inf) {
+        return { a => $neg_inf, b => $self->{a}, open_begin => 1, open_end => ! $self->{open_begin} };
     }
-    return $tmp2 if ($tmp1->{b} == $neg_inf);
-    ($tmp1 , $tmp2);
+    elsif ($self->{a} == $neg_inf) {
+        return { a => $self->{b}, b => $inf,  open_begin => ! $self->{open_end}, open_end => 1 };
+    }
+    ( { a => $neg_inf, b => $self->{a}, open_begin => 1, open_end => ! $self->{open_begin} },
+      { a => $self->{b}, b => $inf,  open_begin => ! $self->{open_end}, open_end => 1 } );
 }
 
 sub _simple_union {
     my ($tmp2, $tmp1, $tolerance) = @_; 
-    my %tmp1 = %$tmp1;
-    my %tmp2 = %$tmp2;
     my $cmp; 
     if ($tolerance) {
         # "integer"
-        my $a1_open =  $tmp1{open_begin} ? -$tolerance : $tolerance ;
-        my $b1_open =  $tmp1{open_end}   ? -$tolerance : $tolerance ;
-        my $a2_open =  $tmp2{open_begin} ? -$tolerance : $tolerance ;
-        my $b2_open =  $tmp2{open_end}   ? -$tolerance : $tolerance ;
+        my $a1_open =  $tmp1->{open_begin} ? -$tolerance : $tolerance ;
+        my $b1_open =  $tmp1->{open_end}   ? -$tolerance : $tolerance ;
+        my $a2_open =  $tmp2->{open_begin} ? -$tolerance : $tolerance ;
+        my $b2_open =  $tmp2->{open_end}   ? -$tolerance : $tolerance ;
         # open_end touching?
-        if ((($tmp1{b}+$tmp1{b}) + $b1_open ) < 
-            (($tmp2{a}+$tmp2{a}) - $a2_open)) {
+        if ((($tmp1->{b}+$tmp1->{b}) + $b1_open ) < 
+            (($tmp2->{a}+$tmp2->{a}) - $a2_open)) {
             # self disjuncts b
             return ( $tmp1, $tmp2 );
         }
-        if ((($tmp1{a}+$tmp1{a}) - $a1_open ) > 
-            (($tmp2{b}+$tmp2{b}) + $b2_open)) {
+        if ((($tmp1->{a}+$tmp1->{a}) - $a1_open ) > 
+            (($tmp2->{b}+$tmp2->{b}) + $b2_open)) {
             # self disjuncts b
             return ( $tmp2, $tmp1 );
         }
     }
     else {
         # "real"
-        $cmp = $tmp1{b} <=> $tmp2{a};
+        $cmp = $tmp1->{b} <=> $tmp2->{a};
         if ( $cmp < 0 ||
-             ( $cmp == 0 && $tmp1{open_end} && $tmp2{open_begin} ) ) {
+             ( $cmp == 0 && $tmp1->{open_end} && $tmp2->{open_begin} ) ) {
             return ( $tmp1, $tmp2 );
         }
-        $cmp = $tmp1{a} <=> $tmp2{b};
+        $cmp = $tmp1->{a} <=> $tmp2->{b};
         if ( $cmp > 0 || 
-             ( $cmp == 0 && $tmp2{open_end} && $tmp1{open_begin} ) ) {
+             ( $cmp == 0 && $tmp2->{open_end} && $tmp1->{open_begin} ) ) {
             return ( $tmp2, $tmp1 );
         }
     }
 
-    my %tmp;
-    $cmp = $tmp1{a} <=> $tmp2{a};
+    my $tmp;
+    $cmp = $tmp1->{a} <=> $tmp2->{a};
     if ($cmp > 0) {
-        $tmp{a} = $tmp2{a};
-        $tmp{open_begin} = $tmp2{open_begin};
+        $tmp->{a} = $tmp2->{a};
+        $tmp->{open_begin} = $tmp2->{open_begin};
     }
     elsif ($cmp == 0) {
-        $tmp{a} = $tmp1{a};
-        $tmp{open_begin} = $tmp1{open_begin} ? $tmp2{open_begin} : 0;
+        $tmp->{a} = $tmp1->{a};
+        $tmp->{open_begin} = $tmp1->{open_begin} ? $tmp2->{open_begin} : 0;
     }
     else {
-        $tmp{a} = $tmp1{a};
-        $tmp{open_begin} = $tmp1{open_begin};
+        $tmp->{a} = $tmp1->{a};
+        $tmp->{open_begin} = $tmp1->{open_begin};
     }
 
-    $cmp = $tmp1{b} <=> $tmp2{b};
+    $cmp = $tmp1->{b} <=> $tmp2->{b};
     if ($cmp < 0) {
-        $tmp{b} = $tmp2{b};
-        $tmp{open_end} = $tmp2{open_end};
+        $tmp->{b} = $tmp2->{b};
+        $tmp->{open_end} = $tmp2->{open_end};
     }
     elsif ($cmp == 0) {
-        $tmp{b} = $tmp1{b};
-        $tmp{open_end} = $tmp1{open_end} ? $tmp2{open_end} : 0;
+        $tmp->{b} = $tmp1->{b};
+        $tmp->{open_end} = $tmp1->{open_end} ? $tmp2->{open_end} : 0;
     }
     else {
-        $tmp{b} = $tmp1{b};
-        $tmp{open_end} = $tmp1{open_end};
+        $tmp->{b} = $tmp1->{b};
+        $tmp->{open_end} = $tmp1->{open_end};
     }
-    return \%tmp;
+    return $tmp;
 }
 
 
@@ -238,15 +204,12 @@ sub _simple_new {
         }
     }
     if ($tmp > $tmp2) {
-        ($tmp, $tmp2) = ($tmp2, $tmp);
+        carp "Invalid interval specification: start value is after end";
+        # ($tmp, $tmp2) = ($tmp2, $tmp);
     }
     return { a => $tmp , b => $tmp2 , open_begin => 0 , open_end => 0 };
 }
 
-
-sub _simple_fastnew {
-    { a => $_[0] , b => $_[1] , open_begin => $_[2] , open_end => $_[3] };
-}
 
 sub _simple_as_string {
     my $self = $_[0];
@@ -335,10 +298,10 @@ sub first {
     unless ( @{$self->{list}} ) {
         return wantarray ? (undef, 0) : undef; 
     }
-    my $first = $self->new( @{$self->{list}} [0] );
+    my $first = $self->new( $self->{list}[0] );
     return $first unless wantarray;
     my $res = $self->new->_no_cleanup;
-    push @{$res->{list}}, @{$self->{list}} [1 .. $#{$self->{list}}];
+    push @{$res->{list}}, @{$self->{list}}[1 .. $#{$self->{list}}];
     return @{$self->{first}} = ($first) if $res->is_null;
     return @{$self->{first}} = ($first, $res);
 }
@@ -351,10 +314,10 @@ sub last {
     unless ( @{$self->{list}} ) {
         return wantarray ? (undef, 0) : undef;
     }
-    my $last = $self->new( @{$self->{list}} [-1] );
+    my $last = $self->new( $self->{list}[-1] );
     return $last unless wantarray;  
     my $res = $self->new->_no_cleanup;
-    push @{$res->{list}}, @{$self->{list}} [0 .. $#{$self->{list}}-1];
+    push @{$res->{list}}, @{$self->{list}}[0 .. $#{$self->{list}}-1];
     return @{$self->{last}} = ($last) if $res->is_null;
     return @{$self->{last}} = ($last, $res);
 }
@@ -379,14 +342,14 @@ sub intersects {
     if ($n > 4) {
         foreach $ib ($nb .. $#{$b->{list}}) {
             foreach $ia ($n, $n-1, 0 .. $n - 2) {
-                return 1 if _simple_intersects($a->{list}->[$ia], $b->{list}->[$ib]);
+                return 1 if _simple_intersects($a->{list}[$ia], $b->{list}[$ib]);
             }
         }
         return 0;
     }
     foreach $ib ($nb .. $#{$b->{list}}) {
         foreach $ia ($na .. $n) {
-            return 1 if _simple_intersects($a->{list}->[$ia], $b->{list}->[$ib]);
+            return 1 if _simple_intersects($a->{list}[$ia], $b->{list}[$ib]);
         }
     }
     0;    
@@ -399,7 +362,7 @@ sub iterate {
     my ($tmp, $ia);
     my $subroutine = shift;
     foreach $ia (0 .. $#{$a->{list}}) {
-        $tmp = &{$subroutine} ( $a->new($a->{list}->[$ia]), @_ );
+        $tmp = &{$subroutine} ( $a->new($a->{list}[$ia]), @_ );
         $iterate = $iterate->union($tmp) if defined $tmp; 
     }
     return $iterate;    
@@ -497,29 +460,16 @@ sub complement {
         return $self->new($neg_inf, $inf);
     }
     my $complement = $self->new();
-    @{$complement->{list}} = _simple_complement($self->{list}->[0]); 
+    @{$complement->{list}} = _simple_complement($self->{list}[0]); 
 
     my $tmp = $self->new();
     foreach my $ia (1 .. $#{$self->{list}}) {
-        @{$tmp->{list}} = _simple_complement($self->{list}->[$ia]); 
+        @{$tmp->{list}} = _simple_complement($self->{list}[$ia]); 
         $complement = $complement->intersection($tmp); 
     }
     return $complement;    
 }
 
-=head2 until
-
-Extends a set until another:
-
-    0,5,7 -> until 2,6,10
-
-gives
-
-    [0..2), [5..6), [7..10)
-
-Note: this function is still experimental.
-
-=cut
 
 sub until {
     my $a1 = shift;
@@ -644,11 +594,6 @@ sub contains {
     return ($b1 == $a) ? 1 : 0;
 }
 
-=head2 copy
-
-Makes a new object from the object's data.
-
-=cut
 
 sub copy {
     my $self = shift;
@@ -692,7 +637,7 @@ sub new {
         if ($ref) {
             if ($ref eq 'ARRAY') {
                 # allows arrays of arrays
-                $tmp = $class->new(@{$tmp});  # call new() recursively
+                $tmp = $class->new(@$tmp);  # call new() recursively
                 push @{ $self->{list} }, @{$tmp->{list}};
                 next;
             }
@@ -705,7 +650,12 @@ sub new {
                 next;
             }
         }
-        $tmp2 = shift || $tmp;
+        if ( @_ ) { 
+            $tmp2 = shift
+        }
+        else {
+            $tmp2 = $tmp
+        }
         push @{ $self->{list} }, _simple_new($tmp,$tmp2, $self->{type} )
     }
     $self;
@@ -719,11 +669,11 @@ sub min_a {
     my $self = $_[0];
     return @{$self->{min}} if exists $self->{min};
     return @{$self->{min}} = (undef, 0) unless @{$self->{list}};
-    my $tmp = $self->{list}[0]->{a};
+    my $tmp = $self->{list}[0]{a};
     my $tmp2 = $self->{list}[0]{open_begin} || 0;
     if ($tmp2 && $self->{tolerance}) {
-            $tmp2 = 0;
-            $tmp += $self->{tolerance};
+        $tmp2 = 0;
+        $tmp += $self->{tolerance};
     }
     return @{$self->{min}} = ($tmp, $tmp2);  
 };
@@ -739,8 +689,8 @@ sub max_a {
     my $tmp = $self->{list}[-1]{b};
     my $tmp2 = $self->{list}[-1]{open_end} || 0;
     if ($tmp2 && $self->{tolerance}) {
-            $tmp2 = 0;
-            $tmp -= $self->{tolerance};
+        $tmp2 = 0;
+        $tmp -= $self->{tolerance};
     }
     return @{$self->{max}} = ($tmp, $tmp2);  
 };
@@ -785,11 +735,11 @@ sub spaceship {
         ($tmp2, $tmp1) = ($tmp1, $tmp2);
     }
     foreach(0 .. $#{$tmp1->{list}}) {
-        my $this  = $tmp1->{list}->[$_];
+        my $this  = $tmp1->{list}[$_];
         if ($_ > $#{ $tmp2->{list} } ) { 
             return 1; 
         }
-        my $other = $tmp2->{list}->[$_];
+        my $other = $tmp2->{list}[$_];
         my $cmp = _simple_spaceship($this, $other);
         return $cmp if $cmp;   # this != $other;
     }
@@ -829,7 +779,45 @@ sub as_string {
 sub DESTROY {}
 
 1;
+
 __END__
+
+=head1 NAME
+
+Set::Infinite::Basic - Sets of intervals
+
+=head1 SYNOPSIS
+
+  use Set::Infinite::Basic;
+
+  $a = Set::Infinite::Basic->new(1,2);    # [1..2]
+  print $a->union(5,6);            # [1..2],[5..6]
+
+=head1 DESCRIPTION
+
+Set::Infinite::Basic is a Set Theory module for infinite sets.
+
+It works on reals, integers, and objects.
+
+This module does not support recurrences. Recurrences are implemented in Set::Infinite.
+
+=head1 METHODS
+
+=head2 until
+
+Extends a set until another:
+
+    0,5,7 -> until 2,6,10
+
+gives
+
+    [0..2), [5..6), [7..10)
+
+Note: this function is still experimental.
+
+=head2 copy
+
+Makes a new object from the object's data.
 
 =head2 Mode functions:    
 

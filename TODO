@@ -1,5 +1,13 @@
 Set::Infinite TODO 
 
+    - parser
+
+    - _quantize_span should only be used inside backtrack()
+
+    - provide a constructor to build open sets
+
+    - provide a constructor that allow for un-ordered and overlapping spans
+
     - verify and fix unbalanced trace_open/trace_close 
 
     - move _cleanup to S::I::Basic

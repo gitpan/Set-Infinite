@@ -1,6 +1,6 @@
 package Set::Infinite;
 
-# Copyright (c) 2001, 2002 Flavio Soibelmann Glock. All rights reserved.
+# Copyright (c) 2001, 2002, 2003 Flavio Soibelmann Glock. All rights reserved.
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 
@@ -40,7 +40,7 @@ sub compact { @_ }
 
 
 BEGIN {
-    $VERSION = 0.54;
+    $VERSION = 0.55;
     $TRACE = 0;         # enable basic trace method execution
     $DEBUG_BT = 0;      # enable backtrack tracer
     $PRETTY_PRINT = 0;  # 0 = print 'Too Complex'; 1 = describe functions
@@ -1300,6 +1300,7 @@ __END__
 
 Set::Infinite - Sets of intervals
 
+
 =head1 SYNOPSIS
 
   use Set::Infinite;
@@ -1307,11 +1308,92 @@ Set::Infinite - Sets of intervals
   $a = Set::Infinite->new(1,2);    # [1..2]
   print $a->union(5,6);            # [1..2],[5..6]
 
+
 =head1 DESCRIPTION
 
 Set::Infinite is a Set Theory module for infinite sets.
 
 It works with reals, integers, and objects (such as dates).
+
+
+=head1 CONSTRUCTOR
+
+=head2 new
+
+Creates a new set object:
+
+    $set = Set::Infinite->new;             # empty set
+    $set = Set::Infinite->new( 10 );       # single element
+    $set = Set::Infinite->new( 10, 20 );   # single range
+    $set = Set::Infinite->new( 
+              [ 10, 20 ], [ 50, 70 ] );    # two ranges
+
+=over 4
+
+=item empty set
+
+    $set = Set::Infinite->new;
+
+=item set with a single element
+
+    $set = Set::Infinite->new( 10 );
+
+    $set = Set::Infinite->new( [ 10 ] );
+
+=item set with a single span
+
+    $set = Set::Infinite->new( 10, 20 );
+
+    $set = Set::Infinite->new( [ 10, 20 ] );
+    # 10 <= x <= 20
+
+=item set with a single, open span
+
+    $set = Set::Infinite->new(
+        {
+            a => 10, open_begin => 0,
+            b => 20, open_end => 1,
+        }
+    );
+    # 10 <= x < 20
+
+=item set with multiple spans
+
+    $set = Set::Infinite->new( 10, 20,  100, 200 );
+
+    $set = Set::Infinite->new( [ 10, 20 ], [ 100, 200 ] );
+
+    $set = Set::Infinite->new(
+        {
+            a => 10, open_begin => 0,
+            b => 20, open_end => 0,
+        },
+        {
+            a => 100, open_begin => 0,
+            b => 200, open_end => 0,
+        }
+    );
+
+=back
+
+The C<new()> method expects I<ordered> parameters.
+
+If you have unordered ranges, you can build the set using C<union>:
+
+    @ranges = ( [ 10, 20 ], [ -10, 1 ] );
+    $set = Set::Infinite->new;
+    $set = $set->union( @$_ ) for @ranges;
+
+The data structures passed to C<new> must be I<immutable>.
+So this is not good practice:
+
+    $set = Set::Infinite->new( $object_a, $object_b );
+    $object_a->set_value( 10 );
+
+This is the recommended way to do it:
+
+    $set = Set::Infinite->new( $object_a->clone, $object_b->clone );
+    $object_a->set_value( 10 );
 
 
 =head1 SET FUNCTIONS
@@ -1482,7 +1564,6 @@ gives
 
     [0..2), [5..6), [7..10)
 
-Note: this function is still experimental.
 
 =head2 quantize
 

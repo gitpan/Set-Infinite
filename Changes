@@ -1,5 +1,14 @@
 Revision history for Perl extension Set::Infinite.
 
+0.55   2003-11-16
+    - bug fix: $set = Set::Infinite->new( -10, 0 );
+      created a set with "-10" instead of [-10..0]
+    - documents that the parameters to new() must be sorted. 
+      Reported by Jim Cromie
+
+0.5401  2003-10-21
+    specifying start > end in a constructor is a fatal error.
+
 0.54
 0.5308  2003-10-16
     clears mod_perl warnings - change the order of modules and constants.
