@@ -4,36 +4,30 @@ package Set::Infinite;
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 
-require 5.005_03;
+use 5.005_03;
+
+# These methods are inherited from Set::Infinite::Basic "as-is":
+#   type list fixtype numeric min max integer real new span copy
+
 use strict;
-
-require Exporter;
-use Set::Infinite::Basic;
-    # These methods are inherited from Set::Infinite::Basic "as-is":
-    #   type list fixtype numeric min max integer real new span copy
+use base qw(Set::Infinite::Basic Exporter);
 use Carp;
-# use Data::Dumper; 
+use Set::Infinite::Arithmetic;
 
-use vars qw( @ISA @EXPORT_OK @EXPORT $VERSION 
+use overload
+    '<=>' => \&spaceship,
+    '""'  => \&as_string;
+
+use vars qw(@EXPORT_OK $VERSION 
     $TRACE $DEBUG_BT $PRETTY_PRINT $inf $minus_inf $neg_inf 
     %_first %_last
     $too_complex $backtrack_depth 
     $max_backtrack_depth $max_intersection_depth
     $trace_level %level_title );
-@ISA = qw( Set::Infinite::Basic Exporter );
 
 @EXPORT_OK = qw(inf $inf trace_open trace_close);
-@EXPORT = ();
 
-use Set::Infinite::Arithmetic;
-
-use overload
-    '<=>' => \&spaceship,
-    qw("" as_string),
-;
-
-
-$inf            = 100**100**100;
+$inf     = 100**100**100;
 $neg_inf = $minus_inf  = -$inf;
 
 
@@ -46,7 +40,7 @@ sub compact { @_ }
 
 
 BEGIN {
-    $VERSION = 0.5307;
+    $VERSION = 0.54;
     $TRACE = 0;         # enable basic trace method execution
     $DEBUG_BT = 0;      # enable backtrack tracer
     $PRETTY_PRINT = 0;  # 0 = print 'Too Complex'; 1 = describe functions

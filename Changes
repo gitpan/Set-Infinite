@@ -1,5 +1,10 @@
 Revision history for Perl extension Set::Infinite.
 
+0.54
+0.5308  2003-10-16
+    clears mod_perl warnings - change the order of modules and constants.
+    Patch by Dan Kubb
+
 0.5307
     backtracking "iterate" uses a larger span
 
