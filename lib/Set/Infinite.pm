@@ -20,7 +20,7 @@ our %EXPORT_TAGS = ( 'all' => [ qw(type inf new $inf) ] );
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(type inf new $inf trace_open trace_close) );
 our @EXPORT = qw();
 
-our $VERSION = '0.39';
+our $VERSION = '0.40';
 
 our $TRACE = 0;      # basic trace method execution
 our $DEBUG_BT = 0;   # backtrack tracer
@@ -183,7 +183,16 @@ sub trace_close {
     my @caller = caller(0);
     print "" . ( ' | ' x ($trace_level-1) ) .
             "\/ $level_title{$trace_level} ".
-            ( exists $parm{arg} ? "ret ". ( UNIVERSAL::isa($parm{arg}, __PACKAGE__ ) ? $parm{arg}->copy : "<$parm{arg}>" ) : "" ).
+            ( exists $parm{arg} ? 
+               (
+                  defined $parm{arg} ? 
+                      "ret ". ( UNIVERSAL::isa($parm{arg}, __PACKAGE__ ) ? 
+                           $parm{arg}->copy : 
+                           "<$parm{arg}>" ) :
+                      "undef"
+               ) : 
+               ""     # no arg 
+            ).
             " $caller[1]:$caller[2] ]\n" if $TRACE == 1;
     $trace_level--;
     return $self;
@@ -678,8 +687,6 @@ sub first {
         # }
 
         if ($method eq 'intersection') {
-            # warn "first not defined for method '$method'";
-
             my @parent = @{ $self->{parent} };
             # warn "$method parents @parent";
 
@@ -687,10 +694,12 @@ sub first {
 
             my $retry_count = 0;
             my (@first, @min, $which, $first1, $intersection);
+            my $which_order = 0;
 
             while ($retry_count++ < $max_intersection_depth) {
                 @{$first[0]} = $parent[0]->first;
                 @{$first[1]} = $parent[1]->first;
+                $self->trace( title=>"trying #$retry_count: $first[0][0] -- $first[1][0]" );
                 unless ( defined $first[0][0] ) {
                     # warn "don't know first of $method";
                     $self->trace_close( arg => 'undef' );
@@ -704,11 +713,13 @@ sub first {
                 @{$min[0]} = $first[0][0]->min_a;
                 @{$min[1]} = $first[1][0]->min_a;
                 unless ( defined $min[0][0] && defined $min[1][0] ) {
+                    $self->trace( title=>"can't find min()" );
                     $self->trace_close( arg => 'undef' );
                     return undef;
                 }
-                $which = ($min[0][0] < $min[1][0]) ? 1 : 0; 
+                $which = ($min[0][0] < $min[1][0]) ? 1-$which_order : $which_order; 
                 ($first1, $parent[$which]) = @{ $first[$which] };
+                # $self->trace( title=>"which = $which < $first1 , $parent[$which] >" );
 
                 # warn "ref ". ref($first1);
                 if ( $first1->is_null ) {
@@ -723,15 +734,30 @@ sub first {
 # $TRACE = 1;
                 $intersection = $first1->intersection( $parent[1-$which] );
 # $TRACE = 0;
-                last unless ( $intersection->is_null );
-                last unless defined $parent[$which];
+                unless ( $intersection->is_null ) { 
+                    # $self->trace( title=>"got an intersection" );
+                    if ( $intersection->is_too_complex ) {
+                        $self->trace( title=>"got a too_complex intersection" );
+                    }
+                    else {
+                        $self->trace( title=>"got an intersection" );
+                        last;
+                    }
+                };
+                unless ( defined $parent[$which] ) {
+                    # no luck - try inverting $which order
+                    $self->trace( title=>"retrying - invert order" );
+                    $parent[$which] = $first1;  # get it back
+                    $which_order = 1 - $which_order;
+                    # last;
+                }
+                $self->trace( title=>"next try" );
             }
+            $self->trace( title=>"exit loop" );
 
             if ( $intersection->is_null ) {
                 # my ($second1, $second2);
-
-                # warn "got no intersection so far!";
-
+                $self->trace( title=> "got no intersection so far" );
             }
 
             if ( $#{ $intersection->{list} } > 0 ) {
@@ -810,12 +836,13 @@ sub first {
             return @{$self->{first}} = ($first, $tail);
         } # end: first-union
 
-        # 'quantize', 'select', 'recur_by_rule'
+        # 'quantize', 'select', 'recur_by_rule', 'offset'
         # warn "first() doesn't know how to do $method-first, but maybe $method() knows";
         # warn " parent was ".$self->{parent};
+        $self->trace( title=> "redo" );
         my $redo = $self->{parent}->$method( @{ $self->{param} } );
         # my $new_method = exists $redo->{method} ? $redo->{method} : "[none]";
-        $redo->trace( title=> "redo" ); 
+        # $redo->trace( title=> "redo" ); 
         # now we've got a ".$new_method;
 
         # TODO: check for deep recursion!
@@ -995,6 +1022,16 @@ sub offset {
         $b1->{parent} = $self;  # ->copy;
         $b1->{method} = 'offset';
         $b1->{param}  = \@_;
+
+        # first() code
+        ## $self->trace( title => "*** offset doesn't have a first! ***" );
+        my ($first, $tail) = $self->first;
+        # TODO: check for invalid $first, $tail
+        $first = $first->offset( @_ );
+        $tail  =  $tail->_function( 'offset', @_ );
+        # $self->trace( title => "*** offset got a first: @{$self->{first}} ***" );
+        $b1->{first} = [$first, $tail];
+
         $self->trace_close( arg => $b1 );
         return $b1;
     }
@@ -1017,7 +1054,8 @@ sub offset {
                 $interval = $self->{list}[$i];
                 # next unless defined $interval;  
                 $ia = $interval->{a};
-                push @a, { a => $ia , b => $ia };
+                push @a, { a => $ia , b => $ia,
+                        open_begin => 0 , open_end => 0 };
                         # open_begin => $open_begin , open_end => $open_end };
             }
             $b1->{list} = \@a;        # change data
@@ -1144,6 +1182,14 @@ sub _quantize_span {
                 my $arg1 = $self->{parent}[1]->_quantize_span(%param);
                 $res = $arg0->intersection( $arg1 );
             }
+            # elsif ( $self->{method} eq 'until' ) {
+            #    my $arg0 = $self->{parent}[0]->_quantize_span(%param);
+            #    my $arg1 = $self->{parent}[1]->_quantize_span(%param);
+            #    my $min = $arg0->min < $arg1->min ? $arg0->min : -$inf;
+            #    my $max = $arg0->max < $arg1->max ? $inf : $arg0->max;
+            #    $res = $arg0->new( $min, $max );
+            # }
+
             # TODO: other methods
             else {
                 $res = $self; # ->_function( "_quantize_span", %param );
@@ -1205,9 +1251,21 @@ sub backtrack {
 
     # backtrack on parent sets
     if (ref($self->{parent}) eq 'ARRAY') {
-        # has 2 parents (intersection, union, ...)
+        # has 2 parents (intersection, union, until ...)
         # data structure: {method} - method name, {parent} - array, parent list
         # print " [bt$backtrack_depth-3.5:complex: 2-PARENTS ] \n";
+
+        $self->trace( title=>"array - method is $method" );
+        if ($self->{method} eq 'until') {
+            $self->trace( title=>"trying to find out from < $arg > - before" );
+            # print "[ min,max = ",$arg->min," - ", $arg->max,"]\n";
+            my $before = $self->{parent}[0]->intersection( -$inf, $arg->min )->max;
+            $self->trace( title=>"trying to find out from < $arg > - after" );
+            my $after = $self->{parent}[1]->intersection( $arg->max, $inf )->min;
+            $self->trace( title=>"before, after is < $before , $after >" );
+            $arg = $arg->new( $before, $after );
+        }
+
         my $result1 = $self->{parent}[0];
         $result1 = $result1->backtrack($method, $arg) if $result1->{too_complex};
         # print " [bt$backtrack_depth-3-6:res1:$result] \n";
@@ -1277,7 +1335,13 @@ sub backtrack {
                 #    # $tmp{value}[0] = - $tmp{value}[0]; -- don't do this!
                 #    # $tmp{value}[1] = - $tmp{value}[1]; -- don't do this!
 
-                $backtrack_arg2 = $arg->offset( unit => $tmp{unit}, mode => $tmp{mode}, value => [- $tmp{value}[0], - $tmp{value}[-1]] );
+                my @values = sort @{$tmp{value}};
+
+                # $arg->trace( title => "offset: unit => $tmp{unit}, mode => $tmp{mode}, value => [- $tmp{value}[0], - $tmp{value}[-1]] " );
+                # $backtrack_arg2 = $arg->offset( unit => $tmp{unit}, mode => $tmp{mode}, value => [- $tmp{value}[0], - $tmp{value}[-1]] );
+                $backtrack_arg2 = $arg->offset( unit => $tmp{unit}, mode => $tmp{mode}, value => [- $values[-1], - $values[0]] );
+
+                $backtrack_arg2 = $arg->union( $backtrack_arg2 );   # another hack - fixes some problems with 'begin' mode
 
             }
             # select - check "by" behaviour
@@ -1562,7 +1626,8 @@ sub intersection {
     # print " [intersect GIVES\n    ",$intersection,"\n\n";
 
     # NOTE: trace arg removed because it would cause a "cleanup"
-    $a1->trace_close(); # ( arg => $intersection );
+    # $a1->trace_close(); # ( arg => $intersection );
+    $a1->trace_close( arg => $intersection->copy->no_cleanup );
 
     return $intersection;    
 }
@@ -1627,6 +1692,119 @@ sub complement {
     return $complement;    
 }
 
+=head2 until
+
+Extends a set until another:
+
+    0,5,7 -> until 2,6,10
+
+gives
+
+    [0..2), [5..6), [7..10)
+
+Note: this function is still experimental.
+
+=cut
+
+sub until {
+    my $a1 = shift;
+    my $b1;
+    # print " [until] \n";
+    # print " [until: new b] \n";
+    if (ref ($_[0]) eq ref($a1) ) {
+        $b1 = shift;
+    } 
+    else {
+        $b1 = $a1->new(@_);  
+    }
+    $a1->trace_open(title=>"until", arg => $b1);
+
+    # warn "until: $a1 n=". $#{ $a1->{list} } ." $b1 n=". $#{ $b1->{list} } ;
+
+    if (($a1->{too_complex}) or ($b1->{too_complex})) {
+        print " [until:backtrack] \n" if $DEBUG_BT;
+        my $u = $a1->new();
+        $u->{too_complex} = 1;
+        $u->{parent} = [$a1,$b1]; 
+        $u->{method} = 'until';
+
+        # first() code
+        $a1->trace( title=>"computing first()" );
+        my @first1 = $a1->first;
+        my @first2 = $b1->first;
+        $a1->trace( title=>"first got $first1[0] and $first2[0] (". defined ($first1[0]) . ";". defined ($first2[0]) .")" );
+        $a1->trace( title=>"first $first1[0]{list}[0]{a} ".$first1[0]{list}[0]{open_end} );
+        $a1->trace( title=>"first $first2[0]{list}[0]{a} ".$first2[0]{list}[0]{open_end} );
+        my ($first, $tail);
+        if ( $first2[0] < $first1[0] ) {
+            $first = $a1->new()->until( $first2[0] );
+            $tail = $first1[0]->_function( "until", $first2[1] );
+        }
+        else {
+            $first = $a1->new( $first1[0] )->until( $first2[0] );
+            $tail = $first1[1]->_function( "until", $first2[1] );
+        }
+        $u->{first} = [ $first, $tail ];
+        $a1->trace_close( arg => $u );
+        return $u;
+    }
+
+    my @b1_min = $b1->min_a;
+    my @a1_max = $a1->max_a;
+
+    unless (defined $b1_min[0]) {
+        # $#{$b1->{list}} < 0;
+        $a1->trace_close( arg => $a1->until($inf) );
+        return $a1->until($inf);
+    }
+    unless (defined $a1_max[0]) {
+        # $#{$a1->{list}} < 0;
+        $a1->trace_close( arg => $a1->new(-$inf)->until($b1) );
+        return $a1->new(-$inf)->until($b1);
+    }
+
+    my ($ia, $ib, $begin, $end);
+    $ia = 0;
+    $ib = 0;
+
+    # print " [ ",$a1->max," <=> ",$b1->max," ] \n";
+    my $u = $a1->new;   
+    my $last = -$inf;
+    while ( ($ia <= $#{$a1->{list}}) && ($ib <= $#{$b1->{list}})) {
+        $begin = $a1->{list}[$ia]{a};
+        $end   = $b1->{list}[$ib]{b};
+        if ( $end < $begin ) {
+            push @{$u->{list}}, {
+                a => $last ,
+                b => $end ,
+                open_begin => 0 ,
+                open_end => 1 };
+            $ib++;
+            $last = $end;
+            next;
+        }
+        push @{$u->{list}}, { 
+            a => $begin , 
+            b => $end ,
+            open_begin => 0 , 
+            open_end => 1 };
+        $ib++;
+        $ia++;
+        $last = $end;
+    }
+    if ($ia <= $#{$a1->{list}}) {
+        push @{$u->{list}}, {
+            a => $a1->{list}[$ia]{a} ,
+            b => $inf ,
+            open_begin => 0 ,
+            open_end => 1 };
+    }
+
+    $a1->trace_close( arg => $u );
+    return $u;    
+}
+
+ 
 
 sub union {
     my $a1 = shift;
@@ -1759,6 +1937,11 @@ sub union {
 
 # use Data::Dumper; warn 'using Data::Dumper';
 
+# there are some ways to process 'contains':
+# A CONTAINS B IF A == ( A UNION B )
+#    - faster
+# A CONTAINS B IF B == ( A INTERSECTION B )
+#    - can backtrack = works for unbounded sets
 sub contains {
     my $a = shift;
     # $TRACE = 1;
@@ -1768,8 +1951,19 @@ sub contains {
     # print Dumper($_[0]);
 
     if ( $a->{too_complex} ) { 
-        $a->trace_close( arg => 'undef' ); 
-        return undef; 
+        # we use intersection because it is better for backtracking
+        my $b = (ref $_[0] eq ref $a) ? $_[0] : $a->new(@_);
+        # $TRACE = 1;
+        # $PRETTY_PRINT = 1;
+        my $b1 = $a->intersection($b);
+        # $TRACE = 0;
+        # warn "testing $b == $b1 => ". ($b1 == $b ? 1 : 0);
+        if ( $b1->{too_complex} ) {
+            $b1->trace_close( arg => 'undef' );
+            return undef;
+        }
+        $a->trace_close( arg => ($b1 == $b ? 1 : 0) );
+        return ($b1 == $b) ? 1 : 0;
     }
     my $b1 = $a->union(@_);
     if ( $b1->{too_complex} ) {
@@ -2051,10 +2245,31 @@ sub max_a {
                 return @{$self->{max}} = ($tmp, 1);
             }
 
-            my $sample = { a => $tmp - 1 - $self->{tolerance}, 
+            $self->trace( title=>"creating sample for $method" );
+            my $sample;
+
+            # TODO: this is a hack - we shouldn't know about recur_by_rule here
+            if ( $method eq 'recur_by_rule' ) {
+                my %param = @{$self->{param}};
+                $self->trace( title=>"freq = ".$param{FREQ} ) if $method eq 'recur_by_rule';
+                my %FREQ = (
+    SECONDLY => 'seconds',
+    MINUTELY => 'minutes',
+    HOURLY   => 'hours',
+    DAILY    => 'days',
+    WEEKLY   => 'weeks',
+    MONTHLY  => 'months',
+    YEARLY   => 'years'
+                );
+                $sample = $self->new($tmp)->quantize( unit=>$FREQ{$param{FREQ}} );
+            } 
+            # END_HACK
+            else {
+                $sample = { a => $tmp - 1 - $self->{tolerance}, 
                      b => $tmp,
                      open_begin => 0, 
                      open_end => $parent[1] };
+            }
 
             # print " tol=",$self->{tolerance}," max=$tmp open=$parent[1]\n";
             @{$self->{max}} = $self->new( $sample )->$method( @{$self->{param}} )->max_a;
@@ -2163,16 +2378,21 @@ sub spaceship {
     }
     foreach(0 .. $#{$tmp1->{list}}) {
         my $this  = $tmp1->{list}->[$_];
-        return -1 if $_ > $#{ $tmp2->{list} };
+        if ($_ > $#{ $tmp2->{list} } ) { 
+            # warn "$tmp1 is bigger";
+            return 1; 
+        }
         my $other = $tmp2->{list}->[$_];
 
         # my @caller = caller(1);
         # print " [",$caller[1],":",$caller[2]," spaceship $tmp1 $tmp2 ]\n";
 
         my $cmp = _simple_spaceship($this, $other);
+        # warn "compare: $this, $other => $cmp";
         return $cmp if $cmp;   # this != $other;
     }
-    return 0;
+    # warn "equal: $tmp1 == $tmp2 -- $#{$tmp1->{list}} == $#{ $tmp2->{list} }";
+    return $#{$tmp1->{list}} == $#{ $tmp2->{list} } ? 0 : -1;
 }
 
 sub no_cleanup {

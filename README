@@ -22,6 +22,16 @@ METHODS
     Sometimes a set might be too complex to print. It will happen when you
     ask for a quantization on a set bounded by -inf or inf.
 
+  until
+
+    Extends a set until another:
+
+        0,5,7 -> until 2,6,10
+
+    gives
+
+        [0..2), [5..6), [7..10)
+
   copy
 
     Makes a new object from the object's data.

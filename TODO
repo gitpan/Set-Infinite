@@ -1,5 +1,9 @@
 Set::Infinite TODO 
 
+    - test until() with first()/min()/max()
+
+    - backtrack code to 'offset' is a hack - fix it.
+
     - change "link to self" to "link to copy" in first()
 
     no - make separate methods for quantize, quantize-first and quantize-last

@@ -1,5 +1,29 @@
 Revision history for Perl extension Set::Infinite.
 
+0.39_05
+    fixed 'until' test warnings (caused by malformed offset() output)
+
+0.39_04
+    'until' works with empty sets
+    'until' has first()
+
+0.39_03
+    'until' backtracks (slowly)
+    left a hack in max() - might remove it when last() works...
+
+0.39_02
+    'offset' has 'first'
+    'until' has '_quantize_span'
+
+0.39_01
+    new method 'until' -- makes it possible to join RRULEs in Date::Set::Timezone
+    hacked a fix a problem when offset-begin backtracks (offset-begin reduces
+        a set to a single element, which backtracks wrongly if the set were
+        quantized)
+    better handling of backtrack-offset values
+    fixed spaceship (again)
+    contains works better for unbounded sets
+
 0.39
     fixed a bug in spaceship() that affected Date::Set::Timezone
 

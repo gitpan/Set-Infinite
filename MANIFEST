@@ -1,7 +1,8 @@
 Changes
 MANIFEST
+LICENSE
 README
-Todo.txt
+TODO
 Makefile.PL
 make_htmldoc.pl
 make_readme.pl
@@ -14,6 +15,7 @@ todo/bigfloat.t
 todo/bigint.t
 todo/simple_bigfloat.t
 todo/element_inf.t
+t/until.t
 t/date.t
 t/infinite.t
 t/first.t
