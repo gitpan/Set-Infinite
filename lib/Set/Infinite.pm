@@ -13,8 +13,10 @@ use Set::Infinite::Basic;
 use Carp;
 use Data::Dumper; 
 
-use vars qw( @ISA %EXPORT_TAGS @EXPORT_OK @EXPORT $VERSION );
-use vars qw( $TRACE $DEBUG_BT $PRETTY_PRINT $inf $minus_inf $too_complex $backtrack_depth $max_backtrack_depth $max_intersection_depth );
+use vars qw( @ISA %EXPORT_TAGS @EXPORT_OK @EXPORT $VERSION 
+    $TRACE $DEBUG_BT $PRETTY_PRINT $inf $minus_inf 
+    $too_complex $backtrack_depth 
+    $max_backtrack_depth $max_intersection_depth );
 @ISA = qw( Set::Infinite::Basic Exporter );
 
 # This allows declaration    use Set::Infinite ':all';
@@ -22,7 +24,7 @@ use vars qw( $TRACE $DEBUG_BT $PRETTY_PRINT $inf $minus_inf $too_complex $backtr
 @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(inf new $inf trace_open trace_close) );
 @EXPORT = qw();
 
-$VERSION = '0.44';
+$VERSION = '0.44_04';
 
 use Set::Infinite::Arithmetic;
 
@@ -38,16 +40,15 @@ sub minus_inf ()      { $minus_inf }
 use vars qw( $trace_level %level_title );
 
 BEGIN {
-    $TRACE = 0;      # basic trace method execution
-    $DEBUG_BT = 0;   # backtrack tracer
+    $TRACE = 0;         # enable basic trace method execution
+    $DEBUG_BT = 0;      # enable backtrack tracer
     $PRETTY_PRINT = 0;  # 0 = print 'Too Complex'; 1 = describe functions
+    $trace_level = 0;   # indentation level when debugging
 
     $too_complex =    "Too complex";
     $backtrack_depth = 0;
     $max_backtrack_depth = 10;    # backtrack()
     $max_intersection_depth = 5;  # first()
-
-    $trace_level = 0;   # indentation level
 }
 
 =head1 NAME
@@ -198,11 +199,14 @@ sub quantize {
         my $b = $self->_function( 'quantize', @_ );
         # $b->trace( title=>"quantize: created a function: $b" );
 
+        # TODO: find out how to calculate 'last'
+        $b->{last} = [ undef, 0 ];
+
         if (defined $min[0] ) {    # && ($min[0] != -&inf) ) {
             my $first;
             if (( $min[0] == -&inf ) || ( $min[0] == &inf )) {
                 $first = $self->new( $min[0] );
-                @{$b->{first}} = ($first, $b);  # link to itself!
+                $b->{first} = [$first, $b];  # link to itself!
             }
             else {
                 $first = $self->new( $min[0] )->quantize(@_);
@@ -366,10 +370,8 @@ sub select {
     if ($self->{too_complex}) {
         $res = $self->_function( 'select', @_ );
 
-        # TODO: this is an inefficient and wrong way to solve 
-        #    the min/max issue!
-        # $b->{min} = $self->min_a;
-        # $b->{max} = $self->max_a;
+        # TODO: find out how to calculate 'last' 
+        $res->{last} = [ undef, 0 ];
 
         # conditions for "definition"/boundedness: 
         # - freq, count, min [. . .
@@ -425,13 +427,6 @@ sub select {
                         $index++;
                     }
                     $tail = $first[1];
-                    # if ($freq > 1 and $freq < $inf) {
-                    #        last if $pos >= $freq;
-                    # }
-                    # else {
-                    #        last if $index > $#by1;
-                    # }
-                    # $tail = $first[1];
                     last unless defined $tail;
                 }
                 # warn "result of quantize @by1 is $result, tail is ".$tail->min."..., count is $count";
@@ -444,7 +439,7 @@ sub select {
                 if ($param{count} > 0) {
                     # warn "select: return union result $result and tail $tail count=$param{count}";
                     # $result = $result->union( $tail->select(%param) );
-                    $res =  $self->_function( 'select', %param );
+                    #### ??? $res =  $self->_function( 'select', %param );
                     # $tail = $tail->_function( 'select', %param );
                     my @first = $result->first;
                     # warn "res=$res first=@first tail=$tail";
@@ -461,7 +456,7 @@ sub select {
                     }
                     # warn "    union = $union";
                     # setup min/first cache
-                    @{$res->{first}} = ($first[0], $union);            
+                    $res->{first} = [$first[0], $union];            
                     # warn "TODO: setup first cache";
                     $self->trace_close( arg => $res );
                     return $res;
@@ -535,8 +530,7 @@ sub select {
 
 sub first {
     my $self = shift;
-    my $count = shift || 1;
-    my $n;
+    # my $n;
 
     if (exists $self->{first} ) {
         # from cache
@@ -551,11 +545,6 @@ sub first {
         # my @parent = $self->min_a;
         my $method = $self->{method};
 
-        # unless (defined $parent[0]) {
-        #    trace_close;
-        #    return undef;
-        # }
-
         # warn "getting first of a $method";
         # warn Dumper($self);
 
@@ -566,7 +555,6 @@ sub first {
 
             my @parent_min = $self->{parent}->first;
             unless ( defined $parent_min[0] ) {
-                    # warn "don't know first of $method";
                     $self->trace_close( arg => 'bad parent: undef 0' );
                     return wantarray ? (undef, 0) : undef;
             }
@@ -621,12 +609,6 @@ sub first {
             # warn "first $method \n    self = $self \n    first = $first \n    tail = $tail";
             return @{$self->{first}} = ($first, $tail);
         }  # end: first-complement
-
-        # if ($parent[0] == $inf) {
-        #    # or ($parent[0] == -$inf);
-        #    trace_close;
-        #    return $self->new($parent[0]);
-        # }
 
         if ($method eq 'intersection') {
             my @parent = @{ $self->{parent} };
@@ -730,12 +712,10 @@ sub first {
         if ($method eq 'union') {
             my (@first, @min);
             my @parent = @{ $self->{parent} };
-                @{$first[0]} = $parent[0]->first;
-                @{$first[1]} = $parent[1]->first;
-                @{$min[0]} = $first[0][0]->min_a;
-                @{$min[1]} = $first[1][0]->min_a;
-            # my @min1 = $self->{parent}[0]->min_a;
-            # my @min2 = $self->{parent}[1]->min_a;
+            @{$first[0]} = $parent[0]->first;
+            @{$first[1]} = $parent[1]->first;
+            @{$min[0]} = $first[0][0]->min_a;
+            @{$min[1]} = $first[1][0]->min_a;
 
             # check min1/min2 for undef
             unless ( defined $min[0][0] ) {
@@ -778,7 +758,7 @@ sub first {
             return @{$self->{first}} = ($first, $tail);
         } # end: first-union
 
-        # 'quantize', 'select', 'recur_by_rule', 'offset'
+        # 'quantize', 'select', 'recur_by_rule', 'offset', 'iterate'
         # warn "first() doesn't know how to do $method-first, but maybe $method() knows";
         # warn " parent was ".$self->{parent};
         $self->trace( title=> "redo" );
@@ -794,162 +774,212 @@ sub first {
     }
 
     # $self->trace( title => "self = simple" );
-
-    unless ( @{$self->{list}} ) {
-        $self->trace_close( arg => 'empty set: undef 0' );
-        return wantarray ? (undef, 0) : undef; 
-    }
-    
-    $n = $#{$self->{list}};
-    $count = $n+1 unless $count <= ($n+1);
-    # warn "return [0 .. $count-1] , [$count .. $n]";
-    my $first = $self->new( @{$self->{list}} [0 .. $count-1] )->no_cleanup;
-    if ( $n == ($count-1) || ! wantarray ) {  # FIRST
-        $self->trace_close( arg => $first );
-        return $first;
-    }
-    my $res = $self->new->no_cleanup;
-    push @{$res->{list}}, @{$self->{list}} [$count .. $n];
-    # warn "first-wantarray = ( $first , $res )";
-    $self->trace_close( arg => "$first $res" ) if $TRACE;
-    return @{$self->{first}} = ($first, $res);
+    return $self->SUPER::first;
 }
 
-my $dummy = <<'____TODO____';
 sub last {
     my $self = shift;
-    my $count = shift || 1;
-    my $n;
 
-    $self->trace(title=>"last");
+    if (exists $self->{last} ) {
+        # from cache
+        $self->trace(title=>"> last - cache ". ( defined ${$self->{last}}[0] ? "@{$self->{last}}" : "undef 0" ) ) if $TRACE;
+        return wantarray ? @{$self->{last}} : $self->{last}[0];
+    }
+
+    $self->trace(title=>"last") if $TRACE;
 
     if ( $self->{too_complex} ) {
-        my @parent = $self->max_a;
         my $method = $self->{method};
-        # warn "here: @parent $method";
-        return undef unless defined $parent[0];
-
-        # carp "getting last from a $method";
 
         if ($method eq 'complement') {
             my @parent_max = $self->{parent}->last;
-            # carp "parent's first is @parent_max";
-            my $parent_complement = $parent_max[0]->complement;
-            # carp "last is $parent_complement";
-            # TODO: tail
-            return $self->new( $parent_complement->{list}[-1] );
+            unless ( defined $parent_max[0] ) {
+                $self->trace_close( arg => 'bad parent: undef 0' );
+                return wantarray ? (undef, 0) : undef;
+            }
+            my $parent_complement;
+            my $last;
+            my @next;
+            my $parent;
+            if ( $parent_max[0]->max == $inf ) {
+                #    (inf..min)        (second..?) = parent
+                #            (min..second)         = complement
+                my @parent_second = $parent_max[1]->last;
+                $last = $self->new( $parent_max[0]->complement );
+                $last->{list}[0]{a} = $parent_second[0]->{list}[0]{b};
+                $last->{list}[0]{open_begin} = ! $parent_second[0]->{list}[0]{open_end};
+                @{ $last->{list} } = () if
+                    ( $last->{list}[0]{a} == $last->{list}[0]{b}) &&
+                        ( $last->{list}[0]{open_end} ||
+                          $last->{list}[0]{open_begin} );
+                @next = $parent_second[0]->min_a;
+                $parent = $parent_second[1];
+            }
+            else {
+                #            (min..?)
+                #    (-inf..min)        = complement
+                $parent_complement = $parent_max[0]->complement;
+                $last = $self->new( $parent_complement->{list}[-1] );
+                @next = $parent_max[0]->min_a;
+                $parent = $parent_max[1];
+            }
+            unless (wantarray) {
+                $self->trace_close( arg => $last );
+                return $last;
+            }
+            my @no_tail = $self->new($next[0], $inf);
+            $no_tail[0]->{list}[-1]{open_begin} = $next[1];
+            my $tail = $parent->union($no_tail[-1])->complement;
+            $self->trace_close( arg => "$last $tail" ) if $TRACE;
+            return @{$self->{last}} = ($last, $tail);
         }
-
-
-        return $self->new($parent[0]) if ($parent[0] == $inf) or ($parent[0] == -$inf);
-        # carp "getting last from a $method";
-
-        # if ($method eq 'complement') {
-        #    my @parent_min = $self->{parent}->first;
-        #    # carp "parent's first is @parent_min";
-        #    my $parent_complement = $parent_min[0]->complement;
-        #    # carp "last is $parent_complement";
-        #    # TODO: tail
-        #    return $self->new( $parent_complement->{list}[0] );
-        # }
 
         if ($method eq 'intersection') {
-            die "last not defined for method '$method'";
-
-            my $min1 = $self->{parent}[0]->min_a;
-            my $min2 = $self->{parent}[1]->min_a;
-
-            # TODO: check min1/min2 for undef
-
-            my $which = ($min1 > $min2) ? 0 : 1;
-
-            my $last1 = $self->{parent}[$which]->last;
-            my $last2 = $self->{parent}[1-$which]->last;
-            warn "parents are $self->{parent}[$which] , $self->{parent}[1-$which]";
-            warn "last parents are $last1 , $last2";
-
-            if ($min1 == $min2) {
-                my $intersection = $last1->intersection( $last2 );
-                warn "last intersection is $intersection";
-                return $intersection unless wantarray;
-                return $intersection, $self->{parent}[$which]->complement( $intersection )->intersection (
-                    $self->{parent}[1-$which]->complement( $intersection ) );
-            }
-
-            return undef;
-        }
-        if ($method eq 'union') {
-            my $max1 = $self->{parent}[0]->max_a;
-            my $max2 = $self->{parent}[1]->max_a;
-
+            my @parent = @{ $self->{parent} };
             # TODO: check max1/max2 for undef
 
-            my $which = ($max1 > $max2) ? 0 : 1;
-            my $last = $self->{parent}[$which]->last;
-            return $last unless wantarray;
+            my $retry_count = 0;
+            my (@last, @max, $which, $last1, $intersection);
+            my $which_order = 0;
+
+            while ($retry_count++ < $max_intersection_depth) {
+                @{$last[0]} = $parent[0]->last;
+                @{$last[1]} = $parent[1]->last;
+                $self->trace( title=>"trying #$retry_count: $last[0][0] -- $last[1][0]" ) if $TRACE;
+                unless ( defined $last[0][0] ) {
+                    # warn "don't know last of $method";
+                    $self->trace_close( arg => 'undef' );
+                    return undef;
+                }
+                unless ( defined $last[1][0] ) {
+                    # warn "don't know last of $method";
+                    $self->trace_close( arg => 'undef' );
+                    return undef;
+                }
+                @{$max[0]} = $last[0][0]->max_a;
+                @{$max[1]} = $last[1][0]->max_a;
+                unless ( defined $max[0][0] && defined $max[1][0] ) {
+                    $self->trace( title=>"can't find max()" );
+                    $self->trace_close( arg => 'undef' );
+                    return undef;
+                }
+                $which = ($max[0][0] > $max[1][0]) ? 1-$which_order : $which_order;
+                ($last1, $parent[$which]) = @{ $last[$which] };
+                # warn "ref ". ref($last1);
+                if ( $last1->is_null ) {
+                    # warn "first1 empty! count $retry_count";
+                    # trace_close;
+                    # return $first1, undef;
+                    $intersection = $last1;
+                    last;
+                }
+                $intersection = $last1->intersection( $parent[1-$which] );
+# $TRACE = 0;
+                unless ( $intersection->is_null ) {
+                    # $self->trace( title=>"got an intersection" );
+                    if ( $intersection->is_too_complex ) {
+                        $self->trace( title=>"got a too_complex intersection" );                    }
+                    else {
+                        $self->trace( title=>"got an intersection" );
+                        last;
+                    }
+                };
+                unless ( defined $parent[$which] ) {
+                    # no luck - try inverting $which order
+                    $self->trace( title=>"retrying - invert order" );
+                    $parent[$which] = $last1;  # get it back
+                    $which_order = 1 - $which_order;
+                    # last;
+                }
+                $self->trace( title=>"next try" );
+            }
+            $self->trace( title=>"exit loop" );
+            if ( $intersection->is_null ) {
+                # my ($second1, $second2);
+                $self->trace( title=> "got no intersection so far" );
+            }
+
+            if ( $#{ $intersection->{list} } > 0 ) {
+                my $tail;
+                ($intersection, $tail) = $intersection->last;
+                $parent[$which] = $parent[$which]->union( $tail );
+                # TODO: remove $intersection from [1-$which]
+            }
+            unless (wantarray) {
+                    $self->trace_close( arg => $intersection );
+                    return $intersection;
+            }
+            my $tmp;
+            if ( defined $parent[$which] and defined $parent[1-$which] ) {
+                $tmp = $parent[$which]->intersection ( $parent[1-$which] );
+            }
+            $self->trace_close( arg => "$intersection ". (defined $tmp ? "$tmp"
+: "") ) if $TRACE;
+            return @{$self->{last}} = ($intersection, $tmp);
+        }
+
+        if ($method eq 'union') {
+            my (@last, @max);
+            my @parent = @{ $self->{parent} };
+            @{$last[0]} = $parent[0]->last;
+            @{$last[1]} = $parent[1]->last;
+            @{$max[0]} = $last[0][0]->max_a;
+            @{$max[1]} = $last[1][0]->max_a;
+
+            # check max1/max2 for undef
+            unless ( defined $max[0][0] ) {
+                $self->trace_close( arg => "@{$last[1]}" );
+                return @{$last[1]}
+            }
+            unless ( defined $max[1][0] ) {
+                $self->trace_close( arg => "@{$last[0]}" );
+                return @{$last[0]}
+            }
+
+            my $which = ($max[0][0] > $max[1][0]) ? 0 : 1;
+            my $last = $last[$which][0];
+            # return $last unless wantarray;
+            unless (wantarray) {
+                    $self->trace_close( arg => $last );
+                    return $last;
+            }
             # find out the tail
-            my $parent1 = $self->{parent}[$which]->complement($last);
-            my $parent2 = ($max1 == $max2) ? 
-                $self->{parent}[1-$which]->complement($last) : 
+            my $parent1 = $last[$which][1];
+            # warn $self->{parent}[$which]." - $last = $parent1";
+            my $parent2 = ($max[0][0] == $max[1][0]) ?
+                $self->{parent}[1-$which]->complement($last) :
                 $self->{parent}[1-$which];
-            my $tail = $parent1->$method( $parent2 );
-
-            # warn "   parent is a ".Dumper($self->{parent}[1]);
-            # warn " union $which ".$self->{parent}[0]."=$min1 ".$self->{parent}[1]."=$min2";
-            # warn " last=$last sample=$parent1 tail=$tail";
-            # carp "end: last from a $method";
-            return ($last, $tail);
-        }
-        if ($method eq 'quantize') {
-            # quantize max back, if parent method is quantize()
-            # TODO: use 'unit' instead of '-1'
-            my $sample = { a => $parent[0] - 1 - $self->{tolerance},
-                     b => $parent[0] ,
-                     open_begin => 0 ,
-                     open_end => $parent[1] };
-            my $last = $self->new( $sample )->$method( @{$self->{param}} )->last;
-            return $last unless wantarray;
-            # find out the tail
-            $sample = $self->{parent}->complement($last);
-            # warn "tail = quantize $sample";
-            my $tail = $sample->$method( @{$self->{param}} );
-            # carp "end: last from a $method";
-            return ($last, $tail);
+            my $tail;
+            if (( ! defined $parent1 ) || $parent1->is_null) {
+                # warn "union parent1 tail is null";
+                $tail = $parent2;
+            }
+            else {
+                $tail = $parent1->$method( $parent2 );
+            }
+            $self->trace_close( arg => "$last $tail" ) if $TRACE;
+            return @{$self->{first}} = ($last, $tail);
         }
 
-        # if ($method eq 'select') {
+        # 'quantize', 'select', 'recur_by_rule', 'offset', 'iterate'
+        # last() doesn't know how to do $method-last, 
+        # but maybe $method() knows
 
-        # warn "last() doesn't know how to do $method-last, but maybe $method() knows";
+        # warn " parent was ".$self->{parent};
+        $self->trace( title=> "redo" ) if $TRACE;
+        # warn "redo $method";
         my $redo = $self->{parent}->$method( @{ $self->{param} } );
-        my $new_method = exists $redo->{method} ? $redo->{method} : "[none]";
-        # warn "now we've got a ".$new_method;
+        # my $new_method = exists $redo->{method} ? $redo->{method} : "[none]";
+        # $redo->trace( title=> "redo" );
+        # now we've got a ".$new_method;
 
-        return $redo->last if $method ne $new_method;  # new_method should be 'union' or '[none]'
-
-        # return undef  # carp "end: last from a select - calling $method";
-
-        # TODO:
-        # warn "    method=$method min=".$parent[0];
-        # quantize min back, if parent method is quantize()
-        # TODO: fix select-min problem
-
-        carp "last not defined for method '$method'";
+        # TODO: check for deep recursion!
+        my @last = $redo->last;
+        $redo->trace_close( arg => "@last" ) if $TRACE;
+        return wantarray ? @last : $last[0];
     }
-    return undef unless @{$self->{list}};
-    # carp " last of bounded = $self";
-    $n = $#{$self->{list}};
-    $count = $n - $count + 1;
-    $count = 0 if $count < 0;
-    # warn "return [0 .. $count-1] , [$count .. $n]";
-    my $last = $self->new( @{$self->{list}} [$count .. $n] )->no_cleanup;
-    return $last if $count == 0 || ! wantarray;  # last
-    my $res = $self->new->no_cleanup;
-    push @{$res->{list}}, @{$self->{list}} [0 .. $count-1];
-    # warn "last-wantarray = ( $last , $res )";
-    return $last, $res;
+    return $self->SUPER::last;
 }
-____TODO____
-
 
 # offset: offsets subsets
 sub offset {
@@ -966,8 +996,14 @@ sub offset {
         # TODO: check for invalid $first, $tail
         $first = $first->offset( @_ );
         $tail  = $tail->_function( 'offset', @_ );
-        # $self->trace( title => "*** offset got a first: @{$self->{first}} ***" );
         $b1->{first} = [$first, $tail];
+
+        my $last;
+        ($last, $tail) = $self->last;
+        # TODO: check for invalid $last, $tail
+        $last = $last->offset( @_ );
+        $tail  = $tail->_function( 'offset', @_ );
+        $b1->{last} = [$last, $tail];
 
         $self->trace_close( arg => $b1 );
         return $b1;
@@ -1140,7 +1176,7 @@ sub _quantize_span {
 
 sub backtrack {
     #
-    #  NOTICE: set/reset $DEBUG_BT to enable debugging
+    #  NOTE: set/reset $DEBUG_BT to enable debugging
     #
     my ($self, $method, $arg) = @_;
     unless ( $self->{too_complex} ) {
@@ -1338,6 +1374,14 @@ sub iterate {
         $first[1] = $first[1]->_function( 'iterate', @_ ) if ref($first[1]);
         # warn "iterate: FIRST got @first";
         $return->{first} = \@first;
+
+        # last() helper
+        my @last = $a->last;
+        # warn "iterate: LAST of $a was @last";
+        $last[0] = $last[0]->iterate( @_ ) if ref($last[0]);
+        $last[1] = $last[1]->_function( 'iterate', @_ ) if ref($last[1]);
+        # warn "iterate: LAST got @last";
+        $return->{last} = \@last;
 
         return $return;
     }
@@ -1665,7 +1709,8 @@ sub max_a {
             $self->trace( title=>"creating sample for $method" );
             my $sample;
 
-            # TODO: this is a hack - we shouldn't know about recur_by_rule here
+            # TODO: this is a Date::Set hack
+            #  - we shouldn't know about recur_by_rule here
             if ( $method eq 'recur_by_rule' ) {
                 my %param = @{$self->{param}};
                 $self->trace( title=>"freq = ".$param{FREQ} ) if $method eq 'recur_by_rule';
@@ -1880,6 +1925,8 @@ __END__
 
         returns '-Infinity' number.
 
+=head2 Special set functions
+
     quantize( parameters )
 
         Makes equal-sized subsets.
@@ -1928,27 +1975,30 @@ __END__
             mode    - default='offset'. Possible values are: 'offset', 'begin', 'end'.
             unit    - type of value. Can be 'days', 'weeks', 'hours', 'minutes', 'seconds'.
 
-    iterate ( sub { } )
+    iterate ( sub { } , @args )
 
-        Iterates over a subroutine. 
-        Returns the union of partial results.
+Iterates on the set spans, over a callback subroutine. 
+Returns the union of all partial results.
 
-    first
+The callback argument C<$_[0]> is a span. If there are additional arguments they are passed to the callback.
 
-        In scalar context returns the first interval of a set.
+The callback can return a span, a hashref (see C<Set::Infinite::Basic>), a scalar, an object, or C<undef>.
 
-        In list context returns the first interval of a set, and the
-        'tail'.
+    first / last
 
-        Works in unbounded sets
+In scalar context returns the first interval of a set.
+
+In list context returns the first interval of a set, and the 'tail'.
+
+Works even in unbounded sets
 
     type($i)
 
-        chooses an object data type. 
+Chooses a default object data type. 
 
-        default is none (a normal perl SCALAR).
+default is none (a normal perl SCALAR).
 
-        examples: 
+examples: 
 
         type('Math::BigFloat');
         type('Math::BigInt');
@@ -1974,7 +2024,7 @@ __END__
 
 =head1 Notes on Dates
 
-See module Date::Set for up-to-date information on date-sets. 
+See modules DateTime::Set and Date::Set for up-to-date information on date-sets. 
 
 Set::Infinite::Date is a Date "plug-in" for sets.
 
@@ -2017,19 +2067,34 @@ max and min functions will also show in date/time format.
         Will be interpreted as [1..2],3 instead of [1,2,3].
         You probably want ->new(1,3) instead.
 
+=head1 INTERNALS
+
+The base I<set> object, without recurrences, is a C<Set::Infinite::Basic>.
+
+A I<recurrence-set> is represented by a I<method name>, 
+one or two I<parent objects>, and extra arguments.
+The C<list> key is a reference to an empty array, and the
+C<too_complex> key is set to C<1>.
+
+    too_complex => 1,   # "this is a recurrence"
+    list   => [ ],      # not used
+    method => 'union',  # function name
+    parent => [ $set1, $set2 ],   # leaves in syntax-tree
+    param  => [ ]       # optional arguments for the function
+
 =head1 SEE ALSO
 
-    DateTime::Set
+C<DateTime::Set>
 
-    the perl-date-time project <http://datetime.perl.org> (soon)
+The perl-date-time project <http://datetime.perl.org> 
 
-    Date::Set
+C<Date::Set>
 
-    the Reefknot project <http://reefknot.sf.net>
+The Reefknot project <http://reefknot.sf.net>
 
 =head1 AUTHOR
 
-    Flavio Soibelmann Glock <fglock@pucrs.br>
+Flavio Soibelmann Glock <fglock@pucrs.br>
 
 =cut
 

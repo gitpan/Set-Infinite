@@ -1,5 +1,16 @@
 Revision history for Perl extension Set::Infinite.
 
+0.44_03
+    last() can union/intersect/complement/offset
+0.44_02
+    last() can iterate/complement
+0.44_01
+    first(n) deprecated
+    S::I::Basic::last() enabled
+
+0.44
+    CPAN release
+
 0.43_01
     'iterate' generates 'first' code
 

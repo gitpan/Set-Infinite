@@ -62,12 +62,12 @@ $a = $a;  # clear warnings
 $a = Set::Infinite->new([25,50])->quantize;
 $c = $a->select(by => [2,3], count => 2, freq => 5 );
 # warn "$c";
-@a = $c->first(2);
-test ("first, tail", '"@a"', '[27..28),[28..29) [32..33),[33..34)');
-@a = defined $a[1] ? $a[1]->first(2) : ();
-test ("first, tail", '"@a"', '[32..33),[33..34)');
+@a = $c->first();
+test ("first, tail", '"@a"', '[27..28) [28..29),[32..33),[33..34)');
+@a = defined $a[1] ? $a[1]->first() : ();
+test ("first, tail", '"@a"', '[28..29) [32..33),[33..34)');
 @a = defined $a[1] ? $a[1]->first : ();
-test ("first, tail", '"@a"', '');
+test ("first, tail", '"@a"', '[32..33) [33..34)');
 
 
 1;

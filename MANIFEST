@@ -21,6 +21,7 @@ t/until.t
 t/date.t
 t/infinite.t
 t/first.t
+t/last.t
 t/backtrack.t
 t/quantize_date.t
 t/quantize.t

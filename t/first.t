@@ -74,22 +74,6 @@ test ("first, tail", '"@a"', '[7..8]');
 @a = defined $a[1] ? $a[1]->first : ();
 test ("first, tail", '"@a"', '');
 
-
-my $dummy = <<'____TODO____';
-# last
-
-$a = Set::Infinite->new([1,2],[4,5],[7,8]);
-@a = $a->last;
-test ("last, tail", '"@a"', '[7..8] [1..2],[4..5]');
-@a = defined $a[1] ? $a[1]->last : ();
-test ("last, tail", '"@a"', '[4..5] [1..2]');
-@a = defined $a[1] ? $a[1]->last : ();
-test ("last, tail", '"@a"', '[1..2]');
-@a = defined $a[1] ? $a[1]->last : ();
-test ("last, tail", '"@a"', '');
-____TODO____
-
-
 # complement
 
 # $Set::Infinite::TRACE = 1;

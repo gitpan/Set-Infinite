@@ -1,5 +1,7 @@
 Set::Infinite TODO 
 
+    - implement last of select, quantize; enable tests!
+
     - tests for iterate min/max/first
 
     - refactor backtracking, min, max, first, offset, quantize
@@ -14,8 +16,6 @@ Set::Infinite TODO
 
     - finish last()
 
-    - change iterate() to use first() ?
-
     - finish select/first defined "boundedness" for negative by
       and tests for negative by
 
@@ -28,16 +28,10 @@ Set::Infinite TODO
     - size() is wrong for open, "integer" sets.
       test!
 
-    DONE: first() - create some "chunk size" estimation, to take elements
-      from unbounded sets ("numerically" instead of using equations)
-      (mostly done - see first() )
-
-    - find out how to correctly (inheritable) declare module global vars
-
-    - verify POD format and contents; mix POD and program
+    - verify POD format and contents; mix POD and program?
 
     - make Set::Infinite::Date inherit Set::Infinite; 
-      make Set::Infinite::Date::Element a leaf-node
+      make Set::Infinite::Date::Element a leaf-node?
 
     - remove all references to 'mode', except in 'S::I::Date'
     - move $self->{mode} to "Date" only.
