@@ -11,7 +11,6 @@ use Set::Infinite::Element_Inf qw(inf minus_inf);
 use Carp;
 use Time::Local;
 
-our $VERSION = "0.03";
 our @EXPORT = qw();
 our @EXPORT_OK = qw();
 our @ISA = qw(Set::Infinite::Function); 
@@ -77,11 +76,14 @@ our %subs = (
 		my @date = gmtime( $self );
 		my $mon = 	$date[4] + $index; 
 		my $year =	$date[5] + 1900;
-		if ($mon > 11) {
-			my $addyear = int($mon / 12);
+		# print " [OFS: month: from $year$mon ]\n";
+		if (($mon > 11) or ($mon < 0)) {
+			my $addyear = $mon >= 0 ? int($mon / 12) : int($mon/12) - 1;
 			$mon = $mon - 12 * $addyear;
 			$year += $addyear;
 		}
+		# print " [OFS: month: to $year $mon ]\n";
+
 		# elsif ($mon < 0) {
 		#	$mon += 12;
 		#	$year -= 1;
