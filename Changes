@@ -1,7 +1,11 @@
 Revision history for Perl extension Set::Infinite.
 
+0.48
+    fixed: backtracking on a partially defined set.
+    fixed: first of a union with an empty set.
+
 0.47
-    union allows start_set == end_set
+    until allows start_set == end_set
 
 0.46_01
     upload to perl-date-time CVS

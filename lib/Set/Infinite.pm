@@ -24,7 +24,7 @@ use vars qw( @ISA %EXPORT_TAGS @EXPORT_OK @EXPORT $VERSION
 @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } , qw(inf new $inf trace_open trace_close) );
 @EXPORT = qw();
 
-$VERSION = '0.47';
+$VERSION = '0.48';
 
 use Set::Infinite::Arithmetic;
 
@@ -177,11 +177,6 @@ sub quantize {
         (defined $min[0] && $min[0] == -&inf) or 
         (defined $max[0] && $max[0] == &inf)) {
         # $self->trace(title=>"quantize:backtrack"); 
-
-        # warn "quantize a ". $self->{method} if $self->{too_complex};
-        # warn "quantize a Inf"  if (defined $max[0] && $max[0] == &inf);
-        # warn "quantize a -Inf" if (defined $min[0] && $min[0] == -&inf);
-
         # print " [quantize:backtrack] \n" if $DEBUG_BT;
         my $b = $self->_function( 'quantize', @_ );
         # $b->trace( title=>"quantize: created a function: $b" );
@@ -233,13 +228,6 @@ sub quantize {
 
             @{$b->{min}} = $first->min_a;
             @{$b->{max}} = $last->max_a;
-
-            # warn "    parent: ".$b->{parent};
-            # my $tmp = $first->union($last)->union($b);
-            # @{$tmp->{first}} = ($first, $b->union($last) );  # setup first-cache
-            # @{$tmp->{last}}  = ($last,  $b->union($first) );
-            # @{$tmp->{min}} = $first->min_a;
-            # @{$tmp->{max}} = $last->max_a;
             $b->trace_close( arg => $b );
             return $b;
         }
@@ -701,6 +689,10 @@ sub first {
             my @parent = @{ $self->{parent} };
             @{$first[0]} = $parent[0]->first;
             @{$first[1]} = $parent[1]->first;
+            unless ( defined $first[0][0] ) {
+                # looks like one set was empty
+                return @{$first[1]};
+            }
             @{$min[0]} = $first[0][0]->min_a;
             @{$min[1]} = $first[1][0]->min_a;
 
@@ -1207,7 +1199,9 @@ sub backtrack {
                 # backtrack failed...
                 $backtrack_depth--;
                 $self->trace_close( arg => $self );
-                return $self;
+
+                # return the simplified version
+                return $result1->_function2( $self->{method}, $result2 );
         }
 
         # apply {method}
