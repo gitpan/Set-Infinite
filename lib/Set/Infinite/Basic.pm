@@ -668,7 +668,8 @@ sub union {
 
                     while (1) {
                         last if $ia >= $#{$a1->{list}};    
-                        last unless _simple_intersects ( $a1->{list}[$ia], $a1->{list}[$ia + 1] );
+                        last unless _simple_intersects ( $a1->{list}[$ia], $a1->{list}[$ia + 1] )
+                            || $a1->{list}[$ia]{b} == $a1->{list}[$ia + 1]{a};
                         @tmp = _simple_union($a1->{list}[$ia], $a1->{list}[$ia + 1], $a1->{tolerance});
                         last unless @tmp == 1;
                         $a1->{list}[$ia] = $tmp[0];

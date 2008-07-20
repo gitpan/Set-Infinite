@@ -1,5 +1,9 @@
 Revision history for Perl extension Set::Infinite.
 
+0.62   2008-07-20
+- fixed a problem in union() that caused first() to return a wrong result.
+  reported by David Gang 
+
 0.61   2004-11-03
 - some optimization of intersected_spans()
 - bugfix: complement of the universal set is the empty set
