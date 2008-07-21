@@ -1,5 +1,8 @@
 Revision history for Perl extension Set::Infinite.
 
+0.63   2008-07-21
+- minor tweak in union(); added tests
+
 0.62   2008-07-20
 - fixed a problem in union() that caused first() to return a wrong result.
   reported by David Gang 

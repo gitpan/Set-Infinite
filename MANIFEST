@@ -23,6 +23,7 @@ t/select.t
 t/select_offset.t
 t/size.t
 t/basic_intersects.t
+t/union.t
 
 META.yml                                Module meta-data (added by MakeMaker)
 

@@ -43,7 +43,7 @@ sub compact { @_ }
 
 
 BEGIN {
-    $VERSION = "0.62";
+    $VERSION = "0.63";
     $TRACE = 0;         # enable basic trace method execution
     $DEBUG_BT = 0;      # enable backtrack tracer
     $PRETTY_PRINT = 0;  # 0 = print 'Too Complex'; 1 = describe functions
@@ -1906,7 +1906,7 @@ The perl-date-time project <http://datetime.perl.org>
 
 =head1 AUTHOR
 
-Flavio Soibelmann Glock <fglock@pucrs.br>
+Flavio S. Glock <fglock@gmail.com>
 
 =head1 COPYRIGHT
 
