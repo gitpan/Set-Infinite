@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:                Set-Infinite
-version:             0.64
+version:             0.65
 abstract:            Infinite Sets math
 license:             ~
 author:              

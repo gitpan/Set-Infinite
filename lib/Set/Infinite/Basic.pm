@@ -1015,7 +1015,7 @@ Makes a new object from the object's data.
     $set = $set->complement;
     $set = $set->complement($b);   # can also be called "minus" or "difference"
 
-    $set = $set->simmetric_difference( $b );
+    $set = $set->symmetric_difference( $b );
 
     $set = $set->span;   
 

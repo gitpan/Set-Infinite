@@ -10,7 +10,7 @@ use 5.005_03;
 # These methods are inherited from Set::Infinite::Basic "as-is":
 #   type list fixtype numeric min max integer real new span copy
 #   start_set end_set universal_set empty_set minus difference
-#   simmetric_difference is_empty
+#   symmetric_difference is_empty
 
 use strict;
 use base qw(Set::Infinite::Basic Exporter);
@@ -43,7 +43,7 @@ sub compact { @_ }
 
 
 BEGIN {
-    $VERSION = "0.64";
+    $VERSION = "0.65";
     $TRACE = 0;         # enable basic trace method execution
     $DEBUG_BT = 0;      # enable backtrack tracer
     $PRETTY_PRINT = 0;  # 0 = print 'Too Complex'; 1 = describe functions
@@ -1504,7 +1504,7 @@ belong to the given set.
     print $set1->minus( $set2 );
     # output: [1..4]
 
-=head2 simmetric_difference
+=head2 symmetric_difference
 
 Returns a set containing elements that are in either set,
 but not in both. This is the "set" version of "XOR".
