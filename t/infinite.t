@@ -89,8 +89,8 @@ $a = Set::Infinite->new(16, 17);
 # print " a is ", $a, "\n";
 test ("$a union (10..13)  ", '$a->union(10, 13)', "[10..13],[16..17]"); # 5
 
-# simmetric_difference
-test ("$a simmetric_difference (10..16.5)  ", '$a->simmetric_difference(10, 16.5)', "[10..16),(16.5..17]"); # 5.5
+# symmetric_difference
+test ("$a symmetric_difference (10..16.5)  ", '$a->symmetric_difference(10, 16.5)', "[10..16),(16.5..17]"); # 5.5
 
 # universal_set
 test ("universal_set ", 'Set::Infinite->universal_set', "($neg_inf..$inf)" );

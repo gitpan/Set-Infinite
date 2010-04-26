@@ -1,12 +1,15 @@
-# http://module-build.sourceforge.net/META-spec.html
-#XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
-name:         Set-Infinite
-version:      0.63
-version_from: lib/Set/Infinite.pm
-installdirs:  site
-requires:
+--- #YAML:1.0
+name:                Set-Infinite
+version:             0.64
+abstract:            Infinite Sets math
+license:             ~
+author:              
+    - Flavio S. Glock <fglock@gmail.com>
+generated_by:        ExtUtils::MakeMaker version 6.44
+distribution_type:   module
+requires:     
     Test::More:                    0
     Time::Local:                   0
-
-distribution_type: module
-generated_by: ExtUtils::MakeMaker version 6.30
+meta-spec:
+    url:     http://module-build.sourceforge.net/META-spec-v1.3.html
+    version: 1.3

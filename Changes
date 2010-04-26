@@ -1,5 +1,9 @@
 Revision history for Perl extension Set::Infinite.
 
+0.64   2010-04-26
+- s/simmetric/symmetric/ 
+  reported by Richard Jelinek
+
 0.63   2008-07-21
 - minor tweak in union(); added tests
 

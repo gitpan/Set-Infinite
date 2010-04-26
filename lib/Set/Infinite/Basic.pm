@@ -783,7 +783,7 @@ sub universal_set {
 
 *difference = \&complement;
 
-sub simmetric_difference {
+sub symmetric_difference {
     my $a1 = shift;
     my $b1;
     if (ref ($_[0]) eq ref($a1) ) {
@@ -796,6 +796,8 @@ sub simmetric_difference {
     return $a1->complement( $b1 )->union(
            $b1->complement( $a1 ) );
 }
+
+*simmetric_difference = \&symmetric_difference; # bugfix
 
 sub min { 
     ($_[0]->min_a)[0];
